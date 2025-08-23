@@ -80,6 +80,10 @@ go.work
 postgres_data/
 
 # Docker
-.dockerignoregithub*
-*.pub
+.dockerignore
+
+# SSH Keys and Authentication (NEVER COMMIT)
+github
+github.pub
 id_rsa*
+*.pub
