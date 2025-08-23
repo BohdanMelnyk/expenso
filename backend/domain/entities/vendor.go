@@ -9,15 +9,16 @@ import (
 type VendorType string
 
 const (
-	VendorTypeStore        VendorType = "store"
-	VendorTypeEatingOut    VendorType = "eating_out"
-	VendorTypeShop         VendorType = "shop"
-	VendorTypeSubscription VendorType = "subscription"
+	VendorTypeFoodStore     VendorType = "food_store"
+	VendorTypeShop          VendorType = "shop"
+	VendorTypeEatingOut     VendorType = "eating_out"
+	VendorTypeSubscriptions VendorType = "subscriptions"
+	VendorTypeElse          VendorType = "else"
 )
 
 func (vt VendorType) IsValid() bool {
 	switch vt {
-	case VendorTypeStore, VendorTypeEatingOut, VendorTypeShop, VendorTypeSubscription:
+	case VendorTypeFoodStore, VendorTypeShop, VendorTypeEatingOut, VendorTypeSubscriptions, VendorTypeElse:
 		return true
 	}
 	return false

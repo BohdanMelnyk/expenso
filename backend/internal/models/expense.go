@@ -11,6 +11,8 @@ type Expense struct {
 	Type      string    `json:"type" db:"type"`
 	Category  string    `json:"category" db:"category"`
 	Comment   string    `json:"comment" db:"comment"`
+	VendorID  *int      `json:"vendor_id" db:"vendor_id"`
+	Vendor    *Vendor   `json:"vendor,omitempty" db:"-"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -21,6 +23,7 @@ type CreateExpenseRequest struct {
 	Type     string  `json:"type" validate:"required"`
 	Category string  `json:"category" validate:"required"`
 	Comment  string  `json:"comment"`
+	VendorID *int    `json:"vendor_id,omitempty"`
 }
 
 type UpdateExpenseRequest struct {
@@ -29,4 +32,5 @@ type UpdateExpenseRequest struct {
 	Type     *string  `json:"type,omitempty"`
 	Category *string  `json:"category,omitempty"`
 	Comment  *string  `json:"comment,omitempty"`
+	VendorID *int     `json:"vendor_id,omitempty"`
 }
