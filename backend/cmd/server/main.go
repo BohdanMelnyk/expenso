@@ -22,6 +22,7 @@ import (
 
 	_ "expenso-backend/docs"
 	"expenso-backend/infrastructure/http/handlers"
+	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/vendors"
@@ -46,6 +47,15 @@ func main() {
 
 	if err := db.Ping(); err != nil {
 		log.Fatal("Failed to ping database:", err)
+	}
+
+	// Run database migrations
+	migrator := migration.NewMigrator(db, "./migrations")
+	if err := migrator.Initialize(); err != nil {
+		log.Fatal("Failed to initialize migrator:", err)
+	}
+	if err := migrator.RunMigrations(); err != nil {
+		log.Fatal("Migration failed:", err)
 	}
 
 	// Repository layer (implements interfaces from use case layer)
