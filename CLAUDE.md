@@ -81,10 +81,25 @@ cd backend && go run cmd/migrate/main.go up
 
 ## Development Workflow
 
+**IMPORTANT**: This project uses a **feature branch workflow**. See `.claude/rules.md` for complete guidelines.
+
+### Git Workflow
+1. Always work on feature branches: `feature/description`, `fix/description`
+2. Never commit directly to main branch
+3. Create pull requests for all changes
+4. Keep PRs small and focused
+
+### Development Steps
 1. Set up PostgreSQL database
-2. Initialize Go backend with proper structure
+2. Initialize Go backend with proper structure  
 3. Create React frontend with modern tooling
 4. Implement CRUD APIs
 5. Build responsive UI components
 6. Add data visualization
 7. Implement insights and analytics
+
+### Branch Naming Convention
+- `feature/add-expense-api` - New features
+- `fix/chart-render-bug` - Bug fixes  
+- `chore/update-deps` - Tooling/config
+- `docs/api-documentation` - Documentation
