@@ -1,9 +1,25 @@
 package main
 
+// @title Expenso API
+// @version 1.0
+// @description Smart expense tracking application API
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
 import (
 	"database/sql"
 	"log"
 
+	_ "expenso-backend/docs"
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/expense"
@@ -11,6 +27,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	swaggerFiles "github.com/swaggo/files"
 )
 
 func main() {
@@ -75,6 +93,10 @@ func main() {
 		c.JSON(200, gin.H{"status": "OK - Clean Architecture with Gin"})
 	})
 
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	log.Printf("Clean Architecture server with Gin starting on port 8080")
+	log.Printf("Swagger UI available at: http://localhost:8080/swagger/index.html")
 	log.Fatal(router.Run(":8080"))
 }

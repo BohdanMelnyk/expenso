@@ -1,0 +1,395 @@
+basePath: /api/v1
+definitions:
+  dto.CreateExpenseRequestDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      comment:
+        type: string
+      date:
+        type: string
+      type:
+        type: string
+      vendor_id:
+        type: integer
+    required:
+    - amount
+    - category
+    - date
+    - type
+    type: object
+  dto.CreateVendorRequestDTO:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    required:
+    - name
+    - type
+    type: object
+  dto.ExpenseResponseDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      comment:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+      vendor:
+        $ref: '#/definitions/dto.VendorResponseDTO'
+    type: object
+  dto.UpdateExpenseRequestDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      comment:
+        type: string
+      date:
+        type: string
+      type:
+        type: string
+      vendor_id:
+        type: integer
+    type: object
+  dto.VendorResponseDTO:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Smart expense tracking application API
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Expenso API
+  version: "1.0"
+paths:
+  /expenses:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all expenses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all expenses
+      tags:
+      - expenses
+    post:
+      consumes:
+      - application/json
+      description: Create a new expense with the provided data
+      parameters:
+      - description: Expense data
+        in: body
+        name: expense
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateExpenseRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new expense
+      tags:
+      - expenses
+  /expenses/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an expense by ID
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete an expense
+      tags:
+      - expenses
+    get:
+      consumes:
+      - application/json
+      description: Get a single expense by its ID
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get an expense by ID
+      tags:
+      - expenses
+    put:
+      consumes:
+      - application/json
+      description: Update an existing expense by ID
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated expense data
+        in: body
+        name: expense
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateExpenseRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an expense
+      tags:
+      - expenses
+  /vendors:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all vendors
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.VendorResponseDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all vendors
+      tags:
+      - vendors
+    post:
+      consumes:
+      - application/json
+      description: Create a new vendor with the provided data
+      parameters:
+      - description: Vendor data
+        in: body
+        name: vendor
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVendorRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.VendorResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new vendor
+      tags:
+      - vendors
+  /vendors/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a single vendor by its ID
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VendorResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a vendor by ID
+      tags:
+      - vendors
+  /vendors/type/{type}:
+    get:
+      consumes:
+      - application/json
+      description: Get vendors filtered by type
+      parameters:
+      - description: Vendor Type
+        enum:
+        - food_store
+        - shop
+        - eating_out
+        - subscriptions
+        - else
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.VendorResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get vendors by type
+      tags:
+      - vendors
+swagger: "2.0"

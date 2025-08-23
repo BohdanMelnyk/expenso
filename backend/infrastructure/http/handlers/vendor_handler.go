@@ -21,6 +21,15 @@ func NewVendorHandler(vendorInteractor *vendor.VendorInteractor) *VendorHandler 
 	}
 }
 
+// GetVendors godoc
+// @Summary Get all vendors
+// @Description Get a list of all vendors
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Success 200 {array} dto.VendorResponseDTO
+// @Failure 500 {object} map[string]string
+// @Router /vendors [get]
 func (h *VendorHandler) GetVendors(c *gin.Context) {
 	// Execute use case
 	vendors, err := h.vendorInteractor.GetVendors()
@@ -38,6 +47,18 @@ func (h *VendorHandler) GetVendors(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetVendor godoc
+// @Summary Get a vendor by ID
+// @Description Get a single vendor by its ID
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Param id path int true "Vendor ID"
+// @Success 200 {object} dto.VendorResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /vendors/{id} [get]
 func (h *VendorHandler) GetVendor(c *gin.Context) {
 	// Parse path parameter
 	id, err := strconv.Atoi(c.Param("id"))
@@ -63,6 +84,17 @@ func (h *VendorHandler) GetVendor(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetVendorsByType godoc
+// @Summary Get vendors by type
+// @Description Get vendors filtered by type
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Param type path string true "Vendor Type" Enums(food_store, shop, eating_out, subscriptions, else)
+// @Success 200 {array} dto.VendorResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /vendors/type/{type} [get]
 func (h *VendorHandler) GetVendorsByType(c *gin.Context) {
 	// Parse path parameter
 	vendorType := c.Param("type")
@@ -87,6 +119,17 @@ func (h *VendorHandler) GetVendorsByType(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// CreateVendor godoc
+// @Summary Create a new vendor
+// @Description Create a new vendor with the provided data
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Param vendor body dto.CreateVendorRequestDTO true "Vendor data"
+// @Success 201 {object} dto.VendorResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Router /vendors [post]
 func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	// Syntactic validation - decode JSON
 	var requestDTO dto.CreateVendorRequestDTO

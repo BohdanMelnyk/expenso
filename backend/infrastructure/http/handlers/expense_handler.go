@@ -22,6 +22,15 @@ func NewExpenseHandler(expenseInteractor *expense.ExpenseInteractor) *ExpenseHan
 	}
 }
 
+// GetExpenses godoc
+// @Summary Get all expenses
+// @Description Get a list of all expenses
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 500 {object} map[string]string
+// @Router /expenses [get]
 func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	// Execute use case
 	expenses, err := h.expenseInteractor.GetExpenses()
@@ -39,6 +48,18 @@ func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetExpense godoc
+// @Summary Get an expense by ID
+// @Description Get a single expense by its ID
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param id path int true "Expense ID"
+// @Success 200 {object} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/{id} [get]
 func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	// Parse path parameter
 	id, err := strconv.Atoi(c.Param("id"))
@@ -64,6 +85,16 @@ func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// CreateExpense godoc
+// @Summary Create a new expense
+// @Description Create a new expense with the provided data
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param expense body dto.CreateExpenseRequestDTO true "Expense data"
+// @Success 201 {object} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Router /expenses [post]
 func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	// Syntactic validation - decode JSON
 	var requestDTO dto.CreateExpenseRequestDTO
@@ -106,6 +137,18 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	c.JSON(http.StatusCreated, responseDTO)
 }
 
+// UpdateExpense godoc
+// @Summary Update an expense
+// @Description Update an existing expense by ID
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param id path int true "Expense ID"
+// @Param expense body dto.UpdateExpenseRequestDTO true "Updated expense data"
+// @Success 200 {object} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /expenses/{id} [put]
 func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 	// Parse path parameter
 	id, err := strconv.Atoi(c.Param("id"))
@@ -169,6 +212,18 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// DeleteExpense godoc
+// @Summary Delete an expense
+// @Description Delete an expense by ID
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param id path int true "Expense ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/{id} [delete]
 func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 	// Parse path parameter
 	id, err := strconv.Atoi(c.Param("id"))
