@@ -3,15 +3,13 @@ package main
 import (
 	"database/sql"
 	"log"
-	"net/http"
 
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/vendor"
 
-	"github.com/gorilla/mux"
-	"github.com/rs/cors"
+	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
@@ -59,40 +57,44 @@ func main() {
 		getVendorsByTypeUC,
 	)
 
-	// HTTP Router
-	router := mux.NewRouter()
+	// Setup Gin router
+	router := gin.Default()
 
-	// API routes
-	api := router.PathPrefix("/api/v1").Subrouter()
+	// CORS middleware for Gin
+	router.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:3000")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "*")
 
-	// Expense routes
-	api.HandleFunc("/expenses", expenseHandler.GetExpenses).Methods("GET")
-	api.HandleFunc("/expenses", expenseHandler.CreateExpense).Methods("POST")
-	api.HandleFunc("/expenses/{id}", expenseHandler.GetExpense).Methods("GET")
-	api.HandleFunc("/expenses/{id}", expenseHandler.UpdateExpense).Methods("PUT")
-	api.HandleFunc("/expenses/{id}", expenseHandler.DeleteExpense).Methods("DELETE")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
 
-	// Vendor routes
-	api.HandleFunc("/vendors", vendorHandler.GetVendors).Methods("GET")
-	api.HandleFunc("/vendors", vendorHandler.CreateVendor).Methods("POST")
-	api.HandleFunc("/vendors/{id}", vendorHandler.GetVendor).Methods("GET")
-	api.HandleFunc("/vendors/type/{type}", vendorHandler.GetVendorsByType).Methods("GET")
-
-	// Health check
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK - Clean Architecture"))
-	}).Methods("GET")
-
-	// Setup CORS
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"*"},
+		c.Next()
 	})
 
-	handler := c.Handler(router)
+	// API routes group
+	api := router.Group("/api/v1")
 
-	log.Printf("Clean Architecture server starting on port 8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	// Expense routes
+	api.GET("/expenses", expenseHandler.GetExpenses)
+	api.POST("/expenses", expenseHandler.CreateExpense)
+	api.GET("/expenses/:id", expenseHandler.GetExpense)
+	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
+	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+
+	// Vendor routes
+	api.GET("/vendors", vendorHandler.GetVendors)
+	api.POST("/vendors", vendorHandler.CreateVendor)
+	api.GET("/vendors/:id", vendorHandler.GetVendor)
+	api.GET("/vendors/type/:type", vendorHandler.GetVendorsByType)
+
+	// Health check
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "OK - Clean Architecture with Gin"})
+	})
+
+	log.Printf("Clean Architecture server with Gin starting on port 8080")
+	log.Fatal(router.Run(":8080"))
 }

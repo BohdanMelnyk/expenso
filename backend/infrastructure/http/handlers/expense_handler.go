@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,7 +9,7 @@ import (
 	"expenso-backend/infrastructure/http/dto"
 	"expenso-backend/usecases/interactors/expense"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 type ExpenseHandler struct {
@@ -37,11 +36,11 @@ func NewExpenseHandler(
 	}
 }
 
-func (h *ExpenseHandler) GetExpenses(w http.ResponseWriter, r *http.Request) {
+func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	// Execute use case
 	expenses, err := h.getExpensesUseCase.Execute()
 	if err != nil {
-		http.Error(w, "Failed to fetch expenses", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
 	}
 
@@ -51,16 +50,14 @@ func (h *ExpenseHandler) GetExpenses(w http.ResponseWriter, r *http.Request) {
 		responseDTO[i] = h.expenseToDTO(exp)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *ExpenseHandler) GetExpense(w http.ResponseWriter, r *http.Request) {
+func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	// Parse path parameter
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		http.Error(w, "Invalid expense ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
 		return
 	}
 
@@ -68,9 +65,9 @@ func (h *ExpenseHandler) GetExpense(w http.ResponseWriter, r *http.Request) {
 	exp, err := h.getExpenseUseCase.Execute(entities.ExpenseID(id))
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
-			http.Error(w, "Expense not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
 		} else {
-			http.Error(w, "Failed to fetch expense", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expense"})
 		}
 		return
 	}
@@ -78,22 +75,21 @@ func (h *ExpenseHandler) GetExpense(w http.ResponseWriter, r *http.Request) {
 	// Convert domain entity to DTO
 	responseDTO := h.expenseToDTO(exp)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *ExpenseHandler) CreateExpense(w http.ResponseWriter, r *http.Request) {
+func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	// Syntactic validation - decode JSON
 	var requestDTO dto.CreateExpenseRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&requestDTO); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&requestDTO); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	// Parse date
 	date, err := time.Parse("2006-01-02", requestDTO.Date)
 	if err != nil {
-		http.Error(w, "Invalid date format (use YYYY-MM-DD)", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format (use YYYY-MM-DD)"})
 		return
 	}
 
@@ -114,31 +110,28 @@ func (h *ExpenseHandler) CreateExpense(w http.ResponseWriter, r *http.Request) {
 	// Execute use case
 	exp, err := h.createExpenseUseCase.Execute(cmd)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Convert domain entity to DTO
 	responseDTO := h.expenseToDTO(exp)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusCreated, responseDTO)
 }
 
-func (h *ExpenseHandler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
+func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 	// Parse path parameter
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		http.Error(w, "Invalid expense ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
 		return
 	}
 
 	// Syntactic validation - decode JSON
 	var requestDTO dto.UpdateExpenseRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&requestDTO); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&requestDTO); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -154,7 +147,7 @@ func (h *ExpenseHandler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	if requestDTO.Date != nil {
 		date, err := time.Parse("2006-01-02", *requestDTO.Date)
 		if err != nil {
-			http.Error(w, "Invalid date format (use YYYY-MM-DD)", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format (use YYYY-MM-DD)"})
 			return
 		}
 		cmd.Date = &date
@@ -177,9 +170,9 @@ func (h *ExpenseHandler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	exp, err := h.updateExpenseUseCase.Execute(cmd)
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
-			http.Error(w, "Expense not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
 		} else {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		return
 	}
@@ -187,16 +180,14 @@ func (h *ExpenseHandler) UpdateExpense(w http.ResponseWriter, r *http.Request) {
 	// Convert domain entity to DTO
 	responseDTO := h.expenseToDTO(exp)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *ExpenseHandler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
+func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 	// Parse path parameter
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		http.Error(w, "Invalid expense ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
 		return
 	}
 
@@ -204,14 +195,14 @@ func (h *ExpenseHandler) DeleteExpense(w http.ResponseWriter, r *http.Request) {
 	err = h.deleteExpenseUseCase.Execute(entities.ExpenseID(id))
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
-			http.Error(w, "Expense not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
 		} else {
-			http.Error(w, "Failed to delete expense", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete expense"})
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
 // Helper method to convert domain entity to DTO

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -9,7 +8,7 @@ import (
 	"expenso-backend/infrastructure/http/dto"
 	"expenso-backend/usecases/interactors/vendor"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 type VendorHandler struct {
@@ -33,11 +32,11 @@ func NewVendorHandler(
 	}
 }
 
-func (h *VendorHandler) GetVendors(w http.ResponseWriter, r *http.Request) {
+func (h *VendorHandler) GetVendors(c *gin.Context) {
 	// Execute use case
 	vendors, err := h.getVendorsUseCase.Execute()
 	if err != nil {
-		http.Error(w, "Failed to fetch vendors", http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch vendors"})
 		return
 	}
 
@@ -47,16 +46,14 @@ func (h *VendorHandler) GetVendors(w http.ResponseWriter, r *http.Request) {
 		responseDTO[i] = h.vendorToDTO(v)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *VendorHandler) GetVendor(w http.ResponseWriter, r *http.Request) {
+func (h *VendorHandler) GetVendor(c *gin.Context) {
 	// Parse path parameter
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		http.Error(w, "Invalid vendor ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
 		return
 	}
 
@@ -64,9 +61,9 @@ func (h *VendorHandler) GetVendor(w http.ResponseWriter, r *http.Request) {
 	v, err := h.getVendorUseCase.Execute(entities.VendorID(id))
 	if err != nil {
 		if err == entities.ErrVendorNotFound {
-			http.Error(w, "Vendor not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
 		} else {
-			http.Error(w, "Failed to fetch vendor", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch vendor"})
 		}
 		return
 	}
@@ -74,22 +71,20 @@ func (h *VendorHandler) GetVendor(w http.ResponseWriter, r *http.Request) {
 	// Convert domain entity to DTO
 	responseDTO := h.vendorToDTO(v)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *VendorHandler) GetVendorsByType(w http.ResponseWriter, r *http.Request) {
+func (h *VendorHandler) GetVendorsByType(c *gin.Context) {
 	// Parse path parameter
-	vars := mux.Vars(r)
-	vendorType := vars["type"]
+	vendorType := c.Param("type")
 
 	// Execute use case
 	vendors, err := h.getVendorsByTypeUseCase.Execute(entities.VendorType(vendorType))
 	if err != nil {
 		if err == entities.ErrInvalidVendorType {
-			http.Error(w, "Invalid vendor type", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
 		} else {
-			http.Error(w, "Failed to fetch vendors", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch vendors"})
 		}
 		return
 	}
@@ -100,15 +95,14 @@ func (h *VendorHandler) GetVendorsByType(w http.ResponseWriter, r *http.Request)
 		responseDTO[i] = h.vendorToDTO(v)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
-func (h *VendorHandler) CreateVendor(w http.ResponseWriter, r *http.Request) {
+func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	// Syntactic validation - decode JSON
 	var requestDTO dto.CreateVendorRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&requestDTO); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&requestDTO); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -122,11 +116,11 @@ func (h *VendorHandler) CreateVendor(w http.ResponseWriter, r *http.Request) {
 	v, err := h.createVendorUseCase.Execute(cmd)
 	if err != nil {
 		if err == entities.ErrInvalidVendorType {
-			http.Error(w, "Invalid vendor type", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
 		} else if err == entities.ErrVendorAlreadyExists {
-			http.Error(w, "Vendor with this name and type already exists", http.StatusConflict)
+			c.JSON(http.StatusConflict, gin.H{"error": "Vendor with this name and type already exists"})
 		} else {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		return
 	}
@@ -134,9 +128,7 @@ func (h *VendorHandler) CreateVendor(w http.ResponseWriter, r *http.Request) {
 	// Convert domain entity to DTO
 	responseDTO := h.vendorToDTO(v)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(responseDTO)
+	c.JSON(http.StatusCreated, responseDTO)
 }
 
 // Helper method to convert domain entity to DTO

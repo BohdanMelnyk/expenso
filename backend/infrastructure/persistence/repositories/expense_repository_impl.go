@@ -62,7 +62,8 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 
 	var dbo models.ExpenseDBO
 	var vendorDBO *models.VendorDBO
-	var vID, vName, vType *string
+	var vID *int
+	var vName, vType *string
 	var vCreatedAt, vUpdatedAt *string
 
 	row := r.db.QueryRow(query, int(id))
@@ -87,7 +88,7 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 	// Add vendor if present
 	if vID != nil && vName != nil && vType != nil {
 		vendorDBO = &models.VendorDBO{
-			ID:   int(*vID),
+			ID:   *vID,
 			Name: *vName,
 			Type: *vType,
 		}
