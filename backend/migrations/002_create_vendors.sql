@@ -1,11 +1,25 @@
--- Update vendor_type enum to match new requirements
--- Note: This migration is for compatibility, but since 002 already creates the correct enum types,
--- we just need to clean up and ensure we have the right default data
+-- Create vendor_type enum
+CREATE TYPE vendor_type AS ENUM ('food_store', 'shop', 'eating_out', 'subscriptions', 'else');
 
--- Clear existing vendors and insert new default vendors with updated types
-DELETE FROM vendors;
+-- Create vendors table
+CREATE TABLE vendors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type vendor_type NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(name, type)
+);
 
--- Insert default vendors for each new type
+-- Create indexes for vendors
+CREATE INDEX idx_vendors_type ON vendors(type);
+CREATE INDEX idx_vendors_name ON vendors(name);
+
+-- Update expenses table to reference vendors
+ALTER TABLE expenses ADD COLUMN vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL;
+CREATE INDEX idx_expenses_vendor_id ON expenses(vendor_id);
+
+-- Insert default vendors for each type
 INSERT INTO vendors (name, type) VALUES
 -- Food Stores
 ('Grocery Store', 'food_store'),
@@ -40,7 +54,3 @@ INSERT INTO vendors (name, type) VALUES
 ('Cash Payment', 'else'),
 ('Other Vendor', 'else'),
 ('Unknown', 'else');
-
--- Remove old enum values (this requires dropping and recreating if they're not used)
--- Note: This is commented out as it requires careful handling in production
--- ALTER TYPE vendor_type DROP VALUE 'store';
