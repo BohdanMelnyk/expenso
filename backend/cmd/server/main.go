@@ -1,55 +1,102 @@
 package main
 
+// @title Expenso API
+// @version 1.0
+// @description Smart expense tracking application API
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
 import (
+	"database/sql"
 	"log"
-	"net/http"
 
-	"expenso-backend/internal/config"
-	"expenso-backend/internal/database"
-	"expenso-backend/internal/handlers"
+	_ "expenso-backend/docs"
+	"expenso-backend/infrastructure/http/handlers"
+	"expenso-backend/infrastructure/persistence/repositories"
+	"expenso-backend/usecases/interactors/expense"
+	"expenso-backend/usecases/interactors/vendors"
 
-	"github.com/gorilla/mux"
-	"github.com/rs/cors"
+	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
-	cfg := config.Load()
-
-	db, err := database.NewConnection(cfg.DatabaseURL)
+	// Database connection
+	db, err := sql.Open("postgres", "postgres://postgres:password@localhost:5432/expenso?sslmode=disable")
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
 
-	expenseHandler := handlers.NewExpenseHandler(db)
+	if err := db.Ping(); err != nil {
+		log.Fatal("Failed to ping database:", err)
+	}
 
-	router := mux.NewRouter()
+	// Repository layer (implements interfaces from use case layer)
+	expenseRepo := repositories.NewExpenseRepository(db)
+	vendorRepo := repositories.NewVendorRepository(db)
 
-	// API routes
-	api := router.PathPrefix("/api/v1").Subrouter()
-	
-	// Expense routes
-	api.HandleFunc("/expenses", expenseHandler.GetExpenses).Methods("GET")
-	api.HandleFunc("/expenses", expenseHandler.CreateExpense).Methods("POST")
-	api.HandleFunc("/expenses/{id}", expenseHandler.GetExpense).Methods("GET")
-	api.HandleFunc("/expenses/{id}", expenseHandler.UpdateExpense).Methods("PUT")
-	api.HandleFunc("/expenses/{id}", expenseHandler.DeleteExpense).Methods("DELETE")
+	// Use case layer (interactors)
+	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
+	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 
-	// Health check
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}).Methods("GET")
+	// Interface layer (HTTP handlers)
+	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
+	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 
-	// Setup CORS
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"*"},
+	// Setup Gin router
+	router := gin.Default()
+
+	// CORS middleware for Gin
+	router.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:3000")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "*")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
 	})
 
-	handler := c.Handler(router)
+	// API routes group
+	api := router.Group("/api/v1")
 
-	log.Printf("Server starting on port %s", cfg.Port)
-	log.Fatal(http.ListenAndServe(":"+cfg.Port, handler))
+	// Expense routes
+	api.GET("/expenses", expenseHandler.GetExpenses)
+	api.POST("/expenses", expenseHandler.CreateExpense)
+	api.GET("/expenses/:id", expenseHandler.GetExpense)
+	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
+	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+
+	// Vendor routes
+	api.GET("/vendors", vendorHandler.GetVendors)
+	api.POST("/vendors", vendorHandler.CreateVendor)
+	api.GET("/vendors/:id", vendorHandler.GetVendor)
+	api.GET("/vendors/type/:type", vendorHandler.GetVendorsByType)
+
+	// Health check
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "OK - Espenso with Gin"})
+	})
+
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	log.Printf("Espenso server with Gin starting on port 8080")
+	log.Printf("Swagger UI available at: http://localhost:8080/swagger/index.html")
+	log.Fatal(router.Run(":8080"))
 }

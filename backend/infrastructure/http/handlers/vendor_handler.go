@@ -6,16 +6,16 @@ import (
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/http/dto"
-	"expenso-backend/usecases/interactors/vendor"
+	"expenso-backend/usecases/interactors/vendors"
 
 	"github.com/gin-gonic/gin"
 )
 
 type VendorHandler struct {
-	vendorInteractor *vendor.VendorInteractor
+	vendorInteractor *vendors.VendorInteractor
 }
 
-func NewVendorHandler(vendorInteractor *vendor.VendorInteractor) *VendorHandler {
+func NewVendorHandler(vendorInteractor *vendors.VendorInteractor) *VendorHandler {
 	return &VendorHandler{
 		vendorInteractor: vendorInteractor,
 	}
@@ -139,7 +139,7 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	}
 
 	// Convert DTO to use case command
-	cmd := vendor.CreateVendorCommand{
+	cmd := vendors.CreateVendorCommand{
 		Name: requestDTO.Name,
 		Type: requestDTO.Type,
 	}

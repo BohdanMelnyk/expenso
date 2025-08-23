@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 import (
 	"expenso-backend/domain/entities"
