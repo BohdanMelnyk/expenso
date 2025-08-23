@@ -10,17 +10,17 @@ type CreateVendorCommand struct {
 	Type string
 }
 
-type CreateVendorInteractor struct {
+type VendorInteractor struct {
 	vendorRepo repositories.VendorRepository
 }
 
-func NewCreateVendorInteractor(vendorRepo repositories.VendorRepository) *CreateVendorInteractor {
-	return &CreateVendorInteractor{
+func NewVendorInteractor(vendorRepo repositories.VendorRepository) *VendorInteractor {
+	return &VendorInteractor{
 		vendorRepo: vendorRepo,
 	}
 }
 
-func (i *CreateVendorInteractor) Execute(cmd CreateVendorCommand) (*entities.Vendor, error) {
+func (i *VendorInteractor) CreateVendor(cmd CreateVendorCommand) (*entities.Vendor, error) {
 	// Validate vendor type
 	vendorType := entities.VendorType(cmd.Type)
 	if !vendorType.IsValid() {
@@ -45,4 +45,19 @@ func (i *CreateVendorInteractor) Execute(cmd CreateVendorCommand) (*entities.Ven
 	}
 
 	return vendor, nil
+}
+
+func (i *VendorInteractor) GetVendors() ([]*entities.Vendor, error) {
+	return i.vendorRepo.FindAll()
+}
+
+func (i *VendorInteractor) GetVendor(id entities.VendorID) (*entities.Vendor, error) {
+	return i.vendorRepo.FindByID(id)
+}
+
+func (i *VendorInteractor) GetVendorsByType(vendorType entities.VendorType) ([]*entities.Vendor, error) {
+	if !vendorType.IsValid() {
+		return nil, entities.ErrInvalidVendorType
+	}
+	return i.vendorRepo.FindByType(vendorType)
 }

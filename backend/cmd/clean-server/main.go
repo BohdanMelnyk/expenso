@@ -31,21 +31,11 @@ func main() {
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
-
-	createVendorUC := vendor.NewCreateVendorInteractor(vendorRepo)
-	getVendorsUC := vendor.NewGetVendorsInteractor(vendorRepo)
-	getVendorUC := vendor.NewGetVendorInteractor(vendorRepo)
-	getVendorsByTypeUC := vendor.NewGetVendorsByTypeInteractor(vendorRepo)
+	vendorInteractor := vendor.NewVendorInteractor(vendorRepo)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
-
-	vendorHandler := handlers.NewVendorHandler(
-		createVendorUC,
-		getVendorsUC,
-		getVendorUC,
-		getVendorsByTypeUC,
-	)
+	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 
 	// Setup Gin router
 	router := gin.Default()

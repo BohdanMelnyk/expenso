@@ -12,29 +12,18 @@ import (
 )
 
 type VendorHandler struct {
-	createVendorUseCase      *vendor.CreateVendorInteractor
-	getVendorsUseCase        *vendor.GetVendorsInteractor
-	getVendorUseCase         *vendor.GetVendorInteractor
-	getVendorsByTypeUseCase  *vendor.GetVendorsByTypeInteractor
+	vendorInteractor *vendor.VendorInteractor
 }
 
-func NewVendorHandler(
-	createUC *vendor.CreateVendorInteractor,
-	getVendorsUC *vendor.GetVendorsInteractor,
-	getVendorUC *vendor.GetVendorInteractor,
-	getVendorsByTypeUC *vendor.GetVendorsByTypeInteractor,
-) *VendorHandler {
+func NewVendorHandler(vendorInteractor *vendor.VendorInteractor) *VendorHandler {
 	return &VendorHandler{
-		createVendorUseCase:     createUC,
-		getVendorsUseCase:       getVendorsUC,
-		getVendorUseCase:        getVendorUC,
-		getVendorsByTypeUseCase: getVendorsByTypeUC,
+		vendorInteractor: vendorInteractor,
 	}
 }
 
 func (h *VendorHandler) GetVendors(c *gin.Context) {
 	// Execute use case
-	vendors, err := h.getVendorsUseCase.Execute()
+	vendors, err := h.vendorInteractor.GetVendors()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch vendors"})
 		return
@@ -58,7 +47,7 @@ func (h *VendorHandler) GetVendor(c *gin.Context) {
 	}
 
 	// Execute use case
-	v, err := h.getVendorUseCase.Execute(entities.VendorID(id))
+	v, err := h.vendorInteractor.GetVendor(entities.VendorID(id))
 	if err != nil {
 		if err == entities.ErrVendorNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
@@ -79,7 +68,7 @@ func (h *VendorHandler) GetVendorsByType(c *gin.Context) {
 	vendorType := c.Param("type")
 
 	// Execute use case
-	vendors, err := h.getVendorsByTypeUseCase.Execute(entities.VendorType(vendorType))
+	vendors, err := h.vendorInteractor.GetVendorsByType(entities.VendorType(vendorType))
 	if err != nil {
 		if err == entities.ErrInvalidVendorType {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
@@ -113,7 +102,7 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	}
 
 	// Execute use case
-	v, err := h.createVendorUseCase.Execute(cmd)
+	v, err := h.vendorInteractor.CreateVendor(cmd)
 	if err != nil {
 		if err == entities.ErrInvalidVendorType {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
