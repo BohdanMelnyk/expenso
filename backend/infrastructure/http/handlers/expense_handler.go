@@ -13,32 +13,18 @@ import (
 )
 
 type ExpenseHandler struct {
-	createExpenseUseCase *expense.CreateExpenseInteractor
-	getExpensesUseCase   *expense.GetExpensesInteractor
-	getExpenseUseCase    *expense.GetExpenseInteractor
-	updateExpenseUseCase *expense.UpdateExpenseInteractor
-	deleteExpenseUseCase *expense.DeleteExpenseInteractor
+	expenseInteractor *expense.ExpenseInteractor
 }
 
-func NewExpenseHandler(
-	createUC *expense.CreateExpenseInteractor,
-	getExpensesUC *expense.GetExpensesInteractor,
-	getExpenseUC *expense.GetExpenseInteractor,
-	updateUC *expense.UpdateExpenseInteractor,
-	deleteUC *expense.DeleteExpenseInteractor,
-) *ExpenseHandler {
+func NewExpenseHandler(expenseInteractor *expense.ExpenseInteractor) *ExpenseHandler {
 	return &ExpenseHandler{
-		createExpenseUseCase: createUC,
-		getExpensesUseCase:   getExpensesUC,
-		getExpenseUseCase:    getExpenseUC,
-		updateExpenseUseCase: updateUC,
-		deleteExpenseUseCase: deleteUC,
+		expenseInteractor: expenseInteractor,
 	}
 }
 
 func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	// Execute use case
-	expenses, err := h.getExpensesUseCase.Execute()
+	expenses, err := h.expenseInteractor.GetExpenses()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
@@ -62,7 +48,7 @@ func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	}
 
 	// Execute use case
-	exp, err := h.getExpenseUseCase.Execute(entities.ExpenseID(id))
+	exp, err := h.expenseInteractor.GetExpense(entities.ExpenseID(id))
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
@@ -108,7 +94,7 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	}
 
 	// Execute use case
-	exp, err := h.createExpenseUseCase.Execute(cmd)
+	exp, err := h.expenseInteractor.CreateExpense(cmd)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -167,7 +153,7 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 	}
 
 	// Execute use case
-	exp, err := h.updateExpenseUseCase.Execute(cmd)
+	exp, err := h.expenseInteractor.UpdateExpense(cmd)
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
@@ -192,7 +178,7 @@ func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 	}
 
 	// Execute use case
-	err = h.deleteExpenseUseCase.Execute(entities.ExpenseID(id))
+	err = h.expenseInteractor.DeleteExpense(entities.ExpenseID(id))
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})

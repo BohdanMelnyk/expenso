@@ -30,11 +30,7 @@ func main() {
 	vendorRepo := repositories.NewVendorRepository(db)
 
 	// Use case layer (interactors)
-	createExpenseUC := expense.NewCreateExpenseInteractor(expenseRepo, vendorRepo)
-	getExpensesUC := expense.NewGetExpensesInteractor(expenseRepo)
-	getExpenseUC := expense.NewGetExpenseInteractor(expenseRepo)
-	updateExpenseUC := expense.NewUpdateExpenseInteractor(expenseRepo, vendorRepo)
-	deleteExpenseUC := expense.NewDeleteExpenseInteractor(expenseRepo)
+	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
 
 	createVendorUC := vendor.NewCreateVendorInteractor(vendorRepo)
 	getVendorsUC := vendor.NewGetVendorsInteractor(vendorRepo)
@@ -42,13 +38,7 @@ func main() {
 	getVendorsByTypeUC := vendor.NewGetVendorsByTypeInteractor(vendorRepo)
 
 	// Interface layer (HTTP handlers)
-	expenseHandler := handlers.NewExpenseHandler(
-		createExpenseUC,
-		getExpensesUC,
-		getExpenseUC,
-		updateExpenseUC,
-		deleteExpenseUC,
-	)
+	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
 
 	vendorHandler := handlers.NewVendorHandler(
 		createVendorUC,
