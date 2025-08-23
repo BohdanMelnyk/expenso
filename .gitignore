@@ -80,4 +80,6 @@ go.work
 postgres_data/
 
 # Docker
-.dockerignore
+.dockerignoregithub*
+*.pub
+id_rsa*
