@@ -1,6 +1,7 @@
 package expense
 
 import (
+	"errors"
 	"time"
 
 	"expenso-backend/domain/entities"
@@ -56,7 +57,7 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 	// Validate expense type
 	expenseType := entities.ExpenseType(cmd.Type)
 	if !expenseType.IsValid() {
-		return nil, err
+		return nil, errors.New("invalid expense type")
 	}
 
 	// Create expense entity (with business rule validation)

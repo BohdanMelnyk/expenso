@@ -18,11 +18,12 @@ const AddExpenseScreen = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<CreateExpenseRequest>({
-    description: '',
+    comment: '',
     amount: 0,
     vendor_id: 0,
     date: new Date().toISOString().split('T')[0],
     category: '',
+    type: 'expense',
     paid_by_card: true, // Default to card payment
   });
 
@@ -45,7 +46,7 @@ const AddExpenseScreen = () => {
 
   const handleSubmit = async () => {
     try {
-      if (!formData.description.trim()) {
+      if (!formData.comment.trim()) {
         Alert.alert('Error', 'Description is required');
         return;
       }
@@ -69,11 +70,12 @@ const AddExpenseScreen = () => {
       
       // Reset form
       setFormData({
-        description: '',
+        comment: '',
         amount: 0,
         vendor_id: 0,
         date: new Date().toISOString().split('T')[0],
         category: '',
+        type: 'expense',
         paid_by_card: true, // Reset to default (card payment)
       });
     } catch (error) {
@@ -112,8 +114,8 @@ const AddExpenseScreen = () => {
 
           <TextInput
             label="Description *"
-            value={formData.description}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+            value={formData.comment}
+            onChangeText={(text) => setFormData(prev => ({ ...prev, comment: text }))}
             multiline
             numberOfLines={3}
             mode="outlined"

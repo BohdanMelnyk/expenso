@@ -20,7 +20,7 @@ export const apiClient = axios.create({
 // Types matching your backend
 export interface Expense {
   id: number;
-  description: string;
+  comment: string;
   amount: number;
   vendor_id: number;
   vendor?: Vendor;
@@ -39,12 +39,13 @@ export interface Vendor {
 }
 
 export interface CreateExpenseRequest {
-  description: string;
+  comment: string;
   amount: number;
   vendor_id: number;
   date: string;
-  category: string; // Added category field
-  paid_by_card?: boolean; // Optional, defaults to true
+  category: string;
+  type: string;
+  paid_by_card?: boolean;
 }
 
 // API functions
