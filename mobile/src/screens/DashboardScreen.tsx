@@ -97,6 +97,7 @@ const DashboardScreen = () => {
                 <DataTable.Title>Description</DataTable.Title>
                 <DataTable.Title numeric>Amount</DataTable.Title>
                 <DataTable.Title>Vendor</DataTable.Title>
+                <DataTable.Title>Payment</DataTable.Title>
                 <DataTable.Title>Actions</DataTable.Title>
               </DataTable.Header>
 
@@ -121,6 +122,21 @@ const DashboardScreen = () => {
                     ) : (
                       <Paragraph>Unknown</Paragraph>
                     )}
+                  </DataTable.Cell>
+                  <DataTable.Cell>
+                    <Chip 
+                      mode="flat" 
+                      compact
+                      style={{
+                        backgroundColor: expense.paid_by_card ? '#e3f2fd' : '#e8f5e8',
+                      }}
+                      textStyle={{
+                        color: expense.paid_by_card ? '#1976d2' : '#388e3c',
+                        fontSize: 10,
+                      }}
+                    >
+                      {expense.paid_by_card ? '💳' : '💵'}
+                    </Chip>
                   </DataTable.Cell>
                   <DataTable.Cell>
                     <Button

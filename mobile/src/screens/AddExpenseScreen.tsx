@@ -7,6 +7,7 @@ import {
   Button,
   Paragraph,
   ActivityIndicator,
+  RadioButton,
 } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { expenseAPI, vendorAPI, Vendor, CreateExpenseRequest } from '../../../shared/api/client';
@@ -21,6 +22,7 @@ const AddExpenseScreen = () => {
     amount: 0,
     vendor_id: 0,
     date: new Date().toISOString().split('T')[0],
+    paid_by_card: true, // Default to card payment
   });
 
   useEffect(() => {
@@ -66,6 +68,7 @@ const AddExpenseScreen = () => {
         amount: 0,
         vendor_id: 0,
         date: new Date().toISOString().split('T')[0],
+        paid_by_card: true, // Reset to default (card payment)
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to add expense');
@@ -157,6 +160,17 @@ const AddExpenseScreen = () => {
             placeholder="YYYY-MM-DD"
           />
 
+          <Paragraph style={styles.label}>Payment Method</Paragraph>
+          <RadioButton.Group 
+            onValueChange={value => setFormData(prev => ({ ...prev, paid_by_card: value === 'card' }))} 
+            value={formData.paid_by_card ? 'card' : 'cash'}
+          >
+            <View style={styles.radioContainer}>
+              <RadioButton.Item label="💳 Card" value="card" />
+              <RadioButton.Item label="💵 Cash" value="cash" />
+            </View>
+          </RadioButton.Group>
+
           <Button
             mode="contained"
             onPress={handleSubmit}
@@ -208,6 +222,11 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  radioContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    marginBottom: 16,
   },
   submitButton: {
     marginTop: 16,

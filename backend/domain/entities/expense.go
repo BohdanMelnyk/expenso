@@ -36,15 +36,16 @@ func (c Category) String() string {
 type ExpenseID int
 
 type Expense struct {
-	id        ExpenseID
-	amount    valueobjects.Money
-	date      time.Time
+	id          ExpenseID
+	amount      valueobjects.Money
+	date        time.Time
 	expenseType ExpenseType
-	category  Category
-	comment   string
-	vendor    *Vendor
-	createdAt time.Time
-	updatedAt time.Time
+	category    Category
+	comment     string
+	vendor      *Vendor
+	paidByCard  bool
+	createdAt   time.Time
+	updatedAt   time.Time
 }
 
 func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseType, category Category, comment string) (*Expense, error) {
@@ -52,20 +53,20 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 	if amount.IsZero() {
 		return nil, errors.New("expense amount must be greater than zero")
 	}
-	
+
 	if amount.IsNegative() {
 		return nil, errors.New("expense amount cannot be negative")
 	}
-	
+
 	if date.After(time.Now()) {
 		return nil, errors.New("expense date cannot be in the future")
 	}
-	
+
 	// Check if date is too far in the past (business rule)
 	if date.Before(time.Now().AddDate(-10, 0, 0)) {
 		return nil, errors.New("expense date cannot be more than 10 years ago")
 	}
-	
+
 	if !expenseType.IsValid() {
 		return nil, errors.New("invalid expense type")
 	}
@@ -77,13 +78,14 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		expenseType: expenseType,
 		category:    category,
 		comment:     strings.TrimSpace(comment),
+		paidByCard:  true, // Default value is true (paid by card)
 		createdAt:   now,
 		updatedAt:   now,
 	}, nil
 }
 
-func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType, 
-	category Category, comment string, vendor *Vendor, createdAt, updatedAt time.Time) *Expense {
+func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType,
+	category Category, comment string, vendor *Vendor, paidByCard bool, createdAt, updatedAt time.Time) *Expense {
 	return &Expense{
 		id:          id,
 		amount:      amount,
@@ -92,6 +94,7 @@ func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time,
 		category:    category,
 		comment:     comment,
 		vendor:      vendor,
+		paidByCard:  paidByCard,
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}
@@ -133,6 +136,10 @@ func (e *Expense) UpdatedAt() time.Time {
 	return e.updatedAt
 }
 
+func (e *Expense) PaidByCard() bool {
+	return e.paidByCard
+}
+
 func (e *Expense) UpdateAmount(amount valueobjects.Money) error {
 	if amount.IsZero() {
 		return errors.New("expense amount must be greater than zero")
@@ -165,6 +172,11 @@ func (e *Expense) UpdateCategory(category Category) error {
 
 func (e *Expense) UpdateComment(comment string) {
 	e.comment = strings.TrimSpace(comment)
+	e.updatedAt = time.Now()
+}
+
+func (e *Expense) UpdatePaidByCard(paidByCard bool) {
+	e.paidByCard = paidByCard
 	e.updatedAt = time.Now()
 }
 

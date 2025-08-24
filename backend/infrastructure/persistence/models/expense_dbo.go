@@ -9,15 +9,16 @@ import (
 
 // Database Object with DB annotations
 type ExpenseDBO struct {
-	ID        int       `db:"id"`
-	Amount    float64   `db:"amount"`
-	Date      time.Time `db:"date"`
-	Type      string    `db:"type"`
-	Category  string    `db:"category"`
-	Comment   string    `db:"comment"`
-	VendorID  *int      `db:"vendor_id"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID         int       `db:"id"`
+	Amount     float64   `db:"amount"`
+	Date       time.Time `db:"date"`
+	Type       string    `db:"type"`
+	Category   string    `db:"category"`
+	Comment    string    `db:"comment"`
+	VendorID   *int      `db:"vendor_id"`
+	PaidByCard bool      `db:"paid_by_card"`
+	CreatedAt  time.Time `db:"created_at"`
+	UpdatedAt  time.Time `db:"updated_at"`
 }
 
 // Convert domain entity to DBO
@@ -28,12 +29,13 @@ func (dbo *ExpenseDBO) FromDomainEntity(expense *entities.Expense) {
 	dbo.Type = string(expense.Type())
 	dbo.Category = expense.Category().String()
 	dbo.Comment = expense.Comment()
-	
+	dbo.PaidByCard = expense.PaidByCard()
+
 	if expense.Vendor() != nil {
 		vendorID := int(expense.Vendor().ID())
 		dbo.VendorID = &vendorID
 	}
-	
+
 	dbo.CreatedAt = expense.CreatedAt()
 	dbo.UpdatedAt = expense.UpdatedAt()
 }
@@ -58,6 +60,7 @@ func (dbo *ExpenseDBO) ToDomainEntity() (*entities.Expense, error) {
 		category,
 		dbo.Comment,
 		nil, // vendor will be set separately
+		dbo.PaidByCard,
 		dbo.CreatedAt,
 		dbo.UpdatedAt,
 	)

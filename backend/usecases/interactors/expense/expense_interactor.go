@@ -9,21 +9,23 @@ import (
 )
 
 type CreateExpenseCommand struct {
-	Amount   float64
-	Date     time.Time
-	Type     string
-	Category string
-	Comment  string
-	VendorID *entities.VendorID
+	Amount     float64
+	Date       time.Time
+	Type       string
+	Category   string
+	Comment    string
+	VendorID   *entities.VendorID
+	PaidByCard *bool // Optional, defaults to true if nil
 }
 
 type UpdateExpenseCommand struct {
-	ID       entities.ExpenseID
-	Amount   *float64
-	Date     *time.Time
-	Category *string
-	Comment  *string
-	VendorID *entities.VendorID
+	ID         entities.ExpenseID
+	Amount     *float64
+	Date       *time.Time
+	Category   *string
+	Comment    *string
+	VendorID   *entities.VendorID
+	PaidByCard *bool
 }
 
 type ExpenseInteractor struct {
@@ -62,6 +64,12 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 	if err != nil {
 		return nil, err
 	}
+
+	// Handle PaidByCard field - if not provided, defaults to true (card payment)
+	if cmd.PaidByCard != nil {
+		expense.UpdatePaidByCard(*cmd.PaidByCard)
+	}
+	// If cmd.PaidByCard is nil, the default value (true) from NewExpense is used
 
 	// Handle vendor assignment if provided
 	if cmd.VendorID != nil {

@@ -112,11 +112,12 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 
 	// Convert DTO to use case command
 	cmd := expense.CreateExpenseCommand{
-		Amount:   requestDTO.Amount,
-		Date:     date,
-		Type:     requestDTO.Type,
-		Category: requestDTO.Category,
-		Comment:  requestDTO.Comment,
+		Amount:     requestDTO.Amount,
+		Date:       date,
+		Type:       requestDTO.Type,
+		Category:   requestDTO.Category,
+		Comment:    requestDTO.Comment,
+		PaidByCard: requestDTO.PaidByCard, // Will be nil if not provided, defaults to true
 	}
 
 	if requestDTO.VendorID != nil {
@@ -249,14 +250,15 @@ func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 // Helper method to convert domain entity to DTO
 func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponseDTO {
 	responseDTO := dto.ExpenseResponseDTO{
-		ID:        int(exp.ID()),
-		Amount:    exp.Amount().Amount(),
-		Date:      exp.Date().Format("2006-01-02"),
-		Type:      string(exp.Type()),
-		Category:  exp.Category().String(),
-		Comment:   exp.Comment(),
-		CreatedAt: exp.CreatedAt(),
-		UpdatedAt: exp.UpdatedAt(),
+		ID:         int(exp.ID()),
+		Amount:     exp.Amount().Amount(),
+		Date:       exp.Date().Format("2006-01-02"),
+		Type:       string(exp.Type()),
+		Category:   exp.Category().String(),
+		Comment:    exp.Comment(),
+		PaidByCard: exp.PaidByCard(),
+		CreatedAt:  exp.CreatedAt(),
+		UpdatedAt:  exp.UpdatedAt(),
 	}
 
 	// Add vendor if present
