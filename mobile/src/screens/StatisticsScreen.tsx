@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Card, Title, Paragraph, Button, ActivityIndicator, DataTable, Chip } from 'react-native-paper';
-import { expenseAPI, Expense } from '../../../shared/api/client';
+import { expenseAPI, Expense, formatAmount } from '../../../shared/api/client';
 
 const { width } = Dimensions.get('window');
 
@@ -26,12 +26,6 @@ const StatisticsScreen = () => {
     }
   };
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   // Filter expenses by period
   const getFilteredExpenses = () => {

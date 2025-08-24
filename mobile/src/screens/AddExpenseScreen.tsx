@@ -113,7 +113,7 @@ const AddExpenseScreen = () => {
           />
 
           <TextInput
-            label="Amount ($) *"
+            label="Amount (€) *"
             value={formData.amount > 0 ? formData.amount.toString() : ''}
             onChangeText={(text) => {
               const amount = parseFloat(text) || 0;

@@ -15,7 +15,7 @@ func NewMoney(amount float64, currency string) (Money, error) {
 		return Money{}, errors.New("money amount cannot be negative")
 	}
 	if currency == "" {
-		currency = "USD" // default currency
+		currency = "EURO" // default currency
 	}
 	return Money{
 		amount:   amount,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, DataTable, Chip, ActivityIndicator } from 'react-native-paper';
-import { expenseAPI, Expense } from '../../../shared/api/client';
+import { expenseAPI, Expense, formatAmount } from '../../../shared/api/client';
 
 const DashboardScreen = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -47,12 +47,6 @@ const DashboardScreen = () => {
     );
   };
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
