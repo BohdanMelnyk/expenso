@@ -22,6 +22,7 @@ const AddExpenseScreen = () => {
     amount: 0,
     vendor_id: 0,
     date: new Date().toISOString().split('T')[0],
+    category: '',
     paid_by_card: true, // Default to card payment
   });
 
@@ -52,6 +53,10 @@ const AddExpenseScreen = () => {
         Alert.alert('Error', 'Amount must be greater than 0');
         return;
       }
+      if (!formData.category.trim()) {
+        Alert.alert('Error', 'Category is required');
+        return;
+      }
       if (formData.vendor_id === 0) {
         Alert.alert('Error', 'Please select a vendor');
         return;
@@ -68,6 +73,7 @@ const AddExpenseScreen = () => {
         amount: 0,
         vendor_id: 0,
         date: new Date().toISOString().split('T')[0],
+        category: '',
         paid_by_card: true, // Reset to default (card payment)
       });
     } catch (error) {
@@ -126,6 +132,15 @@ const AddExpenseScreen = () => {
             mode="outlined"
             style={styles.input}
             placeholder="0.00"
+          />
+
+          <TextInput
+            label="Category *"
+            value={formData.category}
+            onChangeText={(text) => setFormData(prev => ({ ...prev, category: text }))}
+            mode="outlined"
+            style={styles.input}
+            placeholder="e.g. Groceries, Entertainment, Transport"
           />
 
           <Paragraph style={styles.label}>Vendor *</Paragraph>

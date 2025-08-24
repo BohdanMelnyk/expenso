@@ -43,6 +43,7 @@ export interface CreateExpenseRequest {
   amount: number;
   vendor_id: number;
   date: string;
+  category: string; // Added category field
   paid_by_card?: boolean; // Optional, defaults to true
 }
 
