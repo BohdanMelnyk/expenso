@@ -38,7 +38,7 @@ func main() {
 	// Database connection
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:password@localhost:5432/expenso?sslmode=disable"
+		databaseURL = "postgres://bohdanmelnyk:studio@localhost:5432/expenso?sslmode=disable"
 	}
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
