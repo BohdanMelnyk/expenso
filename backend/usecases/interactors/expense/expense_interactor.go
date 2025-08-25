@@ -20,6 +20,20 @@ type CreateExpenseCommand struct {
 	AddedBy    *string // Optional, defaults to "he" if nil
 }
 
+// CreateExpenseFromCSVCommand allows setting custom created/updated dates for CSV imports
+type CreateExpenseFromCSVCommand struct {
+	Amount     float64
+	Date       time.Time
+	Type       string
+	Category   string
+	Comment    string
+	VendorID   *entities.VendorID
+	PaidByCard *bool     // Optional, defaults to true if nil
+	AddedBy    *string   // Optional, defaults to "he" if nil
+	CreatedAt  time.Time // Custom created date
+	UpdatedAt  time.Time // Custom updated date
+}
+
 type UpdateExpenseCommand struct {
 	ID         entities.ExpenseID
 	Amount     *float64
@@ -91,6 +105,64 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 		}
 		expense.AssignVendor(vendor)
 	}
+
+	// Save expense
+	if err := i.expenseRepo.Save(expense); err != nil {
+		return nil, err
+	}
+
+	return expense, nil
+}
+
+func (i *ExpenseInteractor) CreateExpenseFromCSV(cmd CreateExpenseFromCSVCommand) (*entities.Expense, error) {
+	// Create money value object
+	money, err := valueobjects.NewMoney(cmd.Amount, "USD")
+	if err != nil {
+		return nil, err
+	}
+
+	// Create category
+	category, err := entities.NewCategory(cmd.Category)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate expense type
+	expenseType := entities.ExpenseType(cmd.Type)
+	if !expenseType.IsValid() {
+		return nil, errors.New("invalid expense type")
+	}
+
+	// Create expense entity (with business rule validation)
+	expense, err := entities.NewExpense(money, cmd.Date, expenseType, category, cmd.Comment)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle PaidByCard field - if not provided, defaults to true (card payment)
+	if cmd.PaidByCard != nil {
+		expense.UpdatePaidByCard(*cmd.PaidByCard)
+	}
+
+	// Handle AddedBy field - if not provided, defaults to "he"
+	if cmd.AddedBy != nil {
+		addedBy := entities.AddedBy(*cmd.AddedBy)
+		if err := expense.UpdateAddedBy(addedBy); err != nil {
+			return nil, err
+		}
+	}
+
+	// Handle vendor assignment if provided
+	if cmd.VendorID != nil {
+		vendor, err := i.vendorRepo.FindByID(*cmd.VendorID)
+		if err != nil {
+			return nil, err
+		}
+		expense.AssignVendor(vendor)
+	}
+
+	// Set custom created/updated timestamps for CSV import
+	expense.SetTimestamps(cmd.CreatedAt, cmd.UpdatedAt)
 
 	// Save expense
 	if err := i.expenseRepo.Save(expense); err != nil {

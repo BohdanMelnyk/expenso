@@ -39,3 +39,34 @@ type ExpenseResponseDTO struct {
 	CreatedAt  time.Time          `json:"created_at"`
 	UpdatedAt  time.Time          `json:"updated_at"`
 }
+
+// CSV Import DTOs
+type CSVImportRequestDTO struct {
+	CSVData string `json:"csv_data" validate:"required"`
+}
+
+type CSVImportPreviewDTO struct {
+	Rows []CSVRowPreviewDTO `json:"rows"`
+}
+
+type CSVRowPreviewDTO struct {
+	RowNumber int                `json:"row_number"`
+	Date      string             `json:"date"`
+	Expenses  map[string]float64 `json:"expenses"`
+	Issues    []string           `json:"issues,omitempty"`
+	Parsed    []ParsedExpenseDTO `json:"parsed_expenses"`
+}
+
+type ParsedExpenseDTO struct {
+	Comment    string   `json:"comment"`
+	Amount     float64  `json:"amount"`
+	Date       string   `json:"date"`
+	VendorType string   `json:"vendor_type"`
+	Category   string   `json:"category"`
+	Issues     []string `json:"issues,omitempty"`
+}
+
+type CSVImportConfirmRequestDTO struct {
+	RowNumber int                       `json:"row_number"`
+	Expenses  []CreateExpenseRequestDTO `json:"expenses"`
+}

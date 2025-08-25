@@ -225,6 +225,12 @@ func (e *Expense) SetID(id ExpenseID) {
 	e.id = id
 }
 
+// SetTimestamps allows setting custom created and updated timestamps (used for CSV imports)
+func (e *Expense) SetTimestamps(createdAt, updatedAt time.Time) {
+	e.createdAt = createdAt
+	e.updatedAt = updatedAt
+}
+
 // Business logic: Check if expense is a large expense (over $100)
 func (e *Expense) IsLargeExpense() bool {
 	return e.amount.Amount() > 100.0

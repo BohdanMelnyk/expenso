@@ -104,6 +104,9 @@ func main() {
 	api.GET("/expenses/:id", expenseHandler.GetExpense)
 	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
 	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+	api.GET("/expenses/export/csv", expenseHandler.ExportExpensesCSV)
+	api.POST("/expenses/import/csv/preview", expenseHandler.ImportExpensesCSVPreview)
+	api.POST("/expenses/import/csv/confirm", expenseHandler.ImportExpensesCSVConfirm)
 
 	// Vendor routes
 	api.GET("/vendors", vendorHandler.GetVendors)
