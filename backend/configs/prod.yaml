@@ -1,0 +1,13 @@
+environment: production
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  username: postgres
+  password: password
+  database: expenso
+  sslmode: require

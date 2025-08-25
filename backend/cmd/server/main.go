@@ -17,10 +17,11 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
-	"os"
 
 	_ "expenso-backend/docs"
+	"expenso-backend/infrastructure/config"
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
@@ -35,11 +36,14 @@ import (
 )
 
 func main() {
-	// Database connection
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = "postgres://bohdanmelnyk:studio@localhost:5432/expenso?sslmode=disable"
+	// Load configuration
+	cfg, err := config.LoadConfigForEnvironment()
+	if err != nil {
+		log.Fatal("Failed to load config:", err)
 	}
+
+	// Database connection
+	databaseURL := cfg.GetDatabaseURL()
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -122,7 +126,8 @@ func main() {
 	// Swagger UI
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	log.Printf("Espenso server with Gin starting on port 8080")
-	log.Printf("Swagger UI available at: http://localhost:8080/swagger/index.html")
-	log.Fatal(router.Run(":8080"))
+	serverAddr := cfg.GetServerAddress()
+	log.Printf("Espenso server with Gin starting on %s", serverAddr)
+	log.Printf("Swagger UI available at: http://%s/swagger/index.html", serverAddr)
+	log.Fatal(router.Run(":" + fmt.Sprintf("%d", cfg.Server.Port)))
 }

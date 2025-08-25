@@ -1,0 +1,13 @@
+environment: local
+
+server:
+  host: "localhost"
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  username: bohdanmelnyk
+  password: studio
+  database: expenso
+  sslmode: disable
