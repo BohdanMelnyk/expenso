@@ -11,6 +11,7 @@ import {
 } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { expenseAPI, vendorAPI, Vendor, CreateExpenseRequest } from '../../../shared/api/client';
+import { getErrorMessage } from '../../../shared/utils/errorHandler';
 
 const AddExpenseScreen = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -36,8 +37,8 @@ const AddExpenseScreen = () => {
       setLoading(true);
       const response = await vendorAPI.getVendors();
       setVendors(response.data);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch vendors');
+    } catch (error: any) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to fetch vendors'));
       console.error('Error fetching vendors:', error);
     } finally {
       setLoading(false);
@@ -78,8 +79,8 @@ const AddExpenseScreen = () => {
         type: 'expense',
         paid_by_card: true, // Reset to default (card payment)
       });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add expense');
+    } catch (error: any) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to add expense'));
       console.error('Error adding expense:', error);
     } finally {
       setSubmitting(false);
