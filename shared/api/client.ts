@@ -33,7 +33,7 @@ export interface Expense {
 export interface Vendor {
   id: number;
   name: string;
-  type: 'food_store' | 'shop' | 'eating_out' | 'subscriptions' | 'else';
+  type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism';
   created_at: string;
   updated_at: string;
 }

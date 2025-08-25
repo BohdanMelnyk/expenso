@@ -79,7 +79,7 @@ const AddExpenseScreen = () => {
       setSubmitting(true);
       await expenseAPI.createExpense(formData);
       
-      Alert.alert('Success', 'Expense added successfully!');
+      Alert.alert('Success', `${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
       
       // Reset form
       setFormData({
@@ -104,11 +104,17 @@ const AddExpenseScreen = () => {
   };
 
   const vendorTypes = [
-    { key: 'food_store', label: 'Food Stores' },
-    { key: 'shop', label: 'Shops' },
+    { key: 'care', label: 'Care' },
+    { key: 'clothing', label: 'Clothing' },
     { key: 'eating_out', label: 'Eating Out' },
-    { key: 'subscriptions', label: 'Subscriptions' },
     { key: 'else', label: 'Other' },
+    { key: 'food_store', label: 'Food Store' },
+    { key: 'household', label: 'Household' },
+    { key: 'living', label: 'Living' },
+    { key: 'salary', label: 'Salary' },
+    { key: 'subscriptions', label: 'Subscriptions' },
+    { key: 'transport', label: 'Transport' },
+    { key: 'tourism', label: 'Tourism' },
   ];
 
   if (loading) {
@@ -123,7 +129,7 @@ const AddExpenseScreen = () => {
     <ScrollView style={styles.container}>
       <Card style={styles.formCard}>
         <Card.Content>
-          <Title style={styles.title}>Add New Expense</Title>
+          <Title style={styles.title}>Add New Transaction</Title>
 
           <TextInput
             label="Description *"
@@ -133,8 +139,19 @@ const AddExpenseScreen = () => {
             numberOfLines={3}
             mode="outlined"
             style={styles.input}
-            placeholder="What did you spend money on?"
+            placeholder="What is this transaction for?"
           />
+
+          <Paragraph style={styles.label}>Type</Paragraph>
+          <RadioButton.Group 
+            onValueChange={value => setFormData(prev => ({ ...prev, type: value }))} 
+            value={formData.type}
+          >
+            <View style={styles.radioContainer}>
+              <RadioButton.Item label="💸 Expense" value="expense" />
+              <RadioButton.Item label="💰 Income" value="income" />
+            </View>
+          </RadioButton.Group>
 
           <TextInput
             label="Amount (€) *"
@@ -218,7 +235,7 @@ const AddExpenseScreen = () => {
             style={styles.submitButton}
             icon="plus"
           >
-            {submitting ? 'Adding...' : 'Add Expense'}
+            {submitting ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
           </Button>
         </Card.Content>
       </Card>
