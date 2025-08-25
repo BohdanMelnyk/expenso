@@ -24,6 +24,7 @@ import (
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
+	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/vendors"
 
@@ -61,14 +62,17 @@ func main() {
 	// Repository layer (implements interfaces from use case layer)
 	expenseRepo := repositories.NewExpenseRepository(db)
 	vendorRepo := repositories.NewVendorRepository(db)
+	categoryRepo := repositories.NewCategoryRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
+	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
 	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
+	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
 
 	// Setup Gin router
 	router := gin.Default()
@@ -102,6 +106,13 @@ func main() {
 	api.POST("/vendors", vendorHandler.CreateVendor)
 	api.GET("/vendors/:id", vendorHandler.GetVendor)
 	api.GET("/vendors/type/:type", vendorHandler.GetVendorsByType)
+
+	// Category routes
+	api.GET("/categories", categoryHandler.GetCategories)
+	api.POST("/categories", categoryHandler.CreateCategory)
+	api.GET("/categories/:id", categoryHandler.GetCategory)
+	api.PUT("/categories/:id", categoryHandler.UpdateCategory)
+	api.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

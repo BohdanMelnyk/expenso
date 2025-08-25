@@ -10,11 +10,12 @@ import {
   RadioButton,
 } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import { expenseAPI, vendorAPI, Vendor, CreateExpenseRequest } from '../../../shared/api/client';
+import { expenseAPI, vendorAPI, categoryAPI, Vendor, Category, CreateExpenseRequest } from '../../../shared/api/client';
 import { getErrorMessage } from '../../../shared/utils/errorHandler';
 
 const AddExpenseScreen = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,6 +31,7 @@ const AddExpenseScreen = () => {
 
   useEffect(() => {
     fetchVendors();
+    fetchCategories();
   }, []);
 
   const fetchVendors = async () => {
@@ -42,6 +44,16 @@ const AddExpenseScreen = () => {
       console.error('Error fetching vendors:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryAPI.getCategories();
+      setCategories(response.data);
+    } catch (error: any) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to fetch categories'));
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -137,14 +149,23 @@ const AddExpenseScreen = () => {
             placeholder="0.00"
           />
 
-          <TextInput
-            label="Category *"
-            value={formData.category}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, category: text }))}
-            mode="outlined"
-            style={styles.input}
-            placeholder="e.g. Groceries, Entertainment, Transport"
-          />
+          <Paragraph style={styles.label}>Category *</Paragraph>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.category}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select a category" value="" />
+              {categories.map(category => (
+                <Picker.Item 
+                  key={category.id} 
+                  label={`${category.icon} ${category.name}`} 
+                  value={category.name} 
+                />
+              ))}
+            </Picker>
+          </View>
 
           <Paragraph style={styles.label}>Vendor *</Paragraph>
           <View style={styles.pickerContainer}>

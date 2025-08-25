@@ -38,6 +38,15 @@ export interface Vendor {
   updated_at: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  color: string;
+  icon: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreateExpenseRequest {
   comment: string;
   amount: number;
@@ -62,6 +71,14 @@ export const vendorAPI = {
   createVendor: (vendor: { name: string; type: string }) => apiClient.post<Vendor>('/vendors', vendor),
   getVendor: (id: number) => apiClient.get<Vendor>(`/vendors/${id}`),
   getVendorsByType: (type: string) => apiClient.get<Vendor[]>(`/vendors/type/${type}`),
+};
+
+export const categoryAPI = {
+  getCategories: () => apiClient.get<Category[]>('/categories'),
+  createCategory: (category: { name: string; color: string; icon: string }) => apiClient.post<Category>('/categories', category),
+  getCategory: (id: number) => apiClient.get<Category>(`/categories/${id}`),
+  updateCategory: (id: number, category: { name?: string; color?: string; icon?: string }) => apiClient.put<Category>(`/categories/${id}`, category),
+  deleteCategory: (id: number) => apiClient.delete(`/categories/${id}`),
 };
 
 // Utility function for formatting currency
