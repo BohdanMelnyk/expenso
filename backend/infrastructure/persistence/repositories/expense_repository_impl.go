@@ -20,8 +20,8 @@ func NewExpenseRepository(db *sql.DB) repositories.ExpenseRepository {
 
 func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 	query := `
-		INSERT INTO expenses (amount, date, type, category, comment, vendor_id, paid_by_card, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO expenses (amount, date, type, category, comment, vendor_id, paid_by_card, added_by, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id
 	`
 
@@ -41,6 +41,7 @@ func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 		expense.Comment(),
 		vendorID,
 		expense.PaidByCard(),
+		expense.AddedBy().String(),
 		expense.CreatedAt(),
 		expense.UpdatedAt(),
 	).Scan(&id)
@@ -55,7 +56,7 @@ func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 
 func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -70,7 +71,7 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 
 	row := r.db.QueryRow(query, int(id))
 	err := row.Scan(
-		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.CreatedAt, &dbo.UpdatedAt,
+		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 		&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 	)
 
@@ -103,7 +104,7 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 
 func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -124,7 +125,7 @@ func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -229,7 +230,7 @@ func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*ent
 
 func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
 	baseQuery := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -267,7 +268,7 @@ func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) (
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {

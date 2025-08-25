@@ -19,6 +19,21 @@ func (et ExpenseType) IsValid() bool {
 	return et == ExpenseTypeIncome || et == ExpenseTypeExpense
 }
 
+type AddedBy string
+
+const (
+	AddedByHe  AddedBy = "he"
+	AddedByShe AddedBy = "she"
+)
+
+func (ab AddedBy) IsValid() bool {
+	return ab == AddedByHe || ab == AddedByShe
+}
+
+func (ab AddedBy) String() string {
+	return string(ab)
+}
+
 type Category string
 
 func NewCategory(value string) (Category, error) {
@@ -44,6 +59,7 @@ type Expense struct {
 	comment     string
 	vendor      *Vendor
 	paidByCard  bool
+	addedBy     AddedBy
 	createdAt   time.Time
 	updatedAt   time.Time
 }
@@ -78,14 +94,15 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		expenseType: expenseType,
 		category:    category,
 		comment:     strings.TrimSpace(comment),
-		paidByCard:  true, // Default value is true (paid by card)
+		paidByCard:  true,      // Default value is true (paid by card)
+		addedBy:     AddedByHe, // Default value is "he"
 		createdAt:   now,
 		updatedAt:   now,
 	}, nil
 }
 
 func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType,
-	category Category, comment string, vendor *Vendor, paidByCard bool, createdAt, updatedAt time.Time) *Expense {
+	category Category, comment string, vendor *Vendor, paidByCard bool, addedBy AddedBy, createdAt, updatedAt time.Time) *Expense {
 	return &Expense{
 		id:          id,
 		amount:      amount,
@@ -95,6 +112,7 @@ func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time,
 		comment:     comment,
 		vendor:      vendor,
 		paidByCard:  paidByCard,
+		addedBy:     addedBy,
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}
@@ -140,6 +158,10 @@ func (e *Expense) PaidByCard() bool {
 	return e.paidByCard
 }
 
+func (e *Expense) AddedBy() AddedBy {
+	return e.addedBy
+}
+
 func (e *Expense) UpdateAmount(amount valueobjects.Money) error {
 	if amount.IsZero() {
 		return errors.New("expense amount must be greater than zero")
@@ -178,6 +200,15 @@ func (e *Expense) UpdateComment(comment string) {
 func (e *Expense) UpdatePaidByCard(paidByCard bool) {
 	e.paidByCard = paidByCard
 	e.updatedAt = time.Now()
+}
+
+func (e *Expense) UpdateAddedBy(addedBy AddedBy) error {
+	if !addedBy.IsValid() {
+		return errors.New("invalid addedBy value, must be 'he' or 'she'")
+	}
+	e.addedBy = addedBy
+	e.updatedAt = time.Now()
+	return nil
 }
 
 func (e *Expense) AssignVendor(vendor *Vendor) {

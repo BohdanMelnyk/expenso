@@ -16,7 +16,8 @@ type CreateExpenseCommand struct {
 	Category   string
 	Comment    string
 	VendorID   *entities.VendorID
-	PaidByCard *bool // Optional, defaults to true if nil
+	PaidByCard *bool   // Optional, defaults to true if nil
+	AddedBy    *string // Optional, defaults to "he" if nil
 }
 
 type UpdateExpenseCommand struct {
@@ -27,6 +28,7 @@ type UpdateExpenseCommand struct {
 	Comment    *string
 	VendorID   *entities.VendorID
 	PaidByCard *bool
+	AddedBy    *string
 }
 
 type ExpenseInteractor struct {
@@ -71,6 +73,15 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 		expense.UpdatePaidByCard(*cmd.PaidByCard)
 	}
 	// If cmd.PaidByCard is nil, the default value (true) from NewExpense is used
+
+	// Handle AddedBy field - if not provided, defaults to "he"
+	if cmd.AddedBy != nil {
+		addedBy := entities.AddedBy(*cmd.AddedBy)
+		if err := expense.UpdateAddedBy(addedBy); err != nil {
+			return nil, err
+		}
+	}
+	// If cmd.AddedBy is nil, the default value ("he") from NewExpense is used
 
 	// Handle vendor assignment if provided
 	if cmd.VendorID != nil {
@@ -140,6 +151,14 @@ func (i *ExpenseInteractor) UpdateExpense(cmd UpdateExpenseCommand) (*entities.E
 	// Update comment if provided
 	if cmd.Comment != nil {
 		expense.UpdateComment(*cmd.Comment)
+	}
+
+	// Update addedBy if provided
+	if cmd.AddedBy != nil {
+		addedBy := entities.AddedBy(*cmd.AddedBy)
+		if err := expense.UpdateAddedBy(addedBy); err != nil {
+			return nil, err
+		}
 	}
 
 	// Update vendor if provided

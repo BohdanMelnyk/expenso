@@ -155,6 +155,7 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		Category:   requestDTO.Category,
 		Comment:    requestDTO.Comment,
 		PaidByCard: requestDTO.PaidByCard, // Will be nil if not provided, defaults to true
+		AddedBy:    requestDTO.AddedBy,    // Will be nil if not provided, defaults to "he"
 	}
 
 	if requestDTO.VendorID != nil {
@@ -233,6 +234,10 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 		cmd.VendorID = &vendorID
 	}
 
+	if requestDTO.AddedBy != nil {
+		cmd.AddedBy = requestDTO.AddedBy
+	}
+
 	// Execute use case
 	exp, err := h.expenseInteractor.UpdateExpense(cmd)
 	if err != nil {
@@ -294,6 +299,7 @@ func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponse
 		Category:   exp.Category().String(),
 		Comment:    exp.Comment(),
 		PaidByCard: exp.PaidByCard(),
+		AddedBy:    exp.AddedBy().String(),
 		CreatedAt:  exp.CreatedAt(),
 		UpdatedAt:  exp.UpdatedAt(),
 	}

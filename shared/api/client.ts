@@ -26,6 +26,7 @@ export interface Expense {
   vendor?: Vendor;
   date: string;
   paid_by_card: boolean;
+  added_by: 'he' | 'she';
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +56,7 @@ export interface CreateExpenseRequest {
   category: string;
   type: string;
   paid_by_card?: boolean;
+  added_by?: 'he' | 'she';
 }
 
 // API functions

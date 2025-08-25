@@ -10,7 +10,8 @@ type CreateExpenseRequestDTO struct {
 	Category   string  `json:"category" validate:"required"`
 	Comment    string  `json:"comment"`
 	VendorID   *int    `json:"vendor_id,omitempty"`
-	PaidByCard *bool   `json:"paid_by_card,omitempty"` // Optional, defaults to true if not provided
+	PaidByCard *bool   `json:"paid_by_card,omitempty"`                               // Optional, defaults to true if not provided
+	AddedBy    *string `json:"added_by,omitempty" validate:"omitempty,oneof=he she"` // Optional, defaults to "he" if not provided
 }
 
 type UpdateExpenseRequestDTO struct {
@@ -21,6 +22,7 @@ type UpdateExpenseRequestDTO struct {
 	Comment    *string  `json:"comment,omitempty"`
 	VendorID   *int     `json:"vendor_id,omitempty"`
 	PaidByCard *bool    `json:"paid_by_card,omitempty"`
+	AddedBy    *string  `json:"added_by,omitempty" validate:"omitempty,oneof=he she"`
 }
 
 // Response DTOs with JSON annotations
@@ -33,6 +35,7 @@ type ExpenseResponseDTO struct {
 	Comment    string             `json:"comment"`
 	Vendor     *VendorResponseDTO `json:"vendor,omitempty"`
 	PaidByCard bool               `json:"paid_by_card"`
+	AddedBy    string             `json:"added_by"`
 	CreatedAt  time.Time          `json:"created_at"`
 	UpdatedAt  time.Time          `json:"updated_at"`
 }
