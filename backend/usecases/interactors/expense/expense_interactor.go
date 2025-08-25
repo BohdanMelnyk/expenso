@@ -93,6 +93,10 @@ func (i *ExpenseInteractor) GetExpenses() ([]*entities.Expense, error) {
 	return i.expenseRepo.FindAll()
 }
 
+func (i *ExpenseInteractor) GetExpensesByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
+	return i.expenseRepo.FindByDateRange(startDate, endDate)
+}
+
 func (i *ExpenseInteractor) GetExpense(id entities.ExpenseID) (*entities.Expense, error) {
 	return i.expenseRepo.FindByID(id)
 }

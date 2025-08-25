@@ -24,16 +24,53 @@ func NewExpenseHandler(expenseInteractor *expense.ExpenseInteractor) *ExpenseHan
 
 // GetExpenses godoc
 // @Summary Get all expenses
-// @Description Get a list of all expenses
+// @Description Get a list of all expenses with optional date range filtering
 // @Tags expenses
 // @Accept json
 // @Produce json
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
 // @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /expenses [get]
 func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
-	// Execute use case
-	expenses, err := h.expenseInteractor.GetExpenses()
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format (use YYYY-MM-DD)"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format (use YYYY-MM-DD)"})
+			return
+		}
+		endDate = &parsed
+	}
+
+	var expenses []*entities.Expense
+	var err error
+
+	// Execute appropriate use case based on parameters
+	if startDate != nil || endDate != nil {
+		expenses, err = h.expenseInteractor.GetExpensesByDateRange(startDate, endDate)
+	} else {
+		expenses, err = h.expenseInteractor.GetExpenses()
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return

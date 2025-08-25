@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/persistence/models"
@@ -224,4 +225,74 @@ func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*ent
 	// Implementation similar to FindAll but with WHERE clause for vendor_id
 	// Left as exercise - not needed for basic CRUD
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
+	baseQuery := `
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.created_at, e.updated_at,
+		       v.id, v.name, v.type, v.created_at, v.updated_at
+		FROM expenses e
+		LEFT JOIN vendors v ON e.vendor_id = v.id
+	`
+
+	var query string
+	var args []interface{}
+
+	// Build WHERE clause based on provided date range
+	if startDate != nil && endDate != nil {
+		query = baseQuery + " WHERE e.date >= $1 AND e.date <= $2 ORDER BY e.date DESC"
+		args = []interface{}{*startDate, *endDate}
+	} else if startDate != nil {
+		query = baseQuery + " WHERE e.date >= $1 ORDER BY e.date DESC"
+		args = []interface{}{*startDate}
+	} else if endDate != nil {
+		query = baseQuery + " WHERE e.date <= $1 ORDER BY e.date DESC"
+		args = []interface{}{*endDate}
+	} else {
+		// No date filter, return all expenses
+		query = baseQuery + " ORDER BY e.date DESC"
+	}
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find expenses by date range: %w", err)
+	}
+	defer rows.Close()
+
+	var expenses []*entities.Expense
+	for rows.Next() {
+		var dbo models.ExpenseDBO
+		var vID *int
+		var vName, vType *string
+		var vCreatedAt, vUpdatedAt *string
+
+		err := rows.Scan(
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan expense: %w", err)
+		}
+
+		// Convert DBO to domain entity
+		expense, err := dbo.ToDomainEntity()
+		if err != nil {
+			return nil, err
+		}
+
+		// Add vendor if present
+		if vID != nil && vName != nil && vType != nil {
+			vendorDBO := &models.VendorDBO{
+				ID:   *vID,
+				Name: *vName,
+				Type: *vType,
+			}
+			vendor := vendorDBO.ToDomainEntity()
+			expense.AssignVendor(vendor)
+		}
+
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
 }
