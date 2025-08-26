@@ -27,6 +27,7 @@ import (
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
+	"expenso-backend/usecases/interactors/income"
 	"expenso-backend/usecases/interactors/tag"
 	"expenso-backend/usecases/interactors/vendors"
 
@@ -67,17 +68,20 @@ func main() {
 	// Repository layer (implements interfaces from use case layer)
 	tagRepo := repositories.NewTagRepository(db)
 	expenseRepo := repositories.NewExpenseRepository(db, tagRepo)
+	incomeRepo := repositories.NewIncomeRepository(db, tagRepo)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
+	incomeInteractor := income.NewIncomeInteractor(incomeRepo, vendorRepo, tagRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
+	incomeHandler := handlers.NewIncomeHandler(incomeInteractor)
 	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
 	tagHandler := handlers.NewTagHandler(tagInteractor)
@@ -116,6 +120,15 @@ func main() {
 	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
+
+	// Income routes
+	api.GET("/incomes", incomeHandler.GetIncomes)
+	api.POST("/incomes", incomeHandler.CreateIncome)
+	api.GET("/incomes/:id", incomeHandler.GetIncomeByID)
+	api.PUT("/incomes/:id", incomeHandler.UpdateIncome)
+	api.DELETE("/incomes/:id", incomeHandler.DeleteIncome)
+	api.GET("/incomes/source/:source", incomeHandler.GetIncomesBySource)
+	api.GET("/incomes/summary", incomeHandler.GetIncomesSummary)
 
 	// Vendor routes
 	api.GET("/vendors", vendorHandler.GetVendors)

@@ -136,3 +136,54 @@ func (r *TagRepository) ClearExpenseTags(expenseID entities.ExpenseID) error {
 	_, err := r.db.Exec(query, expenseID)
 	return err
 }
+
+func (r *TagRepository) GetTagsByIncomeID(incomeID entities.IncomeID) ([]*entities.Tag, error) {
+	query := `SELECT t.id, t.name, t.color, t.created_at, t.updated_at 
+			  FROM tags t
+			  INNER JOIN income_tags it ON t.id = it.tag_id
+			  WHERE it.income_id = $1
+			  ORDER BY t.name`
+
+	rows, err := r.db.Query(query, incomeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []*entities.Tag
+	for rows.Next() {
+		var id entities.TagID
+		var name, color string
+		var createdAt, updatedAt time.Time
+
+		if err := rows.Scan(&id, &name, &color, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+
+		tag := entities.ReconstructTag(id, name, color, createdAt, updatedAt)
+		tags = append(tags, tag)
+	}
+
+	return tags, rows.Err()
+}
+
+func (r *TagRepository) AddTagToIncome(incomeID entities.IncomeID, tagID entities.TagID) error {
+	query := `INSERT INTO income_tags (income_id, tag_id, created_at) VALUES ($1, $2, $3)`
+
+	_, err := r.db.Exec(query, incomeID, tagID, time.Now())
+	return err
+}
+
+func (r *TagRepository) RemoveTagFromIncome(incomeID entities.IncomeID, tagID entities.TagID) error {
+	query := `DELETE FROM income_tags WHERE income_id = $1 AND tag_id = $2`
+
+	_, err := r.db.Exec(query, incomeID, tagID)
+	return err
+}
+
+func (r *TagRepository) ClearIncomeTags(incomeID entities.IncomeID) error {
+	query := `DELETE FROM income_tags WHERE income_id = $1`
+
+	_, err := r.db.Exec(query, incomeID)
+	return err
+}
