@@ -105,6 +105,7 @@ const AddExpenseScreen = () => {
 
   const vendorTypes = [
     { key: 'care', label: 'Care' },
+      { key: 'car', label: 'Car' },
     { key: 'clothing', label: 'Clothing' },
     { key: 'eating_out', label: 'Eating Out' },
     { key: 'else', label: 'Other' },

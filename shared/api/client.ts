@@ -34,7 +34,7 @@ export interface Expense {
 export interface Vendor {
   id: number;
   name: string;
-  type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism';
+  type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism' | 'car';
   created_at: string;
   updated_at: string;
 }

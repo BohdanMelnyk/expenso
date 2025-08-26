@@ -13,12 +13,20 @@ const (
 	VendorTypeShop          VendorType = "shop"
 	VendorTypeEatingOut     VendorType = "eating_out"
 	VendorTypeSubscriptions VendorType = "subscriptions"
+	VendorTypeCare          VendorType = "care"
+	VendorTypeClothing      VendorType = "clothing"
 	VendorTypeElse          VendorType = "else"
+	VendorTypeHousehold     VendorType = "household"
+	VendorTypeLiving        VendorType = "living"
+	VendorTypeSalary        VendorType = "salary"
+	VendorTypeTransport     VendorType = "transport"
+	VendorTypeTourism       VendorType = "tourism"
+	VendorTypeCar           VendorType = "car"
 )
 
 func (vt VendorType) IsValid() bool {
 	switch vt {
-	case VendorTypeFoodStore, VendorTypeShop, VendorTypeEatingOut, VendorTypeSubscriptions, VendorTypeElse:
+	case VendorTypeFoodStore, VendorTypeCar, VendorTypeTourism, VendorTypeTransport, VendorTypeSalary, VendorTypeLiving, VendorTypeHousehold, VendorTypeCare, VendorTypeClothing, VendorTypeShop, VendorTypeEatingOut, VendorTypeSubscriptions, VendorTypeElse:
 		return true
 	}
 	return false
@@ -27,18 +35,18 @@ func (vt VendorType) IsValid() bool {
 type VendorID int
 
 type Vendor struct {
-	id        VendorID
-	name      string
+	id         VendorID
+	name       string
 	vendorType VendorType
-	createdAt time.Time
-	updatedAt time.Time
+	createdAt  time.Time
+	updatedAt  time.Time
 }
 
 func NewVendor(name string, vendorType VendorType) (*Vendor, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, errors.New("vendor name cannot be empty")
 	}
-	
+
 	if !vendorType.IsValid() {
 		return nil, errors.New("invalid vendor type")
 	}
@@ -54,11 +62,11 @@ func NewVendor(name string, vendorType VendorType) (*Vendor, error) {
 
 func ReconstructVendor(id VendorID, name string, vendorType VendorType, createdAt, updatedAt time.Time) *Vendor {
 	return &Vendor{
-		id:        id,
-		name:      name,
+		id:         id,
+		name:       name,
 		vendorType: vendorType,
-		createdAt: createdAt,
-		updatedAt: updatedAt,
+		createdAt:  createdAt,
+		updatedAt:  updatedAt,
 	}
 }
 
