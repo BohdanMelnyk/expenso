@@ -64,6 +64,7 @@ func (dbo *ExpenseDBO) ToDomainEntity() (*entities.Expense, error) {
 		nil, // vendor will be set separately
 		dbo.PaidByCard,
 		entities.AddedBy(dbo.AddedBy),
+		[]*entities.Tag{}, // tags will be set separately
 		dbo.CreatedAt,
 		dbo.UpdatedAt,
 	)

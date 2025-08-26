@@ -36,6 +36,7 @@ type ExpenseResponseDTO struct {
 	Vendor     *VendorResponseDTO `json:"vendor,omitempty"`
 	PaidByCard bool               `json:"paid_by_card"`
 	AddedBy    string             `json:"added_by"`
+	Tags       []TagResponseDTO   `json:"tags,omitempty"`
 	CreatedAt  time.Time          `json:"created_at"`
 	UpdatedAt  time.Time          `json:"updated_at"`
 }
@@ -69,4 +70,23 @@ type ParsedExpenseDTO struct {
 type CSVImportConfirmRequestDTO struct {
 	RowNumber int                       `json:"row_number"`
 	Expenses  []CreateExpenseRequestDTO `json:"expenses"`
+}
+
+// Tag DTOs
+type CreateTagRequestDTO struct {
+	Name  string `json:"name" validate:"required"`
+	Color string `json:"color" validate:"required"`
+}
+
+type UpdateTagRequestDTO struct {
+	Name  *string `json:"name,omitempty"`
+	Color *string `json:"color,omitempty"`
+}
+
+type TagResponseDTO struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

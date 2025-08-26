@@ -60,6 +60,7 @@ type Expense struct {
 	vendor      *Vendor
 	paidByCard  bool
 	addedBy     AddedBy
+	tags        []*Tag
 	createdAt   time.Time
 	updatedAt   time.Time
 }
@@ -102,7 +103,7 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 }
 
 func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType,
-	category Category, comment string, vendor *Vendor, paidByCard bool, addedBy AddedBy, createdAt, updatedAt time.Time) *Expense {
+	category Category, comment string, vendor *Vendor, paidByCard bool, addedBy AddedBy, tags []*Tag, createdAt, updatedAt time.Time) *Expense {
 	return &Expense{
 		id:          id,
 		amount:      amount,
@@ -113,6 +114,7 @@ func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time,
 		vendor:      vendor,
 		paidByCard:  paidByCard,
 		addedBy:     addedBy,
+		tags:        tags,
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}
@@ -160,6 +162,10 @@ func (e *Expense) PaidByCard() bool {
 
 func (e *Expense) AddedBy() AddedBy {
 	return e.addedBy
+}
+
+func (e *Expense) Tags() []*Tag {
+	return e.tags
 }
 
 func (e *Expense) UpdateAmount(amount valueobjects.Money) error {
@@ -239,4 +245,52 @@ func (e *Expense) IsLargeExpense() bool {
 // Business logic: Check if expense is recent (within last 7 days)
 func (e *Expense) IsRecent() bool {
 	return e.date.After(time.Now().AddDate(0, 0, -7))
+}
+
+// Tag management methods
+func (e *Expense) AddTag(tag *Tag) error {
+	if tag == nil {
+		return errors.New("tag cannot be nil")
+	}
+
+	// Check if tag already exists
+	for _, existingTag := range e.tags {
+		if existingTag.ID() == tag.ID() {
+			return errors.New("tag already exists on this expense")
+		}
+	}
+
+	e.tags = append(e.tags, tag)
+	e.updatedAt = time.Now()
+	return nil
+}
+
+func (e *Expense) RemoveTag(tagID TagID) error {
+	for i, tag := range e.tags {
+		if tag.ID() == tagID {
+			e.tags = append(e.tags[:i], e.tags[i+1:]...)
+			e.updatedAt = time.Now()
+			return nil
+		}
+	}
+	return errors.New("tag not found on this expense")
+}
+
+func (e *Expense) HasTag(tagID TagID) bool {
+	for _, tag := range e.tags {
+		if tag.ID() == tagID {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Expense) ClearTags() {
+	e.tags = []*Tag{}
+	e.updatedAt = time.Now()
+}
+
+func (e *Expense) SetTags(tags []*Tag) {
+	e.tags = tags
+	e.updatedAt = time.Now()
 }

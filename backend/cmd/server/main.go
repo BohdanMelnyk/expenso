@@ -27,6 +27,7 @@ import (
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
+	"expenso-backend/usecases/interactors/tag"
 	"expenso-backend/usecases/interactors/vendors"
 
 	"github.com/gin-gonic/gin"
@@ -67,16 +68,19 @@ func main() {
 	expenseRepo := repositories.NewExpenseRepository(db)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
+	tagRepo := repositories.NewTagRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
+	tagInteractor := tag.NewTagInteractor(tagRepo)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
 	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
+	tagHandler := handlers.NewTagHandler(tagInteractor)
 
 	// Setup Gin router
 	router := gin.Default()
@@ -120,6 +124,18 @@ func main() {
 	api.GET("/categories/:id", categoryHandler.GetCategory)
 	api.PUT("/categories/:id", categoryHandler.UpdateCategory)
 	api.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+
+	// Tag routes
+	api.GET("/tags", tagHandler.GetTags)
+	api.POST("/tags", tagHandler.CreateTag)
+	api.GET("/tags/:id", tagHandler.GetTag)
+	api.PUT("/tags/:id", tagHandler.UpdateTag)
+	api.DELETE("/tags/:id", tagHandler.DeleteTag)
+
+	// Expense-Tag relationship routes
+	api.GET("/expenses/:id/tags", tagHandler.GetTagsByExpense)
+	api.POST("/expenses/:id/tags/:tag_id", tagHandler.AddTagToExpense)
+	api.DELETE("/expenses/:id/tags/:tag_id", tagHandler.RemoveTagFromExpense)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

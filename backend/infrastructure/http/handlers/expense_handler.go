@@ -715,17 +715,17 @@ func (h *ExpenseHandler) parseCSVDate(dateStr string) (string, error) {
 }
 
 func (h *ExpenseHandler) getDefaultCategoryForVendorType(vendorType string) string {
-	// Map vendor types to default categories - this should probably come from a service
+	// Map vendor types to default categories that exist in the database
 	categoryMap := map[string]string{
-		"food_store":    "Food & Groceries",
-		"eating_out":    "Food & Groceries",
+		"food_store":    "Food & Dining",
+		"eating_out":    "Food & Dining",
 		"else":          "Other",
 		"subscriptions": "Bills & Utilities",
-		"household":     "Home & Garden",
+		"household":     "Living",
 		"transport":     "Transportation",
 		"clothing":      "Shopping",
-		"living":        "Home & Garden",
-		"tourism":       "Entertainment",
+		"living":        "Living",
+		"tourism":       "Travel",
 	}
 	return categoryMap[vendorType]
 }
