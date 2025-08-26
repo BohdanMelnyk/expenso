@@ -12,6 +12,7 @@ type CreateExpenseRequestDTO struct {
 	VendorID   *int    `json:"vendor_id,omitempty"`
 	PaidByCard *bool   `json:"paid_by_card,omitempty"`                               // Optional, defaults to true if not provided
 	AddedBy    *string `json:"added_by,omitempty" validate:"omitempty,oneof=he she"` // Optional, defaults to "he" if not provided
+	TagIDs     []int   `json:"tag_ids,omitempty"`                                    // Optional list of tag IDs
 }
 
 type UpdateExpenseRequestDTO struct {

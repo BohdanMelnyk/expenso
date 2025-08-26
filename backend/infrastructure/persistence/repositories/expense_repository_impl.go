@@ -11,11 +11,15 @@ import (
 )
 
 type ExpenseRepositoryImpl struct {
-	db *sql.DB
+	db      *sql.DB
+	tagRepo *TagRepository
 }
 
-func NewExpenseRepository(db *sql.DB) repositories.ExpenseRepository {
-	return &ExpenseRepositoryImpl{db: db}
+func NewExpenseRepository(db *sql.DB, tagRepo *TagRepository) repositories.ExpenseRepository {
+	return &ExpenseRepositoryImpl{
+		db:      db,
+		tagRepo: tagRepo,
+	}
 }
 
 func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
@@ -147,6 +151,14 @@ func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 			}
 			vendor := vendorDBO.ToDomainEntity()
 			expense.AssignVendor(vendor)
+		}
+
+		// Load tags for this expense
+		if r.tagRepo != nil {
+			tags, err := r.tagRepo.GetTagsByExpenseID(expense.ID())
+			if err == nil && len(tags) > 0 {
+				expense.SetTags(tags)
+			}
 		}
 
 		expenses = append(expenses, expense)
@@ -290,6 +302,14 @@ func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) (
 			}
 			vendor := vendorDBO.ToDomainEntity()
 			expense.AssignVendor(vendor)
+		}
+
+		// Load tags for this expense
+		if r.tagRepo != nil {
+			tags, err := r.tagRepo.GetTagsByExpenseID(expense.ID())
+			if err == nil && len(tags) > 0 {
+				expense.SetTags(tags)
+			}
 		}
 
 		expenses = append(expenses, expense)

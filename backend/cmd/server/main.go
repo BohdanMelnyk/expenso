@@ -65,10 +65,10 @@ func main() {
 	}
 
 	// Repository layer (implements interfaces from use case layer)
-	expenseRepo := repositories.NewExpenseRepository(db)
+	tagRepo := repositories.NewTagRepository(db)
+	expenseRepo := repositories.NewExpenseRepository(db, tagRepo)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
-	tagRepo := repositories.NewTagRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)

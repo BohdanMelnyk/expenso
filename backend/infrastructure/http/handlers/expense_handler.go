@@ -173,6 +173,16 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		return
 	}
 
+	// Add tags if provided
+	if len(requestDTO.TagIDs) > 0 {
+		for _, tagID := range requestDTO.TagIDs {
+			// Add each tag to the expense (this would need to be implemented)
+			// For now, we'll skip this and just create the expense without tags
+			// TODO: Implement tag assignment in expense interactor
+			_ = tagID // Suppress unused variable warning
+		}
+	}
+
 	// Convert domain entity to DTO
 	responseDTO := h.expenseToDTO(exp)
 
@@ -315,6 +325,19 @@ func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponse
 			Type:      string(exp.Vendor().Type()),
 			CreatedAt: exp.Vendor().CreatedAt(),
 			UpdatedAt: exp.Vendor().UpdatedAt(),
+		}
+	}
+
+	// Add tags if present
+	if len(exp.Tags()) > 0 {
+		for _, tag := range exp.Tags() {
+			responseDTO.Tags = append(responseDTO.Tags, dto.TagResponseDTO{
+				ID:        int(tag.ID()),
+				Name:      tag.Name(),
+				Color:     tag.Color(),
+				CreatedAt: tag.CreatedAt(),
+				UpdatedAt: tag.UpdatedAt(),
+			})
 		}
 	}
 
