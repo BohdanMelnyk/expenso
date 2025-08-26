@@ -166,21 +166,20 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		cmd.VendorID = &vendorID
 	}
 
+	// Convert tag IDs if provided
+	if len(requestDTO.TagIDs) > 0 {
+		tagIDs := make([]entities.TagID, len(requestDTO.TagIDs))
+		for i, tagID := range requestDTO.TagIDs {
+			tagIDs[i] = entities.TagID(tagID)
+		}
+		cmd.TagIDs = tagIDs
+	}
+
 	// Execute use case
 	exp, err := h.expenseInteractor.CreateExpense(cmd)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	}
-
-	// Add tags if provided
-	if len(requestDTO.TagIDs) > 0 {
-		for _, tagID := range requestDTO.TagIDs {
-			// Add each tag to the expense (this would need to be implemented)
-			// For now, we'll skip this and just create the expense without tags
-			// TODO: Implement tag assignment in expense interactor
-			_ = tagID // Suppress unused variable warning
-		}
 	}
 
 	// Convert domain entity to DTO
@@ -250,6 +249,10 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 	if requestDTO.AddedBy != nil {
 		cmd.AddedBy = requestDTO.AddedBy
 	}
+
+	// Handle tag updates - note that the UpdateExpenseRequestDTO doesn't have TagIDs yet
+	// This would need to be added to the DTO if tag updates are needed
+	// For now, we skip tag updates in the update endpoint
 
 	// Execute use case
 	exp, err := h.expenseInteractor.UpdateExpense(cmd)
@@ -691,6 +694,15 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 			cmd.VendorID = &vendorID
 		}
 
+		// Convert tag IDs if provided
+		if len(expenseRequest.TagIDs) > 0 {
+			tagIDs := make([]entities.TagID, len(expenseRequest.TagIDs))
+			for i, tagID := range expenseRequest.TagIDs {
+				tagIDs[i] = entities.TagID(tagID)
+			}
+			cmd.TagIDs = tagIDs
+		}
+
 		// Create expense from CSV
 		exp, err := h.expenseInteractor.CreateExpenseFromCSV(cmd)
 		if err != nil {
@@ -751,4 +763,163 @@ func (h *ExpenseHandler) getDefaultCategoryForVendorType(vendorType string) stri
 		"tourism":       "Travel",
 	}
 	return categoryMap[vendorType]
+}
+
+// GetBalanceSummary godoc
+// @Summary Get balance summary (earnings vs expenses)
+// @Description Get balance summary with total earnings, expenses, and balance for a date range
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/balance [get]
+func (h *ExpenseHandler) GetBalanceSummary(c *gin.Context) {
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			return
+		}
+		endDate = &parsed
+	}
+
+	// Execute use case
+	balanceSummary, err := h.expenseInteractor.GetBalanceSummaryByDateRange(startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate balance summary"})
+		return
+	}
+
+	c.JSON(http.StatusOK, balanceSummary)
+}
+
+// GetActualExpenses godoc
+// @Summary Get actual expenses (excluding salary)
+// @Description Get expenses excluding salary entries for a date range
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/actual [get]
+func (h *ExpenseHandler) GetActualExpenses(c *gin.Context) {
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			return
+		}
+		endDate = &parsed
+	}
+
+	// Execute use case
+	expenses, err := h.expenseInteractor.GetActualExpensesByDateRange(startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch actual expenses"})
+		return
+	}
+
+	// Convert domain entities to DTOs
+	responseDTO := make([]dto.ExpenseResponseDTO, len(expenses))
+	for i, exp := range expenses {
+		responseDTO[i] = h.expenseToDTO(exp)
+	}
+
+	c.JSON(http.StatusOK, responseDTO)
+}
+
+// GetEarnings godoc
+// @Summary Get earnings (salary entries)
+// @Description Get salary entries (earnings) for a date range
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/earnings [get]
+func (h *ExpenseHandler) GetEarnings(c *gin.Context) {
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			return
+		}
+		endDate = &parsed
+	}
+
+	// Execute use case
+	earnings, err := h.expenseInteractor.GetEarningsByDateRange(startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch earnings"})
+		return
+	}
+
+	// Convert domain entities to DTOs
+	responseDTO := make([]dto.ExpenseResponseDTO, len(earnings))
+	for i, exp := range earnings {
+		responseDTO[i] = h.expenseToDTO(exp)
+	}
+
+	c.JSON(http.StatusOK, responseDTO)
 }

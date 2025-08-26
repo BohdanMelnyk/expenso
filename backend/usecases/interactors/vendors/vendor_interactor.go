@@ -10,6 +10,12 @@ type CreateVendorCommand struct {
 	Type string
 }
 
+type UpdateVendorCommand struct {
+	ID   entities.VendorID
+	Name *string
+	Type *string
+}
+
 type VendorInteractor struct {
 	vendorRepo repositories.VendorRepository
 }
@@ -60,4 +66,38 @@ func (i *VendorInteractor) GetVendorsByType(vendorType entities.VendorType) ([]*
 		return nil, entities.ErrInvalidVendorType
 	}
 	return i.vendorRepo.FindByType(vendorType)
+}
+
+func (i *VendorInteractor) UpdateVendor(cmd UpdateVendorCommand) (*entities.Vendor, error) {
+	// Find existing vendor
+	vendor, err := i.vendorRepo.FindByID(cmd.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update name if provided
+	if cmd.Name != nil {
+		if err := vendor.UpdateName(*cmd.Name); err != nil {
+			return nil, err
+		}
+	}
+
+	// Update type if provided
+	if cmd.Type != nil {
+		vendorType := entities.VendorType(*cmd.Type)
+		if err := vendor.UpdateType(vendorType); err != nil {
+			return nil, err
+		}
+	}
+
+	// Save updated vendor
+	if err := i.vendorRepo.Update(vendor); err != nil {
+		return nil, err
+	}
+
+	return vendor, nil
+}
+
+func (i *VendorInteractor) DeleteVendor(id entities.VendorID) error {
+	return i.vendorRepo.Delete(id)
 }

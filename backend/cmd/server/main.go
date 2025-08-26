@@ -71,7 +71,7 @@ func main() {
 	categoryRepo := repositories.NewCategoryRepository(db)
 
 	// Use case layer (interactors)
-	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo)
+	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
@@ -112,10 +112,17 @@ func main() {
 	api.POST("/expenses/import/csv/preview", expenseHandler.ImportExpensesCSVPreview)
 	api.POST("/expenses/import/csv/confirm", expenseHandler.ImportExpensesCSVConfirm)
 
+	// Balance and earnings routes
+	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
+	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
+	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
+
 	// Vendor routes
 	api.GET("/vendors", vendorHandler.GetVendors)
 	api.POST("/vendors", vendorHandler.CreateVendor)
 	api.GET("/vendors/:id", vendorHandler.GetVendor)
+	api.PUT("/vendors/:id", vendorHandler.UpdateVendor)
+	api.DELETE("/vendors/:id", vendorHandler.DeleteVendor)
 	api.GET("/vendors/type/:type", vendorHandler.GetVendorsByType)
 
 	// Category routes

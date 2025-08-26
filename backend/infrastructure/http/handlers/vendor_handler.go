@@ -163,6 +163,92 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	c.JSON(http.StatusCreated, responseDTO)
 }
 
+// UpdateVendor godoc
+// @Summary Update a vendor
+// @Description Update a vendor with the provided data
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Param id path int true "Vendor ID"
+// @Param vendor body dto.UpdateVendorRequestDTO true "Vendor data"
+// @Success 200 {object} dto.VendorResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /vendors/{id} [put]
+func (h *VendorHandler) UpdateVendor(c *gin.Context) {
+	// Parse path parameter
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
+		return
+	}
+
+	// Syntactic validation - decode JSON
+	var requestDTO dto.UpdateVendorRequestDTO
+	if err := c.ShouldBindJSON(&requestDTO); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Convert DTO to use case command
+	cmd := vendors.UpdateVendorCommand{
+		ID:   entities.VendorID(id),
+		Name: requestDTO.Name,
+		Type: requestDTO.Type,
+	}
+
+	// Execute use case
+	v, err := h.vendorInteractor.UpdateVendor(cmd)
+	if err != nil {
+		if err == entities.ErrVendorNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
+		} else if err == entities.ErrInvalidVendorType {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// Convert domain entity to DTO
+	responseDTO := h.vendorToDTO(v)
+
+	c.JSON(http.StatusOK, responseDTO)
+}
+
+// DeleteVendor godoc
+// @Summary Delete a vendor
+// @Description Delete a vendor by ID
+// @Tags vendors
+// @Accept json
+// @Produce json
+// @Param id path int true "Vendor ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /vendors/{id} [delete]
+func (h *VendorHandler) DeleteVendor(c *gin.Context) {
+	// Parse path parameter
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
+		return
+	}
+
+	// Execute use case
+	err = h.vendorInteractor.DeleteVendor(entities.VendorID(id))
+	if err != nil {
+		if err == entities.ErrVendorNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete vendor"})
+		}
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // Helper method to convert domain entity to DTO
 func (h *VendorHandler) vendorToDTO(v *entities.Vendor) dto.VendorResponseDTO {
 	return dto.VendorResponseDTO{
