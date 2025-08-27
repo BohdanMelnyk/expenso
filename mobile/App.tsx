@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import DashboardScreen from './src/screens/DashboardScreen';
 import AddExpenseScreen from './src/screens/AddExpenseScreen';
@@ -18,20 +19,39 @@ export default function App() {
         <Tab.Navigator
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, color, size }) => {
-              let iconName: any;
+              let iconName: string;
 
               if (route.name === 'Dashboard') {
-                iconName = focused ? 'home' : 'home-outline';
+                iconName = focused ? 'view-dashboard' : 'view-dashboard-outline';
               } else if (route.name === 'Add Expense') {
-                iconName = focused ? 'add-circle' : 'add-circle-outline';
+                iconName = focused ? 'plus-circle' : 'plus-circle-outline';
               } else if (route.name === 'Statistics') {
-                iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+                iconName = focused ? 'chart-bar' : 'chart-line';
+              } else {
+                iconName = 'home';
               }
 
-              return <Ionicons name={iconName} size={size} color={color} />;
+              return (
+                <MaterialCommunityIcons 
+                  name={iconName as any} 
+                  size={size || 24} 
+                  color={color || '#666'} 
+                />
+              );
             },
             tabBarActiveTintColor: '#2196F3',
             tabBarInactiveTintColor: 'gray',
+            tabBarStyle: {
+              backgroundColor: '#ffffff',
+              borderTopWidth: 1,
+              borderTopColor: '#e0e0e0',
+              paddingBottom: 5,
+              height: 60,
+            },
+            tabBarLabelStyle: {
+              fontSize: 12,
+              marginBottom: 5,
+            },
             headerStyle: {
               backgroundColor: '#2196F3',
             },

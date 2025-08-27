@@ -2,11 +2,20 @@ import axios from 'axios';
 
 // Use different base URLs for web and mobile
 const getBaseURL = () => {
-  // For mobile development with Expo, we need to use your computer's IP
+  // For mobile development with Expo/React Native, we need to use your computer's IP
   // For web, we can use localhost
-  if (typeof window === 'undefined' || window.location.hostname === 'localhost') {
+  
+  // Check if we're in React Native environment
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    return 'http://192.168.178.137:8080/api/v1'; // Mobile - use your computer's IP
+  }
+  
+  // Check if we're on web and using localhost
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return 'http://localhost:8080/api/v1'; // Web
   }
+  
+  // Default to mobile IP for other cases
   return 'http://192.168.178.137:8080/api/v1'; // Mobile (replace with your actual IP)
 };
 
@@ -21,6 +30,7 @@ export const apiClient = axios.create({
 export interface Expense {
   id: number;
   comment: string;
+  description: string; // For mobile compatibility
   amount: number;
   vendor_id: number;
   vendor?: Vendor;
@@ -67,6 +77,25 @@ export const expenseAPI = {
     if (endDate) params.append('end_date', endDate);
     const queryString = params.toString();
     return apiClient.get<Expense[]>(`/expenses${queryString ? `?${queryString}` : ''}`);
+  },
+  // Get actual expenses (excluding salary income)
+  getActualExpenses: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    params.append('exclude_salary', 'true');
+    const queryString = params.toString();
+    return apiClient.get<Expense[]>(`/expenses${queryString ? `?${queryString}` : ''}`);
+  },
+  // Export expenses as CSV
+  exportCSV: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    const queryString = params.toString();
+    return apiClient.get(`/expenses/export${queryString ? `?${queryString}` : ''}`, {
+      responseType: 'text'
+    });
   },
   createExpense: (expense: CreateExpenseRequest) => apiClient.post<Expense>('/expenses', expense),
   getExpense: (id: number) => apiClient.get<Expense>(`/expenses/${id}`),

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { Card, Title, Paragraph, Button, ActivityIndicator, DataTable, Chip } from 'react-native-paper';
-import { expenseAPI, Expense, formatAmount } from '../../../shared/api/client';
+import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Card, Title, Paragraph, Button, ActivityIndicator, DataTable, Chip, Surface } from 'react-native-paper';
+import { expenseAPI, Expense, formatAmount } from '../../shared/api/client';
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from '../components/Toast';
 
 const { width } = Dimensions.get('window');
 
 const StatisticsScreen = () => {
+  const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
@@ -17,9 +20,10 @@ const StatisticsScreen = () => {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      const response = await expenseAPI.getExpenses();
+      const response = await expenseAPI.getActualExpenses();
       setExpenses(response.data);
     } catch (error) {
+      showError('Failed to fetch expenses');
       console.error('Error fetching expenses:', error);
     } finally {
       setLoading(false);
@@ -93,11 +97,58 @@ const StatisticsScreen = () => {
       .slice(0, 10);
   };
 
+  const getVendorTypeIcon = (type: string) => {
+    switch (type.toLowerCase().replace(' ', '_')) {
+      case 'food_store': return '🛒';
+      case 'eating_out': return '🍽️';
+      case 'transport': return '🚗';
+      case 'household': return '🏠';
+      case 'clothing': return '👕';
+      case 'care': return '💊';
+      case 'living': return '🏡';
+      case 'subscriptions': return '📱';
+      case 'tourism': return '✈️';
+      case 'car': return '🚙';
+      case 'salary': return '💰';
+      case 'else': return '📦';
+      default: return '📦';
+    }
+  };
+
+  const getPaymentMethodStats = () => {
+    const filteredExpenses = getFilteredExpenses();
+    const cardExpenses = filteredExpenses.filter(exp => exp.paid_by_card);
+    const cashExpenses = filteredExpenses.filter(exp => !exp.paid_by_card);
+    const cardAmount = cardExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const cashAmount = cashExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    return {
+      cardCount: cardExpenses.length,
+      cashCount: cashExpenses.length,
+      cardAmount,
+      cashAmount,
+      cardPercentage: total > 0 ? ((cardAmount / total) * 100).toFixed(1) : '0',
+      cashPercentage: total > 0 ? ((cashAmount / total) * 100).toFixed(1) : '0',
+    };
+  };
+
+  const handleCategoryPress = (categoryName: string) => {
+    const filteredExpenses = getFilteredExpenses();
+    const categoryExpenses = filteredExpenses.filter(expense => 
+      expense.vendor && expense.vendor.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) === categoryName
+    );
+    const categoryAmount = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    showInfo(`${categoryName}: ${categoryExpenses.length} expenses totaling ${formatAmount(categoryAmount)}`);
+  };
+
   const filteredExpenses = getFilteredExpenses();
   const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const avgExpense = filteredExpenses.length > 0 ? totalAmount / filteredExpenses.length : 0;
   const expensesByType = getExpensesByVendorType();
   const topVendors = getTopVendors();
+  const paymentStats = getPaymentMethodStats();
 
   if (loading) {
     return (
@@ -142,55 +193,94 @@ const StatisticsScreen = () => {
         </Card.Content>
       </Card>
 
-      {/* Summary Stats */}
+      {/* Enhanced Summary Stats */}
       <View style={styles.summaryContainer}>
         <Card style={styles.summaryCard}>
           <Card.Content>
-            <Title style={styles.summaryTitle}>Total Spent</Title>
+            <Title style={styles.summaryTitle}>Total Actual Expenses</Title>
             <Paragraph style={styles.summaryAmount}>
               {formatAmount(totalAmount)}
             </Paragraph>
+            <Paragraph style={styles.summarySubtext}>Excluding salary income</Paragraph>
           </Card.Content>
         </Card>
 
         <Card style={styles.summaryCard}>
           <Card.Content>
-            <Title style={styles.summaryTitle}>Expenses</Title>
+            <Title style={styles.summaryTitle}>Number of Expenses</Title>
             <Paragraph style={styles.summaryAmount}>{filteredExpenses.length}</Paragraph>
+            <Paragraph style={styles.summarySubtext}>Spending transactions</Paragraph>
           </Card.Content>
         </Card>
 
         <Card style={styles.summaryCard}>
           <Card.Content>
-            <Title style={styles.summaryTitle}>Average</Title>
+            <Title style={styles.summaryTitle}>Average Expense</Title>
             <Paragraph style={styles.summaryAmount}>
               {formatAmount(avgExpense)}
             </Paragraph>
+            <Paragraph style={styles.summarySubtext}>Per transaction</Paragraph>
           </Card.Content>
         </Card>
       </View>
 
+      {/* Payment Method Stats */}
+      <Card style={styles.paymentCard}>
+        <Card.Content>
+          <Title>💳 Card vs 💵 Cash</Title>
+          <View style={styles.paymentStats}>
+            <View style={styles.paymentMethod}>
+              <Chip mode="flat" style={styles.cardChip}>
+                💳 Card: {paymentStats.cardCount} ({paymentStats.cardPercentage}%)
+              </Chip>
+            </View>
+            <View style={styles.paymentMethod}>
+              <Chip mode="flat" style={styles.cashChip}>
+                💵 Cash: {paymentStats.cashCount} ({paymentStats.cashPercentage}%)
+              </Chip>
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+
       {/* Expenses by Category */}
       <Card style={styles.chartCard}>
         <Card.Content>
-          <Title>Expenses by Category</Title>
+          <Title>
+            Expenses by Category
+            <Paragraph style={styles.clickHint}>(Tap for details)</Paragraph>
+          </Title>
           {expensesByType.length > 0 ? (
             <View style={styles.categoryList}>
               {expensesByType.map((item, index) => (
-                <View key={index} style={styles.categoryItem}>
-                  <View style={styles.categoryInfo}>
-                    <Paragraph style={styles.categoryName}>{item.name}</Paragraph>
-                    <Paragraph style={styles.categoryAmount}>
-                      {formatAmount(item.value)} ({item.percentage}%)
-                    </Paragraph>
-                  </View>
-                  <View 
-                    style={[
-                      styles.categoryBar,
-                      { width: `${item.percentage}%` }
-                    ]} 
-                  />
-                </View>
+                <TouchableOpacity 
+                  key={index} 
+                  onPress={() => handleCategoryPress(item.name)}
+                  style={styles.categoryItem}
+                  activeOpacity={0.7}
+                >
+                  <Surface style={styles.categoryCard} elevation={1}>
+                    <View style={styles.categoryHeader}>
+                      <Paragraph style={styles.categoryIcon}>
+                        {getVendorTypeIcon(item.name)}
+                      </Paragraph>
+                      <View style={styles.categoryInfo}>
+                        <Paragraph style={styles.categoryName}>{item.name}</Paragraph>
+                        <Paragraph style={styles.categoryAmount}>
+                          {formatAmount(item.value)} ({item.percentage}%)
+                        </Paragraph>
+                      </View>
+                    </View>
+                    <View style={styles.categoryBarContainer}>
+                      <View 
+                        style={[
+                          styles.categoryBar,
+                          { width: `${Math.max(parseFloat(item.percentage), 5)}%` }
+                        ]} 
+                      />
+                    </View>
+                  </Surface>
+                </TouchableOpacity>
               ))}
             </View>
           ) : (
@@ -232,6 +322,9 @@ const StatisticsScreen = () => {
           )}
         </Card.Content>
       </Card>
+      
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </ScrollView>
   );
 };
@@ -269,7 +362,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   summaryTitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
   },
   summaryAmount: {
@@ -277,31 +370,78 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2196F3',
   },
+  summarySubtext: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 2,
+  },
+  paymentCard: {
+    marginBottom: 16,
+  },
+  paymentStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 8,
+  },
+  paymentMethod: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  cardChip: {
+    backgroundColor: '#E3F2FD',
+  },
+  cashChip: {
+    backgroundColor: '#E8F5E8',
+  },
   chartCard: {
     marginBottom: 16,
+  },
+  clickHint: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
   categoryList: {
     marginTop: 16,
   },
   categoryItem: {
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  categoryCard: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryIcon: {
+    fontSize: 20,
+    marginRight: 12,
   },
   categoryInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    flex: 1,
   },
   categoryName: {
-    flex: 1,
     fontWeight: 'bold',
+    fontSize: 14,
   },
   categoryAmount: {
     color: '#666',
+    fontSize: 12,
+  },
+  categoryBarContainer: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    overflow: 'hidden',
   },
   categoryBar: {
-    height: 8,
+    height: '100%',
     backgroundColor: '#2196F3',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   emptyText: {
     textAlign: 'center',

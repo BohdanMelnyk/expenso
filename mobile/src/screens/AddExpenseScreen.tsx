@@ -9,14 +9,15 @@ import {
   ActivityIndicator,
   RadioButton,
 } from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
-import { expenseAPI, vendorAPI, categoryAPI, Vendor, Category, CreateExpenseRequest } from '../../../shared/api/client';
-import { getErrorMessage } from '../../../shared/utils/errorHandler';
+import { expenseAPI, Vendor, Category, CreateExpenseRequest } from '../../shared/api/client';
+import { getErrorMessage } from '../../shared/utils/errorHandler';
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from '../components/Toast';
+import VendorSelector from '../components/VendorSelector';
+import CategorySelector from '../components/CategorySelector';
 
 const AddExpenseScreen = () => {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { toasts, removeToast, showSuccess, showError } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<CreateExpenseRequest>({
@@ -29,57 +30,30 @@ const AddExpenseScreen = () => {
     paid_by_card: true, // Default to card payment
   });
 
-  useEffect(() => {
-    fetchVendors();
-    fetchCategories();
-  }, []);
-
-  const fetchVendors = async () => {
-    try {
-      setLoading(true);
-      const response = await vendorAPI.getVendors();
-      setVendors(response.data);
-    } catch (error: any) {
-      Alert.alert('Error', getErrorMessage(error, 'Failed to fetch vendors'));
-      console.error('Error fetching vendors:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryAPI.getCategories();
-      setCategories(response.data);
-    } catch (error: any) {
-      Alert.alert('Error', getErrorMessage(error, 'Failed to fetch categories'));
-      console.error('Error fetching categories:', error);
-    }
-  };
 
   const handleSubmit = async () => {
     try {
       if (!formData.comment.trim()) {
-        Alert.alert('Error', 'Description is required');
+        showError('Description is required');
         return;
       }
       if (formData.amount <= 0) {
-        Alert.alert('Error', 'Amount must be greater than 0');
+        showError('Amount must be greater than 0');
         return;
       }
       if (!formData.category.trim()) {
-        Alert.alert('Error', 'Category is required');
+        showError('Category is required');
         return;
       }
       if (formData.vendor_id === 0) {
-        Alert.alert('Error', 'Please select a vendor');
+        showError('Please select a vendor');
         return;
       }
 
       setSubmitting(true);
       await expenseAPI.createExpense(formData);
       
-      Alert.alert('Success', `${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
+      showSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
       
       // Reset form
       setFormData({
@@ -92,39 +66,14 @@ const AddExpenseScreen = () => {
         paid_by_card: true, // Reset to default (card payment)
       });
     } catch (error: any) {
-      Alert.alert('Error', getErrorMessage(error, 'Failed to add expense'));
+      showError(getErrorMessage(error, 'Failed to add expense'));
       console.error('Error adding expense:', error);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getVendorsByType = (type: string) => {
-    return vendors.filter(vendor => vendor.type === type);
-  };
 
-  const vendorTypes = [
-    { key: 'care', label: 'Care' },
-      { key: 'car', label: 'Car' },
-    { key: 'clothing', label: 'Clothing' },
-    { key: 'eating_out', label: 'Eating Out' },
-    { key: 'else', label: 'Other' },
-    { key: 'food_store', label: 'Food Store' },
-    { key: 'household', label: 'Household' },
-    { key: 'living', label: 'Living' },
-    { key: 'salary', label: 'Salary' },
-    { key: 'subscriptions', label: 'Subscriptions' },
-    { key: 'transport', label: 'Transport' },
-    { key: 'tourism', label: 'Tourism' },
-  ];
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
 
   return (
     <ScrollView style={styles.container}>
@@ -168,45 +117,20 @@ const AddExpenseScreen = () => {
           />
 
           <Paragraph style={styles.label}>Category *</Paragraph>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.category}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select a category" value="" />
-              {categories.map(category => (
-                <Picker.Item 
-                  key={category.id} 
-                  label={`${category.icon} ${category.name}`} 
-                  value={category.name} 
-                />
-              ))}
-            </Picker>
-          </View>
+          <CategorySelector
+            selectedCategoryName={formData.category}
+            onCategorySelect={(categoryName) => setFormData(prev => ({ ...prev, category: categoryName }))}
+            style={styles.selector}
+            error={!formData.category.trim()}
+          />
 
           <Paragraph style={styles.label}>Vendor *</Paragraph>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.vendor_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, vendor_id: value }))}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select a vendor" value={0} />
-              {vendorTypes.map(type => {
-                const typeVendors = getVendorsByType(type.key);
-                if (typeVendors.length === 0) return null;
-                
-                return typeVendors.map(vendor => (
-                  <Picker.Item 
-                    key={vendor.id} 
-                    label={`${vendor.name} (${type.label})`} 
-                    value={vendor.id} 
-                  />
-                ));
-              })}
-            </Picker>
-          </View>
+          <VendorSelector
+            selectedVendorId={formData.vendor_id}
+            onVendorSelect={(vendorId) => setFormData(prev => ({ ...prev, vendor_id: vendorId }))}
+            style={styles.selector}
+            error={formData.vendor_id === 0}
+          />
 
           <TextInput
             label="Date *"
@@ -240,6 +164,9 @@ const AddExpenseScreen = () => {
           </Button>
         </Card.Content>
       </Card>
+      
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </ScrollView>
   );
 };
@@ -249,11 +176,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#f5f5f5',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   formCard: {
     marginBottom: 32,
@@ -270,15 +192,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#333',
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
+  selector: {
     marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  picker: {
-    height: 50,
+    zIndex: 1,
   },
   radioContainer: {
     backgroundColor: '#fff',

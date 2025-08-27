@@ -209,69 +209,41 @@ func (i *ExpenseInteractor) GetExpensesByDateRange(startDate, endDate *time.Time
 	return i.expenseRepo.FindByDateRange(startDate, endDate)
 }
 
-// GetActualExpensesByDateRange returns expenses excluding salary entries
+// GetActualExpensesByDateRange returns all expenses (salary entries have been moved to income table)
 func (i *ExpenseInteractor) GetActualExpensesByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
-	allExpenses, err := i.expenseRepo.FindByDateRange(startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	var actualExpenses []*entities.Expense
-	for _, expense := range allExpenses {
-		// Exclude salary entries from regular expense calculations
-		if expense.Vendor() != nil && expense.Vendor().Type() != entities.VendorTypeSalary {
-			actualExpenses = append(actualExpenses, expense)
-		}
-	}
-	return actualExpenses, nil
+	// Since salary entries have been migrated to the income table, all remaining expenses are actual expenses
+	return i.expenseRepo.FindByDateRange(startDate, endDate)
 }
 
-// GetEarningsByDateRange returns only salary entries (earnings)
+// GetEarningsByDateRange returns empty array (earnings have been moved to income table)
+// This method is kept for backward compatibility but should use the income API instead
 func (i *ExpenseInteractor) GetEarningsByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
-	allExpenses, err := i.expenseRepo.FindByDateRange(startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	var earnings []*entities.Expense
-	for _, expense := range allExpenses {
-		// Include only salary entries as earnings
-		if expense.Vendor() != nil && expense.Vendor().Type() == entities.VendorTypeSalary {
-			earnings = append(earnings, expense)
-		}
-	}
-	return earnings, nil
+	// Return empty array since all salary entries have been migrated to the income table
+	return []*entities.Expense{}, nil
 }
 
-// GetBalanceSummaryByDateRange calculates earnings vs spending with balance
+// GetBalanceSummaryByDateRange calculates expenses only (earnings have been moved to income table)
+// This method is kept for backward compatibility but earnings will be 0
 func (i *ExpenseInteractor) GetBalanceSummaryByDateRange(startDate, endDate *time.Time) (map[string]interface{}, error) {
-	earnings, err := i.GetEarningsByDateRange(startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-
 	expenses, err := i.GetActualExpensesByDateRange(startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
 
-	var totalEarnings, totalExpenses float64
-
-	for _, earning := range earnings {
-		totalEarnings += earning.Amount().Amount()
-	}
-
+	var totalExpenses float64
 	for _, expense := range expenses {
 		totalExpenses += expense.Amount().Amount()
 	}
 
+	// Earnings are now 0 since they've been moved to the income table
+	totalEarnings := 0.0
 	balance := totalEarnings - totalExpenses
 
 	return map[string]interface{}{
 		"total_earnings": totalEarnings,
 		"total_expenses": totalExpenses,
 		"balance":        balance,
-		"earnings_count": len(earnings),
+		"earnings_count": 0, // Earnings are now in the income table
 		"expenses_count": len(expenses),
 	}, nil
 }
