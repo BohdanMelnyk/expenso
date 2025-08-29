@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Alert } from 'react-native';
 import { Card, Title, Paragraph, Button, DataTable, Chip, ActivityIndicator, Badge } from 'react-native-paper';
+import { LineChart } from 'react-native-chart-kit';
 import { expenseAPI, Expense, formatAmount } from '../../shared/api/client';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/Toast';
+
+const { width } = Dimensions.get('window');
 
 const DashboardScreen = () => {
   const { toasts, removeToast, showSuccess, showError } = useToast();
@@ -116,6 +119,51 @@ const DashboardScreen = () => {
     }
   };
 
+  const getChartData = () => {
+    if (expenses.length === 0) {
+      return {
+        labels: ['No Data'],
+        datasets: [{
+          data: [0],
+          color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+          strokeWidth: 2
+        }]
+      };
+    }
+
+    // Group expenses by date
+    const expensesByDate: { [key: string]: number } = {};
+    
+    expenses.forEach(expense => {
+      const date = new Date(expense.date);
+      const dateKey = selectedRange === 'current_month' 
+        ? date.getDate().toString()
+        : selectedRange === 'this_year'
+        ? (date.getMonth() + 1).toString()
+        : date.getFullYear().toString();
+      
+      expensesByDate[dateKey] = (expensesByDate[dateKey] || 0) + expense.amount;
+    });
+
+    // Sort and prepare data
+    const sortedEntries = Object.entries(expensesByDate).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+    const labels = sortedEntries.map(([key]) => {
+      if (selectedRange === 'current_month') return `${key}`;
+      if (selectedRange === 'this_year') return `M${key}`;
+      return key;
+    });
+    const data = sortedEntries.map(([, value]) => value);
+
+    return {
+      labels: labels.slice(-7), // Show last 7 data points
+      datasets: [{
+        data: data.slice(-7),
+        color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+        strokeWidth: 2
+      }]
+    };
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -127,7 +175,11 @@ const DashboardScreen = () => {
   const paymentStats = getPaymentMethodStats();
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
       {/* Header with Filter Controls */}
       <Card style={styles.headerCard}>
         <Card.Content>
@@ -195,6 +247,54 @@ const DashboardScreen = () => {
           </Card.Content>
         </Card>
       </View>
+
+      {/* Expense Trend Chart */}
+      <Card style={styles.chartCard}>
+        <Card.Content>
+          <Title>📈 Expense Trend</Title>
+          <Paragraph style={styles.chartSubtitle}>
+            {getRangeLabel(selectedRange)} - Daily spending pattern
+          </Paragraph>
+          <View style={styles.chartContainer}>
+            <LineChart
+              data={getChartData()}
+              width={width - 64} // Screen width minus padding
+              height={200}
+              chartConfig={{
+                backgroundColor: '#ffffff',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#f5f5f5',
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '4',
+                  strokeWidth: '2',
+                  stroke: '#2196F3',
+                  fill: '#ffffff'
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '',
+                  stroke: '#e3f2fd',
+                  strokeWidth: 1
+                }
+              }}
+              bezier
+              style={styles.chart}
+              formatYLabel={(value) => `€${Math.round(parseFloat(value))}`}
+              withHorizontalLabels={true}
+              withVerticalLabels={true}
+              withDots={true}
+              withShadow={false}
+              withInnerLines={true}
+              withOuterLines={false}
+            />
+          </View>
+        </Card.Content>
+      </Card>
 
       {/* Payment Method Stats */}
       <Card style={styles.paymentCard}>
@@ -296,15 +396,19 @@ const DashboardScreen = () => {
       
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flex: 1,
+    padding: 16,
   },
   centered: {
     flex: 1,
@@ -351,6 +455,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2196F3',
+  },
+  chartCard: {
+    marginBottom: 16,
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 16,
+  },
+  chartContainer: {
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
   },
   paymentCard: {
     marginBottom: 16,

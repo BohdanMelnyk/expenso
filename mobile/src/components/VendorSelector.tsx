@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { TextInput, Card, Paragraph, Chip, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Keyboard, ScrollView } from 'react-native';
+import { TextInput, Card, Paragraph, Chip, ActivityIndicator, IconButton } from 'react-native-paper';
 import { vendorAPI, Vendor } from '../../shared/api/client';
 
 interface VendorSelectorProps {
@@ -21,6 +21,8 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef<any>(null);
+  const isSelectingRef = useRef(false);
 
   useEffect(() => {
     fetchVendors();
@@ -77,24 +79,44 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
     setIsOpen(true);
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  };
+
   const handleInputBlur = () => {
-    // Delay hiding to allow for item selection
+    // Don't close if user is selecting an item
+    if (isSelectingRef.current) {
+      return;
+    }
+    
+    // Delay to allow for item selection
     setTimeout(() => {
-      setIsOpen(false);
-      // Reset search term to selected vendor name if no selection made
-      const selectedVendor = vendors.find(v => v.id === selectedVendorId);
-      if (selectedVendor) {
-        setSearchTerm(selectedVendor.name);
-      } else if (selectedVendorId === 0) {
-        setSearchTerm('');
+      if (!isSelectingRef.current) {
+        setIsOpen(false);
+        // Reset search term to selected vendor name if no selection made
+        const selectedVendor = vendors.find(v => v.id === selectedVendorId);
+        if (selectedVendor) {
+          setSearchTerm(selectedVendor.name);
+        } else if (selectedVendorId === 0) {
+          setSearchTerm('');
+        }
       }
-    }, 150);
+    }, 200);
   };
 
   const handleVendorSelect = (vendor: Vendor) => {
+    isSelectingRef.current = true;
     onVendorSelect(vendor.id);
     setSearchTerm(vendor.name);
     setIsOpen(false);
+    
+    // Reset selection flag after a brief delay
+    setTimeout(() => {
+      isSelectingRef.current = false;
+    }, 100);
   };
 
   const getVendorTypeLabel = (type: string) => {
@@ -140,6 +162,10 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
         selectedVendorId === item.id && styles.selectedVendorItem
       ]}
       onPress={() => handleVendorSelect(item)}
+      onPressIn={() => {
+        isSelectingRef.current = true;
+      }}
+      activeOpacity={0.7}
     >
       <View style={styles.vendorInfo}>
         <Paragraph style={styles.vendorName}>{item.name}</Paragraph>
@@ -157,20 +183,46 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <TextInput
-        value={searchTerm}
-        onChangeText={handleInputChange}
-        onFocus={handleInputFocus}
-        onBlur={handleInputBlur}
-        placeholder="Type to search vendors..."
-        mode="outlined"
-        error={error}
-        autoComplete="off"
-        style={styles.textInput}
-      />
+      <View style={styles.inputContainer}>
+        <TextInput
+          ref={inputRef}
+          value={searchTerm}
+          onChangeText={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          placeholder="Type to search vendors..."
+          mode="outlined"
+          error={error}
+          autoComplete="off"
+          style={styles.textInput}
+          blurOnSubmit={false}
+          right={isOpen && searchTerm.length > 0 && (
+            <TextInput.Icon 
+              icon="keyboard-off-outline" 
+              onPress={dismissKeyboard}
+              size={20}
+            />
+          )}
+        />
+      </View>
 
       {isOpen && (
         <Card style={styles.dropdown}>
+          {/* Header with dismiss keyboard button */}
+          {searchTerm.length > 0 && (
+            <View style={styles.dropdownHeader}>
+              <Paragraph style={styles.resultsText}>
+                {filteredVendors.length} vendor{filteredVendors.length !== 1 ? 's' : ''} found
+              </Paragraph>
+              <IconButton
+                icon="keyboard-off-outline"
+                size={20}
+                onPress={dismissKeyboard}
+                style={styles.dismissButton}
+              />
+            </View>
+          )}
+          
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" />
@@ -183,14 +235,18 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
               </Paragraph>
             </View>
           ) : (
-            <FlatList
-              data={filteredVendors}
-              renderItem={renderVendorItem}
-              keyExtractor={(item) => item.id.toString()}
+            <ScrollView 
               style={styles.vendorList}
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
               nestedScrollEnabled
-            />
+            >
+              {filteredVendors.map((item, index) => (
+                <View key={item.id}>
+                  {renderVendorItem({ item, index })}
+                </View>
+              ))}
+            </ScrollView>
           )}
         </Card>
       )}
@@ -203,6 +259,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  inputContainer: {
+    position: 'relative',
+  },
   textInput: {
     marginBottom: 8,
   },
@@ -211,9 +270,28 @@ const styles = StyleSheet.create({
     top: 65,
     left: 0,
     right: 0,
-    maxHeight: 250,
+    maxHeight: 300,
     elevation: 4,
     zIndex: 1000,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#F5F5F5',
+  },
+  resultsText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  dismissButton: {
+    margin: 0,
+    padding: 4,
   },
   loadingContainer: {
     padding: 16,
@@ -232,7 +310,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   vendorList: {
-    maxHeight: 200,
+    maxHeight: 180,
   },
   vendorItem: {
     padding: 12,

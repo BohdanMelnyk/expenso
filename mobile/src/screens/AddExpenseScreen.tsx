@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import {
   Card,
   Title,
@@ -76,8 +76,19 @@ const AddExpenseScreen = () => {
 
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.formCard}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Card style={styles.formCard}>
         <Card.Content>
           <Title style={styles.title}>Add New Transaction</Title>
 
@@ -90,6 +101,13 @@ const AddExpenseScreen = () => {
             mode="outlined"
             style={styles.input}
             placeholder="What is this transaction for?"
+            right={formData.comment.length > 0 && (
+              <TextInput.Icon 
+                icon="keyboard-off-outline" 
+                onPress={Keyboard.dismiss}
+                size={20}
+              />
+            )}
           />
 
           <Paragraph style={styles.label}>Type</Paragraph>
@@ -114,6 +132,13 @@ const AddExpenseScreen = () => {
             mode="outlined"
             style={styles.input}
             placeholder="0.00"
+            right={formData.amount > 0 && (
+              <TextInput.Icon 
+                icon="keyboard-off-outline" 
+                onPress={Keyboard.dismiss}
+                size={20}
+              />
+            )}
           />
 
           <Paragraph style={styles.label}>Category *</Paragraph>
@@ -123,6 +148,17 @@ const AddExpenseScreen = () => {
             style={styles.selector}
             error={!formData.category.trim()}
           />
+
+          <Paragraph style={styles.label}>Payment Method</Paragraph>
+          <RadioButton.Group 
+            onValueChange={value => setFormData(prev => ({ ...prev, paid_by_card: value === 'card' }))} 
+            value={formData.paid_by_card ? 'card' : 'cash'}
+          >
+            <View style={styles.radioContainer}>
+              <RadioButton.Item label="💳 Card" value="card" />
+              <RadioButton.Item label="💵 Cash" value="cash" />
+            </View>
+          </RadioButton.Group>
 
           <Paragraph style={styles.label}>Vendor *</Paragraph>
           <VendorSelector
@@ -139,18 +175,14 @@ const AddExpenseScreen = () => {
             mode="outlined"
             style={styles.input}
             placeholder="YYYY-MM-DD"
+            right={formData.date.length > 0 && (
+              <TextInput.Icon 
+                icon="keyboard-off-outline" 
+                onPress={Keyboard.dismiss}
+                size={20}
+              />
+            )}
           />
-
-          <Paragraph style={styles.label}>Payment Method</Paragraph>
-          <RadioButton.Group 
-            onValueChange={value => setFormData(prev => ({ ...prev, paid_by_card: value === 'card' }))} 
-            value={formData.paid_by_card ? 'card' : 'cash'}
-          >
-            <View style={styles.radioContainer}>
-              <RadioButton.Item label="💳 Card" value="card" />
-              <RadioButton.Item label="💵 Cash" value="cash" />
-            </View>
-          </RadioButton.Group>
 
           <Button
             mode="contained"
@@ -162,20 +194,28 @@ const AddExpenseScreen = () => {
           >
             {submitting ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
           </Button>
-        </Card.Content>
-      </Card>
-      
-      {/* Toast notifications */}
-      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
-    </ScrollView>
+          </Card.Content>
+          </Card>
+          
+          {/* Toast notifications */}
+          <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
   formCard: {
     marginBottom: 32,

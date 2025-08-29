@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Card, Title, Paragraph, Button, ActivityIndicator, DataTable, Chip, Surface } from 'react-native-paper';
 import { expenseAPI, Expense, formatAmount } from '../../shared/api/client';
 import { useToast } from '../hooks/useToast';
@@ -159,7 +159,11 @@ const StatisticsScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.scrollContainer}>
       {/* Period Selection */}
       <Card style={styles.periodCard}>
         <Card.Content>
@@ -325,15 +329,19 @@ const StatisticsScreen = () => {
       
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
-    </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flex: 1,
+    padding: 16,
   },
   centered: {
     flex: 1,
