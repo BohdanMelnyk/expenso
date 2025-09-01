@@ -1,34 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { expenseAPI, tagAPI, Tag, CreateExpenseRequest } from '../api/client';
+import { X } from 'lucide-react';
+import { expenseAPI, tagAPI, Expense, CreateExpenseRequest, Tag } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
 
-const AddExpense: React.FC = () => {
-  const navigate = useNavigate();
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+interface EditExpenseModalProps {
+  expense: Expense;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: (updatedExpense: Expense) => void;
+}
+
+const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
+  expense,
+  isOpen,
+  onClose,
+  onUpdate,
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
   const [formData, setFormData] = useState<CreateExpenseRequest>({
-    comment: '',
-    amount: 0,
-    vendor_id: 0,
-    date: new Date().toISOString().split('T')[0],
-    category: '',
-    type: 'expense',
-    paid_by_card: true, // Default to card payment
-    added_by: 'he', // Default to "he"
+    comment: expense.comment,
+    amount: expense.amount,
+    vendor_id: expense.vendor_id,
+    date: expense.date,
+    category: expense.category,
+    type: expense.type,
+    paid_by_card: expense.paid_by_card,
+    added_by: expense.added_by,
   });
 
   useEffect(() => {
-    fetchTags();
-  }, []);
-
-
+    if (isOpen) {
+      fetchTags();
+      // Reset form data when opening with new expense
+      setFormData({
+        comment: expense.comment,
+        amount: expense.amount,
+        vendor_id: expense.vendor_id,
+        date: expense.date,
+        category: expense.category,
+        type: expense.type,
+        paid_by_card: expense.paid_by_card,
+        added_by: expense.added_by,
+      });
+      // Initialize selected tags with existing expense tags
+      setSelectedTags(expense.tags?.map(tag => tag.id) || []);
+      setError(null);
+    }
+  }, [isOpen, expense]);
 
   const fetchTags = async () => {
     try {
@@ -39,13 +63,7 @@ const AddExpense: React.FC = () => {
     }
   };
 
-  const handleTagToggle = (tagId: number) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -55,11 +73,26 @@ const AddExpense: React.FC = () => {
     }));
   };
 
+  const handleVendorSelect = (vendorId: number) => {
+    setFormData(prev => ({ ...prev, vendor_id: vendorId }));
+  };
+
+  const handleCategorySelect = (categoryName: string) => {
+    setFormData(prev => ({ ...prev, category: categoryName }));
+  };
+
+  const handleTagToggle = (tagId: number) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId) 
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
       if (!formData.comment.trim()) {
@@ -79,56 +112,35 @@ const AddExpense: React.FC = () => {
         ...formData,
         tag_ids: selectedTags
       };
-      await expenseAPI.createExpense(expenseData);
-      setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
-      
-      // Reset form
-      setFormData({
-        comment: '',
-        amount: 0,
-        vendor_id: 0,
-        date: new Date().toISOString().split('T')[0],
-        category: '',
-        type: 'expense',
-        paid_by_card: true, // Reset to default (card payment)
-        added_by: 'he', // Reset to default
-      });
-      setSelectedTags([]);
-
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      const response = await expenseAPI.updateExpense(expense.id, expenseData);
+      onUpdate(response.data);
+      onClose();
     } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to add expense'));
-      console.error('Error adding expense:', err);
+      setError(getErrorMessage(err, 'Failed to update expense'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVendorSelect = (vendorId: number) => {
-    setFormData(prev => ({ ...prev, vendor_id: vendorId }));
-  };
 
-  const handleCategorySelect = (categoryName: string) => {
-    setFormData(prev => ({ ...prev, category: categoryName }));
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Transaction</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Edit Expense</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
 
         {error && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {success}
           </div>
         )}
 
@@ -147,36 +159,6 @@ const AddExpense: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type *
-            </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="type"
-                  value="expense"
-                  checked={formData.type === 'expense'}
-                  onChange={handleInputChange}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💸 Expense</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="type"
-                  value="income"
-                  checked={formData.type === 'income'}
-                  onChange={handleInputChange}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💰 Income</span>
-              </label>
-            </div>
           </div>
 
           <div>
@@ -210,6 +192,18 @@ const AddExpense: React.FC = () => {
           </div>
 
           <div>
+            <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
+              Vendor *
+            </label>
+            <VendorSelector
+              selectedVendorId={formData.vendor_id}
+              onVendorSelect={handleVendorSelect}
+              required
+              error={formData.vendor_id === 0 && error !== null}
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tags
             </label>
@@ -239,18 +233,6 @@ const AddExpense: React.FC = () => {
                 {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
               </p>
             )}
-          </div>
-
-          <div>
-            <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
-              Vendor *
-            </label>
-            <VendorSelector
-              selectedVendorId={formData.vendor_id}
-              onVendorSelect={handleVendorSelect}
-              required
-              error={formData.vendor_id === 0 && error !== null}
-            />
           </div>
 
           <div>
@@ -332,11 +314,11 @@ const AddExpense: React.FC = () => {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
+              {loading ? 'Updating...' : 'Update Expense'}
             </button>
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={onClose}
               className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
@@ -348,4 +330,4 @@ const AddExpense: React.FC = () => {
   );
 };
 
-export default AddExpense;
+export default EditExpenseModal;
