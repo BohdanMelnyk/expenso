@@ -12,7 +12,7 @@ const Statistics: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year'>('current_year');
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
@@ -50,6 +50,11 @@ const Statistics: React.FC = () => {
         break;
       case 'year':
         cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'current_year':
+        // Start of current year
+        cutoffDate.setFullYear(now.getFullYear(), 0, 1);
+        cutoffDate.setHours(0, 0, 0, 0);
         break;
     }
 
@@ -427,6 +432,12 @@ const Statistics: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Expense Statistics</h2>
           <div className="flex space-x-2">
+            <button
+              onClick={() => setSelectedPeriod('current_year')}
+              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'current_year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              Current Year
+            </button>
             <button
               onClick={() => setSelectedPeriod('month')}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
