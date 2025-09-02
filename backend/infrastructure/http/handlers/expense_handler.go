@@ -869,6 +869,69 @@ func (h *ExpenseHandler) GetActualExpenses(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetExpensesByCategory godoc
+// @Summary Get expenses by category
+// @Description Get expenses filtered by category and optional date range, sorted by amount (highest first)
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param category query string true "Category name to filter by"
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/by-category [get]
+func (h *ExpenseHandler) GetExpensesByCategory(c *gin.Context) {
+	// Parse required category parameter
+	category := c.Query("category")
+	if category == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category parameter is required"})
+		return
+	}
+
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			return
+		}
+		endDate = &parsed
+	}
+
+	// Execute use case
+	expenses, err := h.expenseInteractor.GetExpensesByCategoryAndDateRange(category, startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses by category"})
+		return
+	}
+
+	// Convert domain entities to DTOs
+	responseDTO := make([]dto.ExpenseResponseDTO, len(expenses))
+	for i, exp := range expenses {
+		responseDTO[i] = h.expenseToDTO(exp)
+	}
+
+	c.JSON(http.StatusOK, responseDTO)
+}
+
 // GetEarnings godoc
 // @Summary Get earnings (salary entries)
 // @Description Get salary entries (earnings) for a date range

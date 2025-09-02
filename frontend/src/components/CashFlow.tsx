@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingDown, TrendingUp, PieChart, DollarSign, Wallet } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, PieChart, DollarSign, Wallet, CreditCard, Banknote } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 
@@ -103,12 +103,32 @@ const CashFlow: React.FC = () => {
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const balance = totalEarnings - totalExpenses;
     
+    // Payment method breakdown
+    const cardExpenses = expenses.filter(expense => expense.paid_by_card);
+    const cashExpenses = expenses.filter(expense => !expense.paid_by_card);
+    const cardAmount = cardExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const cashAmount = cashExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Calculate savings rate (percentage of income saved)
+    const savingsRate = totalEarnings > 0 ? Math.max(0, (balance / totalEarnings) * 100) : 0;
+    
     return {
       totalEarnings,
       totalExpenses,
       balance,
       earningsCount: incomes.length,
-      expensesCount: expenses.length
+      expensesCount: expenses.length,
+      cardExpenses: {
+        count: cardExpenses.length,
+        amount: cardAmount,
+        percentage: totalExpenses > 0 ? (cardAmount / totalExpenses) * 100 : 0
+      },
+      cashExpenses: {
+        count: cashExpenses.length,
+        amount: cashAmount,
+        percentage: totalExpenses > 0 ? (cashAmount / totalExpenses) * 100 : 0
+      },
+      savingsRate
     };
   };
 
@@ -234,7 +254,7 @@ const CashFlow: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center">
               <TrendingUp className="w-6 h-6 text-green-600 mr-2" />
@@ -280,6 +300,22 @@ const CashFlow: React.FC = () => {
             </div>
           </div>
           
+          {/* Savings Rate Card */}
+          {totals.savingsRate > 0 && (
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="flex items-center">
+                <TrendingUp className="w-6 h-6 text-yellow-600 mr-2" />
+                <div>
+                  <h3 className="text-sm font-semibold text-yellow-900">Savings Rate</h3>
+                  <p className="text-xl font-bold text-yellow-600">
+                    {totals.savingsRate.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-yellow-700">of income saved</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center">
               <PieChart className="w-6 h-6 text-blue-600 mr-2" />
@@ -307,6 +343,213 @@ const CashFlow: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Payment Method Analytics */}
+      {expenses.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Payment Method Analytics - {getTimeFrameLabel(selectedTimeFrame)}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card Payments */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <CreditCard className="w-6 h-6 text-blue-600 mr-2" />
+                  <h4 className="font-semibold text-blue-900">Card Payments</h4>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-blue-600">
+                    {formatAmount(totals.cardExpenses.amount)}
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    {totals.cardExpenses.percentage.toFixed(1)}% of expenses
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-blue-700">Transactions:</span>
+                <span className="font-medium text-blue-800">{totals.cardExpenses.count}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm mt-1">
+                <span className="text-blue-700">Average per transaction:</span>
+                <span className="font-medium text-blue-800">
+                  {totals.cardExpenses.count > 0 
+                    ? formatAmount(totals.cardExpenses.amount / totals.cardExpenses.count)
+                    : formatAmount(0)
+                  }
+                </span>
+              </div>
+            </div>
+
+            {/* Cash Payments */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Banknote className="w-6 h-6 text-green-600 mr-2" />
+                  <h4 className="font-semibold text-green-900">Cash Payments</h4>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-600">
+                    {formatAmount(totals.cashExpenses.amount)}
+                  </p>
+                  <p className="text-sm text-green-700">
+                    {totals.cashExpenses.percentage.toFixed(1)}% of expenses
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-green-700">Transactions:</span>
+                <span className="font-medium text-green-800">{totals.cashExpenses.count}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm mt-1">
+                <span className="text-green-700">Average per transaction:</span>
+                <span className="font-medium text-green-800">
+                  {totals.cashExpenses.count > 0 
+                    ? formatAmount(totals.cashExpenses.amount / totals.cashExpenses.count)
+                    : formatAmount(0)
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Method Summary */}
+          <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-gray-900">Payment Preferences:</span>
+              <div className="text-right">
+                {totals.cardExpenses.amount >= totals.cashExpenses.amount ? (
+                  <div className="flex items-center text-blue-600">
+                    <CreditCard className="w-4 h-4 mr-1" />
+                    <span className="text-sm font-medium">Primarily Card User</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center text-green-600">
+                    <Banknote className="w-4 h-4 mr-1" />
+                    <span className="text-sm font-medium">Primarily Cash User</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Flow Trends & Insights */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Cash Flow Insights - {getTimeFrameLabel(selectedTimeFrame)}
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Cash Flow Health */}
+          <div className={`p-4 rounded-lg border-2 ${
+            totals.balance > 0 
+              ? 'bg-green-50 border-green-200' 
+              : totals.balance === 0 
+              ? 'bg-yellow-50 border-yellow-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <h4 className={`font-semibold mb-2 ${
+              totals.balance > 0 ? 'text-green-900' : totals.balance === 0 ? 'text-yellow-900' : 'text-red-900'
+            }`}>
+              Cash Flow Health
+            </h4>
+            <div className={`flex items-center ${
+              totals.balance > 0 ? 'text-green-600' : totals.balance === 0 ? 'text-yellow-600' : 'text-red-600'
+            }`}>
+              {totals.balance > 0 ? (
+                <TrendingUp className="w-5 h-5 mr-2" />
+              ) : (
+                <TrendingDown className="w-5 h-5 mr-2" />
+              )}
+              <span className="text-sm font-medium">
+                {totals.balance > 0 
+                  ? 'Positive - Building Wealth' 
+                  : totals.balance === 0 
+                  ? 'Balanced - Breaking Even' 
+                  : 'Negative - Spending More Than Earning'
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Expense-to-Income Ratio */}
+          <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-lg">
+            <h4 className="font-semibold text-blue-900 mb-2">Expense Ratio</h4>
+            <div className="flex items-center text-blue-600">
+              <PieChart className="w-5 h-5 mr-2" />
+              <span className="text-sm font-medium">
+                {totals.totalEarnings > 0 
+                  ? `${((totals.totalExpenses / totals.totalEarnings) * 100).toFixed(1)}% of income spent`
+                  : 'No income data'
+                }
+              </span>
+            </div>
+            <p className="text-xs text-blue-700 mt-1">
+              {totals.totalEarnings > 0 && (totals.totalExpenses / totals.totalEarnings) > 0.8 
+                ? 'High spending ratio - consider budgeting'
+                : totals.totalEarnings > 0 && (totals.totalExpenses / totals.totalEarnings) < 0.5
+                ? 'Conservative spending - great saving potential'
+                : 'Moderate spending pattern'
+              }
+            </p>
+          </div>
+
+          {/* Average Transaction Analysis */}
+          <div className="bg-purple-50 border-2 border-purple-200 p-4 rounded-lg">
+            <h4 className="font-semibold text-purple-900 mb-2">Spending Pattern</h4>
+            <div className="flex items-center text-purple-600">
+              <DollarSign className="w-5 h-5 mr-2" />
+              <span className="text-sm font-medium">
+                {expenses.length > 0 
+                  ? `${formatAmount(totals.totalExpenses / expenses.length)} per transaction`
+                  : 'No expense data'
+                }
+              </span>
+            </div>
+            <p className="text-xs text-purple-700 mt-1">
+              {expenses.length > 0 && (totals.totalExpenses / expenses.length) > 100 
+                ? 'High-value transactions - bulk purchases'
+                : expenses.length > 0 && (totals.totalExpenses / expenses.length) < 25
+                ? 'Small frequent purchases'
+                : 'Mixed transaction sizes'
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Financial Health Tips */}
+        {totals.totalEarnings > 0 && (
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-gray-200 rounded-lg">
+            <h4 className="font-semibold text-gray-900 mb-2">💡 Financial Health Tips</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                {totals.savingsRate > 20 ? (
+                  <p className="text-green-700">✓ Excellent savings rate! Consider investment opportunities.</p>
+                ) : totals.savingsRate > 10 ? (
+                  <p className="text-yellow-700">⚠ Good savings rate. Aim for 20% for optimal financial health.</p>
+                ) : totals.balance > 0 ? (
+                  <p className="text-orange-700">⚠ Low savings rate. Try to reduce expenses or increase income.</p>
+                ) : (
+                  <p className="text-red-700">🚨 Negative cash flow. Review expenses and create a budget plan.</p>
+                )}
+              </div>
+              <div>
+                {totals.cardExpenses.percentage > 70 ? (
+                  <p className="text-blue-700">💳 High card usage - great for tracking and rewards!</p>
+                ) : totals.cashExpenses.percentage > 70 ? (
+                  <p className="text-green-700">💵 High cash usage - harder to track but good budgeting control.</p>
+                ) : (
+                  <p className="text-gray-700">⚖ Balanced payment methods - good financial flexibility.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Earnings Breakdown */}

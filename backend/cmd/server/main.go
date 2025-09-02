@@ -120,6 +120,7 @@ func main() {
 	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
+	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
 
 	// Income routes
 	api.GET("/incomes", incomeHandler.GetIncomes)

@@ -13,5 +13,6 @@ type ExpenseRepository interface {
 	Update(expense *entities.Expense) error
 	Delete(id entities.ExpenseID) error
 	FindByCategory(category entities.Category) ([]*entities.Expense, error)
+	FindByCategoryAndDateRange(category entities.Category, startDate, endDate *time.Time) ([]*entities.Expense, error)
 	FindByVendor(vendorID entities.VendorID) ([]*entities.Expense, error)
 }
