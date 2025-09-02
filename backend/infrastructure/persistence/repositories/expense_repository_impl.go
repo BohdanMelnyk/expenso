@@ -371,9 +371,65 @@ func (r *ExpenseRepositoryImpl) FindByCategoryAndDateRange(category entities.Cat
 }
 
 func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*entities.Expense, error) {
-	// Implementation similar to FindAll but with WHERE clause for vendor_id
-	// Left as exercise - not needed for basic CRUD
-	return nil, fmt.Errorf("not implemented")
+	query := `
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		       v.id, v.name, v.type, v.created_at, v.updated_at
+		FROM expenses e
+		LEFT JOIN vendors v ON e.vendor_id = v.id
+		WHERE e.vendor_id = $1
+		ORDER BY e.date DESC
+	`
+
+	rows, err := r.db.Query(query, int(vendorID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find expenses by vendor: %w", err)
+	}
+	defer rows.Close()
+
+	var expenses []*entities.Expense
+	for rows.Next() {
+		var dbo models.ExpenseDBO
+		var vID *int
+		var vName, vType *string
+		var vCreatedAt, vUpdatedAt *string
+
+		err := rows.Scan(
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan expense: %w", err)
+		}
+
+		// Convert DBO to domain entity
+		expense, err := dbo.ToDomainEntity()
+		if err != nil {
+			return nil, err
+		}
+
+		// Add vendor if present
+		if vID != nil && vName != nil && vType != nil {
+			vendorDBO := &models.VendorDBO{
+				ID:   *vID,
+				Name: *vName,
+				Type: *vType,
+			}
+			vendor := vendorDBO.ToDomainEntity()
+			expense.AssignVendor(vendor)
+		}
+
+		// Load tags for this expense
+		if r.tagRepo != nil {
+			tags, err := r.tagRepo.GetTagsByExpenseID(expense.ID())
+			if err == nil && len(tags) > 0 {
+				expense.SetTags(tags)
+			}
+		}
+
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
 }
 
 func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
