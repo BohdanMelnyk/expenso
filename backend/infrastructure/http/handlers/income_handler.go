@@ -77,7 +77,7 @@ func (h *IncomeHandler) GetIncomes(c *gin.Context) {
 	}
 
 	// Convert to DTOs
-	var incomeDTOs []dto.IncomeResponseDTO
+	incomeDTOs := make([]dto.IncomeResponseDTO, 0)
 	for _, income := range incomes {
 		incomeDTO := dto.ToIncomeResponseDTO(income)
 		incomeDTOs = append(incomeDTOs, incomeDTO)
@@ -113,11 +113,11 @@ func (h *IncomeHandler) CreateIncome(c *gin.Context) {
 
 	// Create command
 	cmd := income.CreateIncomeCommand{
-		Amount:   req.Amount,
-		Date:     date,
-		Source:   req.Source,
-		Comment:  req.Comment,
-		AddedBy:  req.AddedBy,
+		Amount:  req.Amount,
+		Date:    date,
+		Source:  req.Source,
+		Comment: req.Comment,
+		AddedBy: req.AddedBy,
 	}
 
 	// Set vendor ID if provided
@@ -314,7 +314,7 @@ func (h *IncomeHandler) GetIncomesBySource(c *gin.Context) {
 	}
 
 	// Convert to DTOs
-	var incomeDTOs []dto.IncomeResponseDTO
+	incomeDTOs := make([]dto.IncomeResponseDTO, 0)
 	for _, income := range incomes {
 		incomeDTO := dto.ToIncomeResponseDTO(income)
 		incomeDTOs = append(incomeDTOs, incomeDTO)

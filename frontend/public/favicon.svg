@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#10B981" stroke="#059669" stroke-width="2"/>
+  
+  <!-- Dollar sign -->
+  <path d="M16 6V8M16 24V26M12.5 10.5C13.3284 9.67157 14.6569 9.67157 15.4853 10.5C16.3137 11.3284 16.3137 12.6569 15.4853 13.4853L11 17.9706M20.5 21.5C19.6716 22.3284 18.3431 22.3284 17.5147 21.5C16.6863 20.6716 16.6863 19.3431 17.5147 18.5147L22 14.0294" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Coin stack effect -->
+  <ellipse cx="16" cy="27" rx="4" ry="1" fill="#047857" opacity="0.3"/>
+  <ellipse cx="16" cy="26" rx="3" ry="0.8" fill="#047857" opacity="0.5"/>
+</svg>

@@ -209,6 +209,16 @@ func (i *ExpenseInteractor) GetExpensesByDateRange(startDate, endDate *time.Time
 	return i.expenseRepo.FindByDateRange(startDate, endDate)
 }
 
+func (i *ExpenseInteractor) GetExpensesByCategoryAndDateRange(category string, startDate, endDate *time.Time) ([]*entities.Expense, error) {
+	// Create category entity
+	categoryEntity, err := entities.NewCategory(category)
+	if err != nil {
+		return nil, err
+	}
+
+	return i.expenseRepo.FindByCategoryAndDateRange(categoryEntity, startDate, endDate)
+}
+
 // GetActualExpensesByDateRange returns all expenses (salary entries have been moved to income table)
 func (i *ExpenseInteractor) GetActualExpensesByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
 	// Since salary entries have been migrated to the income table, all remaining expenses are actual expenses

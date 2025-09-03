@@ -1,0 +1,97 @@
+/* Mobile-specific styles for better touch interactions */
+
+/* Improve touch targets for mobile */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target size of 44px */
+  button, 
+  a, 
+  input[type="button"], 
+  input[type="submit"], 
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing for mobile forms */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  /* Improve modal appearance on mobile */
+  .modal-content {
+    margin: 1rem;
+    border-radius: 8px;
+  }
+  
+  /* Better table scrolling on mobile */
+  .table-mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent zoom on input focus for iOS */
+  input, 
+  select, 
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Custom scrollbar for better mobile experience */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Mobile card hover effects */
+@media (hover: none) and (pointer: coarse) {
+  .mobile-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Safe area for devices with notches */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Better mobile spacing */
+@media (max-width: 640px) {
+  .container-mobile {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .gap-mobile {
+    gap: 0.75rem;
+  }
+  
+  .text-mobile-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+}
