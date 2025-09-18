@@ -5,6 +5,7 @@ import { Download, Share2 } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from './Toast';
+import SkeletonLoader from './SkeletonLoader';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -14,7 +15,6 @@ const Statistics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year'>('current_year');
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
-  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
   const barChartRef = useRef<any>(null);
 
@@ -236,16 +236,6 @@ const Statistics: React.FC = () => {
     }
   };
 
-  const handleBarMouseEnter = (event: any) => {
-    if (event && event.payload) {
-      const index = monthlyData.findIndex(item => item.month === event.payload.month);
-      setActiveBarIndex(index);
-    }
-  };
-
-  const handleBarMouseLeave = () => {
-    setActiveBarIndex(null);
-  };
 
   // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -411,8 +401,18 @@ const Statistics: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="animate-pulse bg-gray-200 rounded h-8 w-40"></div>
+          <div className="animate-pulse bg-gray-200 rounded h-10 w-32"></div>
+        </div>
+        
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonLoader type="chart" />
+          <SkeletonLoader type="chart" />
+        </div>
       </div>
     );
   }

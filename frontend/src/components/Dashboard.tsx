@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Trash2, Calendar, Edit, Download, Upload } from 'lucide-react';
+import { Trash2, Calendar, Edit, Download, Upload, FileText } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import EditExpenseModal from './EditExpenseModal';
 import ImportExpenseModal from './ImportExpenseModal';
+import SkeletonLoader from './SkeletonLoader';
+import SearchInput, { SearchFilters } from './SearchInput';
+import { exportToPDF } from '../utils/pdfExport';
 
 type DateRange = 'current_month' | 'this_year' | 'overall';
 
@@ -18,16 +21,15 @@ const Dashboard: React.FC = () => {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({ paymentMethod: 'all' });
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   
   // Check for URL parameters for month filtering
   const urlMonth = searchParams.get('month');
   const urlYear = searchParams.get('year');
   const urlStart = searchParams.get('start');
   const urlEnd = searchParams.get('end');
-
-  useEffect(() => {
-    fetchExpenses();
-  }, [selectedRange, urlStart, urlEnd]);
 
   const getDateRangeParams = (range: DateRange): { startDate?: string; endDate?: string } => {
     // Check if URL parameters override the range selection
@@ -61,25 +63,98 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const { startDate, endDate } = getDateRangeParams(selectedRange);
       const response = await expenseAPI.getActualExpenses(startDate, endDate);
       setExpenses(response.data);
+      setFilteredExpenses(response.data);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to fetch expenses'));
       console.error('Error fetching expenses:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRange, urlStart, urlEnd]);
+
+  // Filter and search functionality
+  const handleSearch = useCallback((query: string, filters: SearchFilters) => {
+    setSearchQuery(query);
+    setSearchFilters(filters);
+
+    let filtered = [...expenses];
+
+    // Text search
+    if (query.trim()) {
+      const searchTerm = query.toLowerCase();
+      filtered = filtered.filter(expense => 
+        expense.comment.toLowerCase().includes(searchTerm) ||
+        expense.vendor?.name.toLowerCase().includes(searchTerm) ||
+        expense.amount.toString().includes(searchTerm)
+      );
+    }
+
+    // Filter by category (assuming category is stored in comment or tags)
+    if (filters.category) {
+      const categoryTerm = filters.category.toLowerCase();
+      filtered = filtered.filter(expense => 
+        expense.comment.toLowerCase().includes(categoryTerm) ||
+        expense.tags?.some(tag => tag.name.toLowerCase().includes(categoryTerm))
+      );
+    }
+
+    // Filter by vendor
+    if (filters.vendor) {
+      const vendorTerm = filters.vendor.toLowerCase();
+      filtered = filtered.filter(expense => 
+        expense.vendor?.name.toLowerCase().includes(vendorTerm)
+      );
+    }
+
+    // Filter by amount range
+    if (filters.minAmount !== undefined && filters.minAmount > 0) {
+      filtered = filtered.filter(expense => expense.amount >= filters.minAmount!);
+    }
+    if (filters.maxAmount !== undefined && filters.maxAmount > 0) {
+      filtered = filtered.filter(expense => expense.amount <= filters.maxAmount!);
+    }
+
+    // Filter by payment method
+    if (filters.paymentMethod && filters.paymentMethod !== 'all') {
+      filtered = filtered.filter(expense => {
+        if (filters.paymentMethod === 'card') return expense.paid_by_card;
+        if (filters.paymentMethod === 'cash') return !expense.paid_by_card;
+        return true;
+      });
+    }
+
+    // Filter by date range
+    if (filters.dateFrom) {
+      filtered = filtered.filter(expense => expense.date >= filters.dateFrom!);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(expense => expense.date <= filters.dateTo!);
+    }
+
+    setFilteredExpenses(filtered);
+  }, [expenses]);
+
+  // Update filtered expenses when main expenses change
+  useEffect(() => {
+    handleSearch(searchQuery, searchFilters);
+  }, [expenses, handleSearch, searchQuery, searchFilters]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
       try {
         await expenseAPI.deleteExpense(id);
         setExpenses(expenses.filter(expense => expense.id !== id));
+        setFilteredExpenses(filteredExpenses.filter(expense => expense.id !== id));
       } catch (err: any) {
         setError(getErrorMessage(err, 'Failed to delete expense'));
         console.error('Error deleting expense:', err);
@@ -142,19 +217,52 @@ const Dashboard: React.FC = () => {
     fetchExpenses();
   };
 
+  const handleExportPDF = async () => {
+    try {
+      // For now, we'll export current expenses and fetch incomes if needed
+      // You may need to add an incomes API call here
+      const exportData = {
+        expenses: expenses.map(expense => ({
+          ...expense,
+          tags: expense.tags?.map(tag => tag.name)
+        })),
+        incomes: [], // Add income data if available
+        period: getRangeLabel(selectedRange)
+      };
+      
+      exportToPDF(exportData);
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to export PDF'));
+      console.error('Error exporting PDF:', err);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
 
 
   const getTotalExpenses = () => {
-    return expenses.reduce((total, expense) => total + expense.amount, 0);
+    return filteredExpenses.reduce((total, expense) => total + expense.amount, 0);
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="animate-pulse bg-gray-200 rounded h-8 w-48"></div>
+          <div className="flex gap-2">
+            <div className="animate-pulse bg-gray-200 rounded h-10 w-24"></div>
+            <div className="animate-pulse bg-gray-200 rounded h-10 w-24"></div>
+          </div>
+        </div>
+        
+        {/* Stats skeleton */}
+        <SkeletonLoader type="stats" />
+        
+        {/* Table skeleton */}
+        <SkeletonLoader type="table" />
       </div>
     );
   }
@@ -236,7 +344,17 @@ const Dashboard: React.FC = () => {
               >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">Export CSV</span>
-                <span className="sm:hidden">Export</span>
+                <span className="sm:hidden">CSV</span>
+              </button>
+              
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center space-x-2 bg-red-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm"
+                title="Export expenses to PDF"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Export PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             </div>
           </div>
@@ -249,13 +367,13 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-blue-900">Number of Expenses</h3>
-            <p className="text-2xl font-bold text-blue-600">{expenses.length}</p>
+            <p className="text-2xl font-bold text-blue-600">{filteredExpenses.length}</p>
             <p className="text-xs text-blue-700 mt-1">Spending transactions</p>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-purple-900">Average Expense</h3>
             <p className="text-2xl font-bold text-purple-600">
-              {expenses.length > 0 ? formatAmount(getTotalExpenses() / expenses.length) : '$0.00'}
+              {filteredExpenses.length > 0 ? formatAmount(getTotalExpenses() / filteredExpenses.length) : '$0.00'}
             </p>
             <p className="text-xs text-purple-700 mt-1">Per transaction</p>
           </div>
@@ -264,12 +382,24 @@ const Dashboard: React.FC = () => {
 
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Actual Expenses - {getRangeLabel(selectedRange)}
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Showing spending transactions only (salary income excluded)
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">
+                Actual Expenses - {getRangeLabel(selectedRange)}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Showing spending transactions only (salary income excluded)
+              </p>
+            </div>
+            <div className="sm:w-96">
+              <SearchInput
+                onSearch={handleSearch}
+                placeholder="Search expenses..."
+                className="w-full"
+                showFilters={true}
+              />
+            </div>
+          </div>
         </div>
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
@@ -297,14 +427,18 @@ const Dashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {expenses.length === 0 ? (
+              {filteredExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    No expenses found. <a href="/add" className="text-blue-600 hover:text-blue-800">Add your first expense</a>
+                    {expenses.length === 0 ? (
+                      <>No expenses found. <a href="/add" className="text-blue-600 hover:text-blue-800">Add your first expense</a></>
+                    ) : (
+                      'No expenses match your search criteria.'
+                    )}
                   </td>
                 </tr>
               ) : (
-                expenses.map((expense) => (
+                filteredExpenses.map((expense) => (
                   <tr 
                     key={expense.id} 
                     className="hover:bg-gray-50 cursor-pointer"
@@ -368,15 +502,21 @@ const Dashboard: React.FC = () => {
 
         {/* Mobile Card View */}
         <div className="md:hidden space-y-3 custom-scroll">
-          {expenses.length === 0 ? (
+          {filteredExpenses.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <p>No expenses found.</p>
-              <a href="/add" className="text-blue-600 hover:text-blue-800 font-medium">
-                Add your first expense
-              </a>
+              {expenses.length === 0 ? (
+                <>
+                  <p>No expenses found.</p>
+                  <a href="/add" className="text-blue-600 hover:text-blue-800 font-medium">
+                    Add your first expense
+                  </a>
+                </>
+              ) : (
+                <p>No expenses match your search criteria.</p>
+              )}
             </div>
           ) : (
-            expenses.map((expense) => (
+            filteredExpenses.map((expense) => (
               <div
                 key={expense.id}
                 className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer mobile-card"

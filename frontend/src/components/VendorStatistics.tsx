@@ -301,8 +301,6 @@ const VendorStatistics: React.FC = () => {
   // Payment method analysis
   const cardExpenses = expenses.filter(exp => exp.paid_by_card).length;
   const cashExpenses = expenses.filter(exp => !exp.paid_by_card).length;
-  const cardAmount = expenses.filter(exp => exp.paid_by_card).reduce((sum, exp) => sum + exp.amount, 0);
-  const cashAmount = expenses.filter(exp => !exp.paid_by_card).reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
     <div className="space-y-6">

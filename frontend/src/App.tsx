@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { PlusCircle, BarChart3, Home, TrendingDown, Wallet, Menu, X } from 'lucide-react';
+import { ThemeProvider } from './contexts/ThemeContext';
+import ThemeToggle from './components/ThemeToggle';
 import Dashboard from './components/Dashboard';
 import AddExpense from './components/AddExpense';
 import Statistics from './components/Statistics';
@@ -19,9 +21,9 @@ function Navigation() {
   const getNavLinkClass = ({ isActive }: { isActive: boolean }) => {
     const baseClass = "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors";
     if (isActive) {
-      return `${baseClass} bg-blue-100 text-blue-700 border border-blue-200`;
+      return `${baseClass} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700`;
     }
-    return `${baseClass} text-gray-700 hover:text-gray-900 hover:bg-gray-100`;
+    return `${baseClass} text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800`;
   };
 
   const getSpecialNavLinkClass = (basePath: string) => ({ isActive }: { isActive: boolean }) => {
@@ -29,7 +31,7 @@ function Navigation() {
     // Check if we're on the base path or any sub-page
     let isOnRelatedPage = location.pathname.startsWith(basePath);
     
-    // Special cases for related pages
+    // Special cases for related pages. E.g., Vendor stats should highlight Balance tab.
     if (basePath === '/balance' && location.pathname.startsWith('/vendor/')) {
       isOnRelatedPage = true; // Vendor stats should highlight Balance tab
     }
@@ -38,9 +40,9 @@ function Navigation() {
     }
     
     if (isActive || isOnRelatedPage) {
-      return `${baseClass} bg-blue-100 text-blue-700 border border-blue-200`;
+      return `${baseClass} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700`;
     }
-    return `${baseClass} text-gray-700 hover:text-gray-900 hover:bg-gray-100`;
+    return `${baseClass} text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800`;
   };
 
   const navigationItems = [
@@ -60,12 +62,12 @@ function Navigation() {
   };
 
   return (
-    <nav className="bg-white shadow-lg">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-xl font-bold text-gray-900">Expenso</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Expenso</h1>
           </div>
 
           {/* Desktop Navigation */}
@@ -81,13 +83,15 @@ function Navigation() {
                 <span className="hidden lg:inline">{label}</span>
               </NavLink>
             ))}
+            <ThemeToggle />
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile menu button and theme toggle */}
+          <div className="md:hidden flex items-center space-x-2">
+            <ThemeToggle />
             <button
               onClick={toggleMobileMenu}
-              className="text-gray-700 hover:text-gray-900 focus:outline-none focus:text-gray-900 transition duration-150 ease-in-out"
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:text-gray-900 dark:focus:text-gray-100 transition duration-150 ease-in-out"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
@@ -101,7 +105,7 @@ function Navigation() {
 
         {/* Mobile Navigation Menu */}
         <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700">
             {navigationItems.map(({ to, icon: Icon, label, end, special }) => (
               <NavLink
                 key={to}
@@ -121,9 +125,9 @@ function Navigation() {
                   }
                   
                   if (isActive || isOnRelatedPage) {
-                    return `${baseClass} bg-blue-100 text-blue-700 border border-blue-200`;
+                    return `${baseClass} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700`;
                   }
-                  return `${baseClass} text-gray-700 hover:text-gray-900 hover:bg-gray-100`;
+                  return `${baseClass} text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800`;
                 }}
                 end={end}
                 onClick={closeMobileMenu}
@@ -141,26 +145,28 @@ function Navigation() {
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
+    <ThemeProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+          <Navigation />
 
-        <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/add" element={<AddExpense />} />
-            <Route path="/balance" element={<BalanceDashboard />} />
-            <Route path="/cash-flow" element={<CashFlow />} />
-            <Route path="/statistics" element={<Statistics />} />
-            <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
-            <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
-            <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
-            <Route path="/expenses/:id" element={<ExpenseOverview />} />
-            <Route path="/incomes/:id" element={<IncomeOverview />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+          <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/add" element={<AddExpense />} />
+              <Route path="/balance" element={<BalanceDashboard />} />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/statistics" element={<Statistics />} />
+              <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
+              <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
+              <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
+              <Route path="/expenses/:id" element={<ExpenseOverview />} />
+              <Route path="/incomes/:id" element={<IncomeOverview />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ThemeProvider>
   );
 }
 

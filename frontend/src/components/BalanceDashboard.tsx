@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { expenseAPI, incomeAPI, Expense as APIExpense, Income } from '../api/client';
 
@@ -23,7 +23,7 @@ export default function BalanceDashboard() {
     endDate: new Date().toISOString().split('T')[0] // Today
   });
 
-  const fetchBalanceData = async () => {
+  const fetchBalanceData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -43,7 +43,7 @@ export default function BalanceDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
 
   // Calculate totals from actual data instead of backend summary
   const calculateTotals = () => {
@@ -62,7 +62,7 @@ export default function BalanceDashboard() {
 
   useEffect(() => {
     fetchBalanceData();
-  }, []);
+  }, [fetchBalanceData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -108,9 +108,6 @@ export default function BalanceDashboard() {
     });
   };
 
-  const handleVendorClick = (vendorId: number) => {
-    navigate(`/vendor/${vendorId}`);
-  };
 
   if (loading) {
     return (
@@ -350,14 +347,17 @@ export default function BalanceDashboard() {
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Recent Expenses ({actualExpenses.length})
+                Recent Expenses - Highest First ({actualExpenses.length})
               </h3>
               <div className="max-h-96 overflow-y-auto">
                 {actualExpenses.length === 0 ? (
                   <p className="text-gray-500 text-center py-4">No expenses found for this period</p>
                 ) : (
                   <div className="space-y-3">
-                    {actualExpenses.slice(0, 10).map((expense) => (
+                    {actualExpenses
+                      .sort((a, b) => b.amount - a.amount)
+                      .slice(0, 10)
+                      .map((expense) => (
                       <button
                         key={expense.id}
                         onClick={() => navigate(`/expenses/${expense.id}`)}

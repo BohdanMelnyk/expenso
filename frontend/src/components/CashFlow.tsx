@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, TrendingDown, TrendingUp, PieChart, DollarSign, Wallet, CreditCard, Banknote } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -26,10 +26,6 @@ const CashFlow: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('current_month');
-
-  useEffect(() => {
-    fetchExpenses();
-  }, [selectedTimeFrame]);
 
   const getDateRangeParams = (timeFrame: TimeFrame): { startDate?: string; endDate?: string } => {
     const now = new Date();
@@ -64,7 +60,7 @@ const CashFlow: React.FC = () => {
     }
   };
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const { startDate, endDate } = getDateRangeParams(selectedTimeFrame);
@@ -85,7 +81,11 @@ const CashFlow: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTimeFrame]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
 
   const getTimeFrameLabel = (timeFrame: TimeFrame): string => {
     switch (timeFrame) {

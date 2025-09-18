@@ -1,5 +1,20 @@
 /* Mobile-specific styles for better touch interactions */
 
+/* Dark mode responsive improvements */
+@media (prefers-color-scheme: dark) {
+  .custom-scroll {
+    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+  }
+  
+  .custom-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.5);
+  }
+  
+  .custom-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(75, 85, 99, 0.7);
+  }
+}
+
 /* Improve touch targets for mobile */
 @media (max-width: 768px) {
   /* Ensure minimum touch target size of 44px */
@@ -93,5 +108,64 @@
   .text-mobile-lg {
     font-size: 1.125rem;
     line-height: 1.75rem;
+  }
+  
+  /* Enhanced mobile table experience */
+  .mobile-table-wrapper {
+    background: white;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .mobile-table-header {
+    background: #f8fafc;
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mobile-card-list {
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improved mobile search */
+  .mobile-search {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem;
+  }
+  
+  /* Better mobile grid */
+  .mobile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+  }
+}
+
+/* Dark mode mobile enhancements */
+@media (max-width: 640px) {
+  .dark .mobile-table-wrapper {
+    background: #1f2937;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark .mobile-table-header {
+    background: #374151;
+    border-bottom-color: #4b5563;
+  }
+  
+  .dark .mobile-search {
+    background: #1f2937;
+    border-bottom-color: #4b5563;
   }
 }

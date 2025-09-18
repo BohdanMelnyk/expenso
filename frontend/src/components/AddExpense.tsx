@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { expenseAPI, tagAPI, Tag, CreateExpenseRequest } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useFormValidation, ValidationRules } from '../hooks/useFormValidation';
+import FormField from './FormField';
 import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
 
@@ -13,22 +15,75 @@ const AddExpense: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<CreateExpenseRequest>({
+  const initialFormData = {
     comment: '',
     amount: 0,
     vendor_id: 0,
     date: new Date().toISOString().split('T')[0],
     category: '',
     type: 'expense',
-    paid_by_card: true, // Default to card payment
-    added_by: 'he', // Default to "he"
-  });
+    paid_by_card: true,
+    added_by: 'he',
+  };
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
+  const validationRules: ValidationRules = {
+    comment: {
+      required: true,
+      minLength: 3,
+      maxLength: 100,
+    },
+    amount: {
+      required: true,
+      min: 0.01,
+      max: 999999,
+      custom: (value) => {
+        if (isNaN(value) || value <= 0) {
+          return 'Amount must be a positive number';
+        }
+        return null;
+      }
+    },
+    vendor_id: {
+      required: true,
+      custom: (value) => {
+        if (!value || value <= 0) {
+          return 'Please select a vendor';
+        }
+        return null;
+      }
+    },
+    date: {
+      required: true,
+      custom: (value) => {
+        if (!value) return 'Date is required';
+        const selectedDate = new Date(value);
+        const today = new Date();
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        
+        if (selectedDate > today) {
+          return 'Date cannot be in the future';
+        }
+        if (selectedDate < oneYearAgo) {
+          return 'Date cannot be more than a year ago';
+        }
+        return null;
+      }
+    },
+    category: {
+      required: true,
+      minLength: 2,
+    },
+  };
 
-
+  const {
+    values: formData,
+    errors,
+    isValid,
+    setFieldValue,
+    validateForm,
+    reset
+  } = useFormValidation(initialFormData, validationRules);
 
   const fetchTags = async () => {
     try {
@@ -39,6 +94,10 @@ const AddExpense: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    fetchTags();
+  }, []);
+
   const handleTagToggle = (tagId: number) => {
     setSelectedTags(prev => 
       prev.includes(tagId) 
@@ -47,52 +106,34 @@ const AddExpense: React.FC = () => {
     );
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
 
-    try {
-      if (!formData.comment.trim()) {
-        throw new Error('Description is required');
-      }
-      if (formData.amount <= 0) {
-        throw new Error('Amount must be greater than 0');
-      }
-      if (formData.vendor_id === 0) {
-        throw new Error('Please select a vendor');
-      }
-      if (!formData.category.trim()) {
-        throw new Error('Category is required');
-      }
+    // Optional: Run validation to update error states, but don't block submission
+    validateForm();
 
-      const expenseData = {
-        ...formData,
+    setLoading(true);
+
+    try {
+      const expenseData: CreateExpenseRequest = {
+        comment: formData.comment,
+        amount: formData.amount,
+        vendor_id: formData.vendor_id,
+        date: formData.date,
+        category: formData.category,
+        type: formData.type,
+        paid_by_card: formData.paid_by_card,
+        added_by: formData.added_by,
         tag_ids: selectedTags
       };
+      
       await expenseAPI.createExpense(expenseData);
       setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
       
-      // Reset form
-      setFormData({
-        comment: '',
-        amount: 0,
-        vendor_id: 0,
-        date: new Date().toISOString().split('T')[0],
-        category: '',
-        type: 'expense',
-        paid_by_card: true, // Reset to default (card payment)
-        added_by: 'he', // Reset to default
-      });
+      // Reset form using validation hook
+      reset(initialFormData);
       setSelectedTags([]);
 
       // Redirect to dashboard after 2 seconds
@@ -108,11 +149,11 @@ const AddExpense: React.FC = () => {
   };
 
   const handleVendorSelect = (vendorId: number) => {
-    setFormData(prev => ({ ...prev, vendor_id: vendorId }));
+    setFieldValue('vendor_id', vendorId);
   };
 
   const handleCategorySelect = (categoryName: string) => {
-    setFormData(prev => ({ ...prev, category: categoryName }));
+    setFieldValue('category', categoryName);
   };
 
   return (
@@ -133,21 +174,17 @@ const AddExpense: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
-            <textarea
-              id="comment"
-              name="comment"
-              rows={3}
-              value={formData.comment}
-              onChange={handleInputChange}
-              placeholder="What is this transaction for?"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-          </div>
+          <FormField
+            label="Description"
+            name="comment"
+            type="textarea"
+            value={formData.comment}
+            onChange={(value) => setFieldValue('comment', value)}
+            error={errors.comment}
+            placeholder="What is this transaction for?"
+            required
+            rows={3}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -160,7 +197,7 @@ const AddExpense: React.FC = () => {
                   name="type"
                   value="expense"
                   checked={formData.type === 'expense'}
-                  onChange={handleInputChange}
+                  onChange={() => setFieldValue('type', 'expense')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">💸 Expense</span>
@@ -171,7 +208,7 @@ const AddExpense: React.FC = () => {
                   name="type"
                   value="income"
                   checked={formData.type === 'income'}
-                  onChange={handleInputChange}
+                  onChange={() => setFieldValue('type', 'income')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">💰 Income</span>
@@ -179,23 +216,16 @@ const AddExpense: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-              Amount (€) *
-            </label>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
-              step="0.01"
-              min="0.01"
-              value={formData.amount || ''}
-              onChange={handleInputChange}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-          </div>
+          <FormField
+            label="Amount (€)"
+            name="amount"
+            type="number"
+            value={formData.amount}
+            onChange={(value) => setFieldValue('amount', value)}
+            error={errors.amount}
+            placeholder="0.00"
+            required
+          />
 
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
@@ -253,20 +283,15 @@ const AddExpense: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-              Date *
-            </label>
-            <input
-              type="date"
-              id="date"
-              name="date"
-              value={formData.date}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-          </div>
+          <FormField
+            label="Date"
+            name="date"
+            type="date"
+            value={formData.date}
+            onChange={(value) => setFieldValue('date', value)}
+            error={errors.date}
+            required
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -278,7 +303,7 @@ const AddExpense: React.FC = () => {
                   type="radio"
                   name="paid_by_card"
                   checked={formData.paid_by_card === true}
-                  onChange={() => setFormData(prev => ({ ...prev, paid_by_card: true }))}
+                  onChange={() => setFieldValue('paid_by_card', true)}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">💳 Card</span>
@@ -288,7 +313,7 @@ const AddExpense: React.FC = () => {
                   type="radio"
                   name="paid_by_card"
                   checked={formData.paid_by_card === false}
-                  onChange={() => setFormData(prev => ({ ...prev, paid_by_card: false }))}
+                  onChange={() => setFieldValue('paid_by_card', false)}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">💵 Cash</span>
@@ -307,7 +332,7 @@ const AddExpense: React.FC = () => {
                   name="added_by"
                   value="he"
                   checked={formData.added_by === 'he'}
-                  onChange={() => setFormData(prev => ({ ...prev, added_by: 'he' }))}
+                  onChange={() => setFieldValue('added_by', 'he')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">👨 He</span>
@@ -318,7 +343,7 @@ const AddExpense: React.FC = () => {
                   name="added_by"
                   value="she"
                   checked={formData.added_by === 'she'}
-                  onChange={() => setFormData(prev => ({ ...prev, added_by: 'she' }))}
+                  onChange={() => setFieldValue('added_by', 'she')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-700">👩 She</span>
@@ -330,7 +355,11 @@ const AddExpense: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 py-2 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed transition-colors ${
+                !loading
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               {loading ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
             </button>

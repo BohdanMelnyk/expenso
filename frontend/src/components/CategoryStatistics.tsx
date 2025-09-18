@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft, Calendar, TrendingDown, DollarSign } from 'lucide-react';
@@ -33,34 +33,6 @@ const CategoryStatistics: React.FC = () => {
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (category) {
-      fetchExpenses();
-    }
-  }, [category, selectedTimeFrame, customStartDate, customEndDate]);
-
-  const fetchExpenses = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { startDate, endDate } = getDateRangeParams(selectedTimeFrame);
-      const response = await expenseAPI.getExpenses(startDate, endDate);
-      
-      // Filter expenses by category (vendor type)
-      const filteredExpenses = response.data.filter(expense => 
-        expense.vendor?.type === category?.toLowerCase().replace(' ', '_')
-      );
-      
-      setExpenses(filteredExpenses);
-    } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to fetch category expenses'));
-      console.error('Error fetching category expenses:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getDateRangeParams = (timeFrame: TimeFrame): { startDate?: string; endDate?: string } => {
     if (timeFrame === 'custom') {
@@ -108,6 +80,34 @@ const CategoryStatistics: React.FC = () => {
       endDate
     };
   };
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { startDate, endDate } = getDateRangeParams(selectedTimeFrame);
+      const response = await expenseAPI.getExpenses(startDate, endDate);
+      
+      // Filter expenses by category (vendor type)
+      const filteredExpenses = response.data.filter(expense => 
+        expense.vendor?.type === category?.toLowerCase().replace(' ', '_')
+      );
+      
+      setExpenses(filteredExpenses);
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to fetch category expenses'));
+      console.error('Error fetching category expenses:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [category, selectedTimeFrame, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    if (category) {
+      fetchExpenses();
+    }
+  }, [category, fetchExpenses]);
 
   const getTimeSeriesData = (): DayData[] => {
     const dataMap = new Map<string, { amount: number; count: number }>();
