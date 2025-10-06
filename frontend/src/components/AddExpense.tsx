@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { expenseAPI, tagAPI, Tag, CreateExpenseRequest } from '../api/client';
+import { expenseAPI, tagAPI, Tag, CreateExpenseRequest, Expense } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import { useFormValidation, ValidationRules } from '../hooks/useFormValidation';
 import FormField from './FormField';
 import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
+import DuplicateWarning from './DuplicateWarning';
 
 const AddExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,10 @@ const AddExpense: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<Expense[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [pendingExpenseData, setPendingExpenseData] = useState<CreateExpenseRequest | null>(null);
 
   const initialFormData = {
     comment: '',
@@ -99,11 +104,43 @@ const AddExpense: React.FC = () => {
   }, []);
 
   const handleTagToggle = (tagId: number) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
+    setSelectedTags(prev =>
+      prev.includes(tagId)
         ? prev.filter(id => id !== tagId)
         : [...prev, tagId]
     );
+  };
+
+  const checkForDuplicates = async (amount: number, date: string): Promise<Expense[]> => {
+    try {
+      const response = await expenseAPI.checkDuplicates(amount, date, 5);
+      return response.data;
+    } catch (err) {
+      console.error('Error checking for duplicates:', err);
+      return [];
+    }
+  };
+
+  const createExpenseDirectly = async (expenseData: CreateExpenseRequest) => {
+    try {
+      await expenseAPI.createExpense(expenseData);
+      setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
+
+      // Reset form using validation hook
+      reset(initialFormData);
+      setSelectedTags([]);
+      setPendingExpenseData(null);
+      setDuplicates([]);
+      setShowDuplicateWarning(false);
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to add expense'));
+      console.error('Error adding expense:', err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,38 +151,65 @@ const AddExpense: React.FC = () => {
     // Optional: Run validation to update error states, but don't block submission
     validateForm();
 
+    const expenseData: CreateExpenseRequest = {
+      comment: formData.comment,
+      amount: formData.amount,
+      vendor_id: formData.vendor_id,
+      date: formData.date,
+      category: formData.category,
+      type: formData.type,
+      paid_by_card: formData.paid_by_card,
+      added_by: formData.added_by,
+      tag_ids: selectedTags
+    };
+
+    // Only check for duplicates on expenses (not income)
+    if (formData.type === 'expense') {
+      setCheckingDuplicates(true);
+      try {
+        const foundDuplicates = await checkForDuplicates(formData.amount, formData.date);
+
+        if (foundDuplicates.length > 0) {
+          // Show duplicate warning
+          setDuplicates(foundDuplicates);
+          setPendingExpenseData(expenseData);
+          setShowDuplicateWarning(true);
+          setCheckingDuplicates(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking duplicates:', err);
+        // Continue with creation even if duplicate check fails
+      }
+      setCheckingDuplicates(false);
+    }
+
+    // No duplicates found or this is income, proceed with creation
     setLoading(true);
-
     try {
-      const expenseData: CreateExpenseRequest = {
-        comment: formData.comment,
-        amount: formData.amount,
-        vendor_id: formData.vendor_id,
-        date: formData.date,
-        category: formData.category,
-        type: formData.type,
-        paid_by_card: formData.paid_by_card,
-        added_by: formData.added_by,
-        tag_ids: selectedTags
-      };
-      
-      await expenseAPI.createExpense(expenseData);
-      setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
-      
-      // Reset form using validation hook
-      reset(initialFormData);
-      setSelectedTags([]);
-
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to add expense'));
-      console.error('Error adding expense:', err);
+      await createExpenseDirectly(expenseData);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    if (!pendingExpenseData) return;
+
+    setLoading(true);
+    setShowDuplicateWarning(false);
+
+    try {
+      await createExpenseDirectly(pendingExpenseData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDuplicateCancel = () => {
+    setShowDuplicateWarning(false);
+    setPendingExpenseData(null);
+    setDuplicates([]);
   };
 
   const handleVendorSelect = (vendorId: number) => {
@@ -354,14 +418,18 @@ const AddExpense: React.FC = () => {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || checkingDuplicates}
               className={`flex-1 py-2 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed transition-colors ${
-                !loading
+                !loading && !checkingDuplicates
                   ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {loading ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
+              {checkingDuplicates
+                ? 'Checking for duplicates...'
+                : loading
+                ? 'Adding...'
+                : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
             </button>
             <button
               type="button"
@@ -373,6 +441,21 @@ const AddExpense: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Duplicate Warning Modal */}
+      {showDuplicateWarning && (
+        <DuplicateWarning
+          duplicates={duplicates}
+          newExpense={{
+            amount: formData.amount,
+            date: formData.date,
+            comment: formData.comment
+          }}
+          onConfirm={handleDuplicateConfirm}
+          onCancel={handleDuplicateCancel}
+          loading={loading}
+        />
+      )}
     </div>
   );
 };

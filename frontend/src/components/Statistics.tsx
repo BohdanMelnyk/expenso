@@ -13,7 +13,7 @@ const Statistics: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year'>('current_year');
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year' | 'this_month'>('this_month');
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
   const barChartRef = useRef<any>(null);
@@ -39,26 +39,46 @@ const Statistics: React.FC = () => {
   // Filter expenses by period
   const getFilteredExpenses = () => {
     const now = new Date();
-    const cutoffDate = new Date();
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
 
     switch (selectedPeriod) {
       case 'month':
-        cutoffDate.setMonth(now.getMonth() - 1);
+        startDate = new Date();
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'this_month':
+        // Start of current month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate.setHours(0, 0, 0, 0);
+        // End of current month
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate.setHours(23, 59, 59, 999);
         break;
       case 'quarter':
-        cutoffDate.setMonth(now.getMonth() - 3);
+        startDate = new Date();
+        startDate.setMonth(now.getMonth() - 3);
         break;
       case 'year':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
+        startDate = new Date();
+        startDate.setFullYear(now.getFullYear() - 1);
         break;
       case 'current_year':
         // Start of current year
-        cutoffDate.setFullYear(now.getFullYear(), 0, 1);
-        cutoffDate.setHours(0, 0, 0, 0);
+        startDate = new Date(now.getFullYear(), 0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        // End of current year
+        endDate = new Date(now.getFullYear(), 11, 31);
+        endDate.setHours(23, 59, 59, 999);
         break;
     }
 
-    return expenses.filter(expense => new Date(expense.date) >= cutoffDate);
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      const afterStart = !startDate || expenseDate >= startDate;
+      const beforeEnd = !endDate || expenseDate <= endDate;
+      return afterStart && beforeEnd;
+    });
   };
 
   // Group expenses by vendor type for pie chart
@@ -81,21 +101,48 @@ const Statistics: React.FC = () => {
     }));
   };
 
-  // Group expenses by month for bar chart
+  // Group expenses by month for bar chart - show 3 last months, current month, and next month
   const getMonthlyExpenses = () => {
-    const filteredExpenses = getFilteredExpenses();
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // Create array of months to display (3 last months, current month, next month)
+    const monthsToShow = [];
+    for (let i = -3; i <= 1; i++) {
+      const targetDate = new Date(currentYear, currentMonth + i, 1);
+      const monthKey = targetDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      monthsToShow.push({
+        key: monthKey,
+        date: targetDate,
+        year: targetDate.getFullYear(),
+        month: targetDate.getMonth()
+      });
+    }
+
+    // Get all expenses (not filtered by period for this specific chart)
     const monthlyData: { [key: string]: number } = {};
 
-    filteredExpenses.forEach(expense => {
-      const date = new Date(expense.date);
-      const monthName = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-      
-      monthlyData[monthName] = (monthlyData[monthName] || 0) + expense.amount;
+    // Initialize all months with 0
+    monthsToShow.forEach(({ key }) => {
+      monthlyData[key] = 0;
     });
 
-    return Object.entries(monthlyData)
-      .map(([month, amount]) => ({ month, amount }))
-      .sort((a, b) => a.month.localeCompare(b.month));
+    // Add actual expense data
+    expenses.forEach(expense => {
+      const expenseDate = new Date(expense.date);
+      const expenseMonthKey = expenseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+
+      // Only include if it's one of our target months
+      if (monthlyData.hasOwnProperty(expenseMonthKey)) {
+        monthlyData[expenseMonthKey] += expense.amount;
+      }
+    });
+
+    return monthsToShow.map(({ key }) => ({
+      month: key,
+      amount: monthlyData[key]
+    }));
   };
 
   // Get top vendors
@@ -182,7 +229,6 @@ const Statistics: React.FC = () => {
   const vendorTypeStats = getVendorTypeStatistics();
   const filteredExpenses = getFilteredExpenses();
   const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const avgExpense = filteredExpenses.length > 0 ? totalAmount / filteredExpenses.length : 0;
   
   // Payment method statistics
   const cardExpenses = filteredExpenses.filter(exp => exp.paid_by_card);
@@ -231,7 +277,7 @@ const Statistics: React.FC = () => {
         const endDateStr = endDate.toISOString().split('T')[0];
         
         // Navigate to dashboard with month filter
-        navigate(`/?month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
+        navigate(`/dashboard?month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
       }
     }
   };
@@ -306,7 +352,6 @@ const Statistics: React.FC = () => {
       csvContent += `Summary\n`;
       csvContent += `Total Amount,${totalAmount}\n`;
       csvContent += `Number of Transactions,${filteredExpenses.length}\n`;
-      csvContent += `Average per Transaction,${avgExpense.toFixed(2)}\n`;
       csvContent += `Export Date,"${new Date().toISOString().split('T')[0]}"\n`;
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -439,6 +484,12 @@ const Statistics: React.FC = () => {
               Current Year
             </button>
             <button
+              onClick={() => setSelectedPeriod('this_month')}
+              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'this_month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            >
+              This Month
+            </button>
+            <button
               onClick={() => setSelectedPeriod('month')}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
@@ -459,7 +510,7 @@ const Statistics: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-blue-900">Total Spent</h3>
             <p className="text-2xl font-bold text-blue-600">{formatAmount(totalAmount)}</p>
@@ -467,10 +518,6 @@ const Statistics: React.FC = () => {
           <div className="bg-green-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-green-900">Total Expenses</h3>
             <p className="text-2xl font-bold text-green-600">{filteredExpenses.length}</p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-purple-900">Average Expense</h3>
-            <p className="text-2xl font-bold text-purple-600">{formatAmount(avgExpense)}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900">💳 Card vs 💵 Cash</h3>
@@ -594,7 +641,7 @@ const Statistics: React.FC = () => {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Monthly Expenses Trend
-              <span className="text-sm text-gray-500 ml-2">(Click to filter dashboard by month)</span>
+              <span className="text-sm text-gray-500 ml-2">(Last 3 months, current, next month - Click to filter dashboard by month)</span>
             </h3>
             <div className="flex space-x-2">
               <button
@@ -631,71 +678,49 @@ const Statistics: React.FC = () => {
                   axisLine={{ stroke: '#e0e0e0' }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="amount" 
-                  fill="#3B82F6"
+                <Bar
+                  dataKey="amount"
                   onClick={handleBarClick}
                   style={{ cursor: 'pointer' }}
                   animationDuration={600}
-                />
+                >
+                  {monthlyData.map((entry, index) => {
+                    const now = new Date();
+                    const currentMonthKey = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                    const entryDate = new Date(entry.month + ' 1, 2000'); // Parse month name to date
+                    const currentDate = new Date(currentMonthKey + ' 1, 2000');
+
+                    let fillColor = '#3B82F6'; // Default blue for past months
+                    if (entry.month === currentMonthKey) {
+                      fillColor = '#10B981'; // Green for current month
+                    } else if (entryDate > currentDate) {
+                      fillColor = '#F59E0B'; // Orange for future months
+                    }
+
+                    return <Cell key={`cell-${index}`} fill={fillColor} />;
+                  })}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <p className="text-gray-500 text-center py-12">No data available for this period</p>
           )}
-        </div>
-      </div>
 
-      {/* Top Vendors Table */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Top Vendors</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vendor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Number of Expenses
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Average per Expense
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {topVendors.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    No vendor data available for this period
-                  </td>
-                </tr>
-              ) : (
-                topVendors.map((vendor, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {vendor.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatAmount(vendor.amount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {vendor.count}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatAmount(vendor.amount / vendor.count)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          {/* Color Legend */}
+          <div className="mt-4 flex justify-center space-x-6 text-sm">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+              <span className="text-gray-600">Past months</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+              <span className="text-gray-600">Current month</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
+              <span className="text-gray-600">Future month</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -737,6 +762,53 @@ const Statistics: React.FC = () => {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Top Vendors Table */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Top Vendors</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vendor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Number of Expenses
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {topVendors.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                    No vendor data available for this period
+                  </td>
+                </tr>
+              ) : (
+                topVendors.map((vendor, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {vendor.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatAmount(vendor.amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {vendor.count}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
       

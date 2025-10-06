@@ -165,6 +165,13 @@ export const expenseAPI = {
     const queryString = params.toString();
     return apiClient.get<Expense[]>(`/expenses/actual${queryString ? `?${queryString}` : ''}`);
   },
+  checkDuplicates: (amount: number, date: string, dayRange: number = 5) => {
+    const params = new URLSearchParams();
+    params.append('amount', amount.toString());
+    params.append('date', date);
+    params.append('day_range', dayRange.toString());
+    return apiClient.get<Expense[]>(`/expenses/check-duplicates?${params.toString()}`);
+  },
 };
 
 export const vendorAPI = {

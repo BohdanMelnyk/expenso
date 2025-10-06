@@ -252,7 +252,6 @@ const VendorTypeStatistics: React.FC = () => {
   const timeSeriesData = getTimeSeriesData();
   const vendorData = getVendorData();
   const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const avgExpense = expenses.length > 0 ? totalAmount / expenses.length : 0;
   const vendorTypeName = vendorType ? formatVendorTypeName(vendorType) : 'Unknown Vendor Type';
   const vendorTypeIcon = vendorType ? getVendorTypeIcon(vendorType) : '📦';
 
@@ -285,8 +284,8 @@ const VendorTypeStatistics: React.FC = () => {
               {/* Quick Preset Buttons */}
               <div className="flex space-x-1">
                 {[
-                  { value: 'week' as TimeFrame, label: 'Week' },
-                  { value: 'month' as TimeFrame, label: 'Month' },
+                  { value: 'this_month' as TimeFrame, label: 'This Month' },
+                  { value: 'month' as TimeFrame, label: 'Last Month' },
                   { value: 'quarter' as TimeFrame, label: '3M' },
                   { value: 'year' as TimeFrame, label: 'Year' }
                 ].map((option) => (
@@ -357,7 +356,7 @@ const VendorTypeStatistics: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center">
               <DollarSign className="w-6 h-6 text-blue-600 mr-2" />
@@ -367,7 +366,7 @@ const VendorTypeStatistics: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center">
               <TrendingDown className="w-6 h-6 text-green-600 mr-2" />
@@ -377,19 +376,7 @@ const VendorTypeStatistics: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-purple-600 rounded-md flex items-center justify-center mr-2">
-                <span className="text-white text-xs font-bold">Ø</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-purple-900">Average Expense</h3>
-                <p className="text-xl font-bold text-purple-600">{formatAmount(avgExpense)}</p>
-              </div>
-            </div>
-          </div>
-          
+
           <div className="bg-orange-50 p-4 rounded-lg">
             <div className="flex items-center">
               <Store className="w-6 h-6 text-orange-600 mr-2" />
@@ -525,6 +512,96 @@ const VendorTypeStatistics: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Transactions List */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">
+            All Transactions
+            <span className="text-sm text-gray-500 ml-2">({expenses.length} transactions)</span>
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vendor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment Method
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Comment
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {expenses.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    No transactions found for this vendor type and time period
+                  </td>
+                </tr>
+              ) : (
+                expenses
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((expense) => (
+                    <tr key={expense.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(expense.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {expense.vendor?.name || 'Unknown Vendor'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatAmount(expense.amount)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          expense.paid_by_card
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {expense.paid_by_card ? '💳 Card' : '💵 Cash'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <div className="max-w-xs truncate" title={expense.comment || ''}>
+                          {expense.comment || '-'}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Summary row */}
+        {expenses.length > 0 && (
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-medium text-gray-900">
+                Total: {expenses.length} transactions
+              </span>
+              <span className="font-bold text-gray-900">
+                Total Amount: {formatAmount(totalAmount)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

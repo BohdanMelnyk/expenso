@@ -277,10 +277,10 @@ const Dashboard: React.FC = () => {
 
   const getRangeLabel = (range: DateRange): string => {
     switch (range) {
-      case 'current_month': return 'This Month';
+      case 'current_month': return 'Current month';
       case 'this_year': return 'This Year';
       case 'overall': return 'Overall';
-      default: return 'This Month';
+      default: return 'Current month';
     }
   };
 
@@ -301,7 +301,7 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => {
                     setSearchParams({});
-                    navigate('/');
+                    navigate('/dashboard');
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
                 >
@@ -320,7 +320,7 @@ const Dashboard: React.FC = () => {
                 onChange={(e) => setSelectedRange(e.target.value as DateRange)}
                 className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="current_month">This Month</option>
+                <option value="current_month">Current month</option>
                 <option value="this_year">This Year</option>
                 <option value="overall">Overall</option>
               </select>
@@ -359,7 +359,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-red-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-red-900">Total Actual Expenses</h3>
             <p className="text-2xl font-bold text-red-600">{formatAmount(getTotalExpenses())}</p>
@@ -369,13 +369,6 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-blue-900">Number of Expenses</h3>
             <p className="text-2xl font-bold text-blue-600">{filteredExpenses.length}</p>
             <p className="text-xs text-blue-700 mt-1">Spending transactions</p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-purple-900">Average Expense</h3>
-            <p className="text-2xl font-bold text-purple-600">
-              {filteredExpenses.length > 0 ? formatAmount(getTotalExpenses() / filteredExpenses.length) : '$0.00'}
-            </p>
-            <p className="text-xs text-purple-700 mt-1">Per transaction</p>
           </div>
         </div>
       </div>

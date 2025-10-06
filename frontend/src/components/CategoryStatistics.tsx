@@ -244,7 +244,6 @@ const CategoryStatistics: React.FC = () => {
   const timeSeriesData = getTimeSeriesData();
   const vendorData = getVendorData();
   const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const avgExpense = expenses.length > 0 ? totalAmount / expenses.length : 0;
   const categoryName = category ? formatCategoryName(category) : 'Unknown Category';
 
   const pieColors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
@@ -347,7 +346,7 @@ const CategoryStatistics: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center">
               <DollarSign className="w-6 h-6 text-blue-600 mr-2" />
@@ -357,7 +356,7 @@ const CategoryStatistics: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center">
               <TrendingDown className="w-6 h-6 text-green-600 mr-2" />
@@ -367,19 +366,7 @@ const CategoryStatistics: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-purple-600 rounded-md flex items-center justify-center mr-2">
-                <span className="text-white text-xs font-bold">Ø</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-purple-900">Average Expense</h3>
-                <p className="text-xl font-bold text-purple-600">{formatAmount(avgExpense)}</p>
-              </div>
-            </div>
-          </div>
-          
+
           <div className="bg-orange-50 p-4 rounded-lg">
             <div className="flex items-center">
               <div className="w-6 h-6 bg-orange-600 rounded-md flex items-center justify-center mr-2">

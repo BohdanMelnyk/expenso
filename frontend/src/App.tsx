@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, Wallet, Menu, X } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Menu, X } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Dashboard from './components/Dashboard';
 import AddExpense from './components/AddExpense';
 import Statistics from './components/Statistics';
+import Trends from './components/Trends';
 import CategoryStatistics from './components/CategoryStatistics';
 import VendorTypeStatistics from './components/VendorTypeStatistics';
 import VendorStatistics from './components/VendorStatistics';
@@ -35,7 +36,7 @@ function Navigation() {
     if (basePath === '/balance' && location.pathname.startsWith('/vendor/')) {
       isOnRelatedPage = true; // Vendor stats should highlight Balance tab
     }
-    if (basePath === '/statistics' && location.pathname.startsWith('/statistics/')) {
+    if (basePath === '/' && location.pathname.startsWith('/statistics/')) {
       isOnRelatedPage = true; // Category/VendorType stats should highlight Statistics tab
     }
     
@@ -46,11 +47,12 @@ function Navigation() {
   };
 
   const navigationItems = [
-    { to: '/', icon: Home, label: 'Dashboard', end: true, special: false },
+    { to: '/', icon: BarChart3, label: 'Statistics', end: true, special: true },
+    { to: '/dashboard', icon: Home, label: 'Dashboard', end: false, special: false },
+    { to: '/trends', icon: TrendingUp, label: 'Trends', end: false, special: false },
     { to: '/add', icon: PlusCircle, label: 'Add Expense', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
-    { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false },
-    { to: '/statistics', icon: BarChart3, label: 'Statistics', end: false, special: true }
+    { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false }
   ];
 
   const toggleMobileMenu = () => {
@@ -119,7 +121,7 @@ function Navigation() {
                     if (to === '/balance' && location.pathname.startsWith('/vendor/')) {
                       isOnRelatedPage = true;
                     }
-                    if (to === '/statistics' && location.pathname.startsWith('/statistics/')) {
+                    if (to === '/' && location.pathname.startsWith('/statistics/')) {
                       isOnRelatedPage = true;
                     }
                   }
@@ -152,11 +154,12 @@ function App() {
 
           <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Statistics />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/trends" element={<Trends />} />
               <Route path="/add" element={<AddExpense />} />
               <Route path="/balance" element={<BalanceDashboard />} />
               <Route path="/cash-flow" element={<CashFlow />} />
-              <Route path="/statistics" element={<Statistics />} />
               <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
               <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
               <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
