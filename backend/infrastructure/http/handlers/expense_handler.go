@@ -986,3 +986,71 @@ func (h *ExpenseHandler) GetEarnings(c *gin.Context) {
 
 	c.JSON(http.StatusOK, responseDTO)
 }
+
+// CheckDuplicates godoc
+// @Summary Check for duplicate expenses
+// @Description Check for existing expenses with the same amount within a date range
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param amount query number true "Expense amount"
+// @Param date query string true "Expense date (YYYY-MM-DD)"
+// @Param day_range query int false "Day range for duplicate check (default: 2)"
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/check-duplicates [get]
+func (h *ExpenseHandler) CheckDuplicates(c *gin.Context) {
+	// Parse amount parameter
+	amountStr := c.Query("amount")
+	if amountStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount parameter is required"})
+		return
+	}
+
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid amount format"})
+		return
+	}
+
+	// Parse date parameter
+	dateStr := c.Query("date")
+	if dateStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "date parameter is required"})
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format (use YYYY-MM-DD)"})
+		return
+	}
+
+	// Parse day_range parameter (default to 2 days)
+	dayRange := 2
+	dayRangeStr := c.Query("day_range")
+	if dayRangeStr != "" {
+		parsed, err := strconv.Atoi(dayRangeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid day_range format"})
+			return
+		}
+		dayRange = parsed
+	}
+
+	// Execute use case
+	expenses, err := h.expenseInteractor.CheckDuplicates(amount, date, dayRange)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check for duplicates"})
+		return
+	}
+
+	// Convert domain entities to DTOs
+	responseDTO := make([]dto.ExpenseResponseDTO, len(expenses))
+	for i, exp := range expenses {
+		responseDTO[i] = h.expenseToDTO(exp)
+	}
+
+	c.JSON(http.StatusOK, responseDTO)
+}

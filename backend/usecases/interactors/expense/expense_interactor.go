@@ -390,3 +390,18 @@ func (i *ExpenseInteractor) assignTagsToExpense(expenseID entities.ExpenseID, ta
 	}
 	return nil
 }
+
+// CheckDuplicates finds potential duplicate expenses based on amount and date range (±dayRange)
+func (i *ExpenseInteractor) CheckDuplicates(amount float64, date time.Time, dayRange int) ([]*entities.Expense, error) {
+	// Calculate date range
+	startDate := date.AddDate(0, 0, -dayRange)
+	endDate := date.AddDate(0, 0, dayRange)
+
+	// Find expenses with same amount within date range
+	expenses, err := i.expenseRepo.FindByAmountAndDateRange(amount, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return expenses, nil
+}

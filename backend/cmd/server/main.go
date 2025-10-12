@@ -121,6 +121,7 @@ func main() {
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
 	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
+	api.GET("/expenses/check-duplicates", expenseHandler.CheckDuplicates)
 
 	// Income routes
 	api.GET("/incomes", incomeHandler.GetIncomes)

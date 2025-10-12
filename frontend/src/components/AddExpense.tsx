@@ -113,7 +113,7 @@ const AddExpense: React.FC = () => {
 
   const checkForDuplicates = async (amount: number, date: string): Promise<Expense[]> => {
     try {
-      const response = await expenseAPI.checkDuplicates(amount, date, 5);
+      const response = await expenseAPI.checkDuplicates(amount, date, 2);
       return response.data;
     } catch (err) {
       console.error('Error checking for duplicates:', err);
