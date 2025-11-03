@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download, Share2 } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
@@ -9,11 +9,14 @@ import SkeletonLoader from './SkeletonLoader';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toasts, removeToast, showSuccess, showError } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year' | 'this_month'>('this_month');
+  // Initialize from URL params or default to 'this_month'
+  const initialPeriod = (searchParams.get('period') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month') || 'this_month';
+  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year' | 'this_month'>(initialPeriod);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
   const barChartRef = useRef<any>(null);
@@ -44,8 +47,12 @@ const Statistics: React.FC = () => {
 
     switch (selectedPeriod) {
       case 'month':
-        startDate = new Date();
-        startDate.setMonth(now.getMonth() - 1);
+        // Start of previous month
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        // End of previous month
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+        endDate.setHours(23, 59, 59, 999);
         break;
       case 'this_month':
         // Start of current month
@@ -478,31 +485,46 @@ const Statistics: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Expense Statistics</h2>
           <div className="flex space-x-2">
             <button
-              onClick={() => setSelectedPeriod('current_year')}
+              onClick={() => {
+                setSelectedPeriod('current_year');
+                setSearchParams({ period: 'current_year' });
+              }}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'current_year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               Current Year
             </button>
             <button
-              onClick={() => setSelectedPeriod('this_month')}
+              onClick={() => {
+                setSelectedPeriod('this_month');
+                setSearchParams({ period: 'this_month' });
+              }}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'this_month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               This Month
             </button>
             <button
-              onClick={() => setSelectedPeriod('month')}
+              onClick={() => {
+                setSelectedPeriod('month');
+                setSearchParams({ period: 'month' });
+              }}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
-              Last Month
+              Previous Month
             </button>
             <button
-              onClick={() => setSelectedPeriod('quarter')}
+              onClick={() => {
+                setSelectedPeriod('quarter');
+                setSearchParams({ period: 'quarter' });
+              }}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'quarter' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               Last 3 Months
             </button>
             <button
-              onClick={() => setSelectedPeriod('year')}
+              onClick={() => {
+                setSelectedPeriod('year');
+                setSearchParams({ period: 'year' });
+              }}
               className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
             >
               Last Year

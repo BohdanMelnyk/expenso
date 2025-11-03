@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft, Calendar, TrendingDown, DollarSign, Store } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
@@ -24,14 +24,17 @@ interface VendorData {
 const VendorTypeStatistics: React.FC = () => {
   const { vendorType } = useParams<{ vendorType: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('month');
+  // Initialize from URL params or default to 'month'
+  const initialTimeFrame = (searchParams.get('timeframe') as TimeFrame) || 'month';
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>(initialTimeFrame);
   const [selectedViewType, setSelectedViewType] = useState<ViewType>('daily');
-  const [customStartDate, setCustomStartDate] = useState<string>('');
-  const [customEndDate, setCustomEndDate] = useState<string>('');
-  const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
+  const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get('start') || '');
+  const [customEndDate, setCustomEndDate] = useState<string>(searchParams.get('end') || '');
+  const [showCustomRange, setShowCustomRange] = useState<boolean>(initialTimeFrame === 'custom');
 
   useEffect(() => {
     if (vendorType) {
@@ -70,7 +73,7 @@ const VendorTypeStatistics: React.FC = () => {
     }
 
     const now = new Date();
-    const endDate = now.toISOString().split('T')[0];
+    let endDate = now.toISOString().split('T')[0];
     const startDate = new Date();
 
     switch (timeFrame) {
@@ -78,7 +81,12 @@ const VendorTypeStatistics: React.FC = () => {
         startDate.setDate(now.getDate() - 7);
         break;
       case 'month':
-        startDate.setMonth(now.getMonth() - 1);
+        // Previous month: first day to last day of previous calendar month
+        startDate.setMonth(now.getMonth() - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        lastDayOfPrevMonth.setHours(23, 59, 59, 999);
+        endDate = lastDayOfPrevMonth.toISOString().split('T')[0];
         break;
       case 'quarter':
         startDate.setMonth(now.getMonth() - 3);
@@ -181,38 +189,51 @@ const VendorTypeStatistics: React.FC = () => {
 
   const handleTimeFrameChange = (timeFrame: TimeFrame) => {
     setSelectedTimeFrame(timeFrame);
+
+    // Update URL params
+    const params = new URLSearchParams(searchParams);
+    params.set('timeframe', timeFrame);
+
     if (timeFrame === 'custom') {
       setShowCustomRange(true);
       if (!customStartDate) {
         const now = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
-        setCustomStartDate(oneMonthAgo.toISOString().split('T')[0]);
-        setCustomEndDate(now.toISOString().split('T')[0]);
+        const start = oneMonthAgo.toISOString().split('T')[0];
+        const end = now.toISOString().split('T')[0];
+        setCustomStartDate(start);
+        setCustomEndDate(end);
+        params.set('start', start);
+        params.set('end', end);
       }
     } else {
       setShowCustomRange(false);
+      params.delete('start');
+      params.delete('end');
     }
+
+    setSearchParams(params);
   };
 
   const getTimeFrameLabel = (timeFrame: TimeFrame): string => {
     switch (timeFrame) {
       case 'week': return 'Last Week';
-      case 'month': return 'Last Month';
+      case 'month': return 'Previous Month';
       case 'quarter': return 'Last 3 Months';
       case 'year': return 'Last Year';
       case 'this_month': return 'This Month';
       case 'last_30_days': return 'Last 30 Days';
       case 'last_90_days': return 'Last 90 Days';
       case 'this_year': return 'This Year';
-      case 'custom': 
+      case 'custom':
         if (customStartDate && customEndDate) {
           const start = new Date(customStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           const end = new Date(customEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           return `${start} - ${end}`;
         }
         return 'Custom Range';
-      default: return 'Last Month';
+      default: return 'Previous Month';
     }
   };
 
@@ -285,7 +306,7 @@ const VendorTypeStatistics: React.FC = () => {
               <div className="flex space-x-1">
                 {[
                   { value: 'this_month' as TimeFrame, label: 'This Month' },
-                  { value: 'month' as TimeFrame, label: 'Last Month' },
+                  { value: 'month' as TimeFrame, label: 'Previous Month' },
                   { value: 'quarter' as TimeFrame, label: '3M' },
                   { value: 'year' as TimeFrame, label: 'Year' }
                 ].map((option) => (
@@ -311,7 +332,7 @@ const VendorTypeStatistics: React.FC = () => {
               >
                 <optgroup label="Quick Options">
                   <option value="week">Last Week</option>
-                  <option value="month">Last Month</option>
+                  <option value="month">Previous Month</option>
                   <option value="quarter">Last 3 Months</option>
                   <option value="year">Last Year</option>
                 </optgroup>
@@ -337,7 +358,12 @@ const VendorTypeStatistics: React.FC = () => {
                   <input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      const params = new URLSearchParams(searchParams);
+                      params.set('start', e.target.value);
+                      setSearchParams(params);
+                    }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -346,7 +372,12 @@ const VendorTypeStatistics: React.FC = () => {
                   <input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      const params = new URLSearchParams(searchParams);
+                      params.set('end', e.target.value);
+                      setSearchParams(params);
+                    }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

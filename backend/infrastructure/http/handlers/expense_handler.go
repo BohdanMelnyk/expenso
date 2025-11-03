@@ -10,6 +10,7 @@ import (
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/http/dto"
+	"expenso-backend/infrastructure/http/middleware"
 	"expenso-backend/usecases/interactors/expense"
 
 	"github.com/gin-gonic/gin"
@@ -48,7 +49,7 @@ func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	if startDateStr != "" {
 		parsed, err := time.Parse("2006-01-02", startDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format (use YYYY-MM-DD)"})
+			middleware.RespondWithBadRequest(c, "Invalid start_date format (use YYYY-MM-DD)", err)
 			return
 		}
 		startDate = &parsed
@@ -58,7 +59,7 @@ func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	if endDateStr != "" {
 		parsed, err := time.Parse("2006-01-02", endDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format (use YYYY-MM-DD)"})
+			middleware.RespondWithBadRequest(c, "Invalid end_date format (use YYYY-MM-DD)", err)
 			return
 		}
 		endDate = &parsed
@@ -75,7 +76,7 @@ func (h *ExpenseHandler) GetExpenses(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
+		middleware.RespondWithInternalError(c, "Failed to fetch expenses", err)
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	// Parse path parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expense ID"})
+		middleware.RespondWithBadRequest(c, "Invalid expense ID", err)
 		return
 	}
 
@@ -112,9 +113,9 @@ func (h *ExpenseHandler) GetExpense(c *gin.Context) {
 	exp, err := h.expenseInteractor.GetExpense(entities.ExpenseID(id))
 	if err != nil {
 		if err == entities.ErrExpenseNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Expense not found"})
+			middleware.RespondWithNotFound(c, "Expense not found")
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expense"})
+			middleware.RespondWithInternalError(c, "Failed to fetch expense", err)
 		}
 		return
 	}
@@ -139,14 +140,14 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	// Syntactic validation - decode JSON
 	var requestDTO dto.CreateExpenseRequestDTO
 	if err := c.ShouldBindJSON(&requestDTO); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		middleware.RespondWithBadRequest(c, "Invalid request body", err)
 		return
 	}
 
 	// Parse date
 	date, err := time.Parse("2006-01-02", requestDTO.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format (use YYYY-MM-DD)"})
+		middleware.RespondWithBadRequest(c, "Invalid date format (use YYYY-MM-DD)", err)
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	// Execute use case
 	exp, err := h.expenseInteractor.CreateExpense(cmd)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		middleware.RespondWithBadRequest(c, "Failed to create expense", err)
 		return
 	}
 
@@ -1053,4 +1054,184 @@ func (h *ExpenseHandler) CheckDuplicates(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, responseDTO)
+}
+
+// GetAverageExpenses godoc
+// @Summary Get average expenses per category and vendor per month
+// @Description Calculate average expenses per category and vendor type per month for a date range
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/averages [get]
+func (h *ExpenseHandler) GetAverageExpenses(c *gin.Context) {
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			middleware.RespondWithBadRequest(c, "Invalid start_date format (use YYYY-MM-DD)", err)
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			middleware.RespondWithBadRequest(c, "Invalid end_date format (use YYYY-MM-DD)", err)
+			return
+		}
+		endDate = &parsed
+	}
+
+	// Get all actual expenses (not earnings) for the date range
+	var expenses []*entities.Expense
+	var err error
+
+	if startDate != nil || endDate != nil {
+		expenses, err = h.expenseInteractor.GetExpensesByDateRange(startDate, endDate)
+	} else {
+		expenses, err = h.expenseInteractor.GetExpenses()
+	}
+
+	if err != nil {
+		middleware.RespondWithInternalError(c, "Failed to fetch expenses", err)
+		return
+	}
+
+	// Filter out earnings (salary type)
+	var actualExpenses []*entities.Expense
+	for _, exp := range expenses {
+		if exp.Type() != entities.ExpenseTypeIncome {
+			actualExpenses = append(actualExpenses, exp)
+		}
+	}
+
+	// Calculate averages
+	result := h.calculateAverages(actualExpenses, startDate, endDate)
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *ExpenseHandler) calculateAverages(expenses []*entities.Expense, startDate, endDate *time.Time) map[string]interface{} {
+	if len(expenses) == 0 {
+		return map[string]interface{}{
+			"category_averages":     []map[string]interface{}{},
+			"vendor_type_averages":  []map[string]interface{}{},
+			"total_months":          0,
+			"date_range": map[string]string{
+				"start": "",
+				"end":   "",
+			},
+		}
+	}
+
+	// Find the actual date range from expenses
+	var minDate, maxDate time.Time
+	for i, exp := range expenses {
+		if i == 0 {
+			minDate = exp.Date()
+			maxDate = exp.Date()
+		} else {
+			if exp.Date().Before(minDate) {
+				minDate = exp.Date()
+			}
+			if exp.Date().After(maxDate) {
+				maxDate = exp.Date()
+			}
+		}
+	}
+
+	// Override with provided dates if available
+	if startDate != nil {
+		minDate = *startDate
+	}
+	if endDate != nil {
+		maxDate = *endDate
+	}
+
+	// Calculate number of months
+	months := calculateMonthsBetween(minDate, maxDate)
+	if months == 0 {
+		months = 1 // At least one month
+	}
+
+	// Aggregate by category
+	categoryTotals := make(map[string]float64)
+	for _, exp := range expenses {
+		categoryTotals[exp.Category().String()] += exp.Amount().Amount()
+	}
+
+	// Aggregate by vendor type
+	vendorTypeTotals := make(map[string]float64)
+	for _, exp := range expenses {
+		if exp.Vendor() != nil {
+			vendorTypeTotals[string(exp.Vendor().Type())] += exp.Amount().Amount()
+		}
+	}
+
+	// Calculate averages for categories
+	categoryAverages := make([]map[string]interface{}, 0, len(categoryTotals))
+	for category, total := range categoryTotals {
+		categoryAverages = append(categoryAverages, map[string]interface{}{
+			"category":          category,
+			"total":             total,
+			"average_per_month": total / float64(months),
+		})
+	}
+
+	// Calculate averages for vendor types
+	vendorTypeAverages := make([]map[string]interface{}, 0, len(vendorTypeTotals))
+	for vendorType, total := range vendorTypeTotals {
+		vendorTypeAverages = append(vendorTypeAverages, map[string]interface{}{
+			"vendor_type":       vendorType,
+			"total":             total,
+			"average_per_month": total / float64(months),
+		})
+	}
+
+	return map[string]interface{}{
+		"category_averages":    categoryAverages,
+		"vendor_type_averages": vendorTypeAverages,
+		"total_months":         months,
+		"date_range": map[string]string{
+			"start": minDate.Format("2006-01-02"),
+			"end":   maxDate.Format("2006-01-02"),
+		},
+	}
+}
+
+func calculateMonthsBetween(start, end time.Time) int {
+	if start.After(end) {
+		start, end = end, start
+	}
+
+	months := 0
+	current := start
+
+	for current.Before(end) || current.Equal(end) {
+		months++
+		current = current.AddDate(0, 1, 0)
+
+		// If we've moved past the end date in the same month, break
+		if current.Year() == end.Year() && current.Month() > end.Month() {
+			break
+		}
+		if current.Year() > end.Year() {
+			break
+		}
+	}
+
+	return months
 }

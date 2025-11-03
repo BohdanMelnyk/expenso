@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Menu, X } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Menu, X, Calculator } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Dashboard from './components/Dashboard';
@@ -14,6 +14,7 @@ import CashFlow from './components/CashFlow';
 import BalanceDashboard from './components/BalanceDashboard';
 import ExpenseOverview from './components/ExpenseOverview';
 import IncomeOverview from './components/IncomeOverview';
+import AverageExpenses from './components/AverageExpenses';
 
 function Navigation() {
   const location = useLocation();
@@ -30,16 +31,20 @@ function Navigation() {
   const getSpecialNavLinkClass = (basePath: string) => ({ isActive }: { isActive: boolean }) => {
     const baseClass = "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors";
     // Check if we're on the base path or any sub-page
-    let isOnRelatedPage = location.pathname.startsWith(basePath);
-    
+    let isOnRelatedPage = false;
+
+    // Special handling for root path to avoid matching all paths
+    if (basePath === '/') {
+      isOnRelatedPage = location.pathname === '/' || location.pathname.startsWith('/statistics/');
+    } else {
+      isOnRelatedPage = location.pathname.startsWith(basePath);
+    }
+
     // Special cases for related pages. E.g., Vendor stats should highlight Balance tab.
     if (basePath === '/balance' && location.pathname.startsWith('/vendor/')) {
       isOnRelatedPage = true; // Vendor stats should highlight Balance tab
     }
-    if (basePath === '/' && location.pathname.startsWith('/statistics/')) {
-      isOnRelatedPage = true; // Category/VendorType stats should highlight Statistics tab
-    }
-    
+
     if (isActive || isOnRelatedPage) {
       return `${baseClass} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700`;
     }
@@ -50,6 +55,7 @@ function Navigation() {
     { to: '/', icon: BarChart3, label: 'Statistics', end: true, special: true },
     { to: '/dashboard', icon: Home, label: 'Dashboard', end: false, special: false },
     { to: '/trends', icon: TrendingUp, label: 'Trends', end: false, special: false },
+    { to: '/averages', icon: Calculator, label: 'Averages', end: false, special: false },
     { to: '/add', icon: PlusCircle, label: 'Add Expense', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
     { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false }
@@ -114,18 +120,21 @@ function Navigation() {
                 to={to}
                 className={({ isActive }) => {
                   const baseClass = "flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors w-full";
-                  
+
                   let isOnRelatedPage = false;
                   if (special) {
-                    isOnRelatedPage = location.pathname.startsWith(to);
+                    // Special handling for root path to avoid matching all paths
+                    if (to === '/') {
+                      isOnRelatedPage = location.pathname === '/' || location.pathname.startsWith('/statistics/');
+                    } else {
+                      isOnRelatedPage = location.pathname.startsWith(to);
+                    }
+
                     if (to === '/balance' && location.pathname.startsWith('/vendor/')) {
                       isOnRelatedPage = true;
                     }
-                    if (to === '/' && location.pathname.startsWith('/statistics/')) {
-                      isOnRelatedPage = true;
-                    }
                   }
-                  
+
                   if (isActive || isOnRelatedPage) {
                     return `${baseClass} bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700`;
                   }
@@ -157,6 +166,7 @@ function App() {
               <Route path="/" element={<Statistics />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/trends" element={<Trends />} />
+              <Route path="/averages" element={<AverageExpenses />} />
               <Route path="/add" element={<AddExpense />} />
               <Route path="/balance" element={<BalanceDashboard />} />
               <Route path="/cash-flow" element={<CashFlow />} />

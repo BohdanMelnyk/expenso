@@ -172,6 +172,29 @@ export const expenseAPI = {
     params.append('day_range', dayRange.toString());
     return apiClient.get<Expense[]>(`/expenses/check-duplicates?${params.toString()}`);
   },
+  getAverageExpenses: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    const queryString = params.toString();
+    return apiClient.get<{
+      category_averages: Array<{
+        category: string;
+        total: number;
+        average_per_month: number;
+      }>;
+      vendor_type_averages: Array<{
+        vendor_type: string;
+        total: number;
+        average_per_month: number;
+      }>;
+      total_months: number;
+      date_range: {
+        start: string;
+        end: string;
+      };
+    }>(`/expenses/averages${queryString ? `?${queryString}` : ''}`);
+  },
 };
 
 export const vendorAPI = {

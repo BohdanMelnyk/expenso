@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft, Calendar, TrendingDown, DollarSign } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
@@ -25,14 +25,17 @@ interface VendorData {
 const CategoryStatistics: React.FC = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('month');
+  // Initialize from URL params or default to 'month'
+  const initialTimeFrame = (searchParams.get('timeframe') as TimeFrame) || 'month';
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>(initialTimeFrame);
   const [selectedViewType, setSelectedViewType] = useState<ViewType>('daily');
-  const [customStartDate, setCustomStartDate] = useState<string>('');
-  const [customEndDate, setCustomEndDate] = useState<string>('');
-  const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
+  const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get('start') || '');
+  const [customEndDate, setCustomEndDate] = useState<string>(searchParams.get('end') || '');
+  const [showCustomRange, setShowCustomRange] = useState<boolean>(initialTimeFrame === 'custom');
 
   const getDateRangeParams = (timeFrame: TimeFrame): { startDate?: string; endDate?: string } => {
     if (timeFrame === 'custom') {
@@ -185,6 +188,11 @@ const CategoryStatistics: React.FC = () => {
 
   const handleTimeFrameChange = (timeFrame: TimeFrame) => {
     setSelectedTimeFrame(timeFrame);
+
+    // Update URL params
+    const params = new URLSearchParams(searchParams);
+    params.set('timeframe', timeFrame);
+
     if (timeFrame === 'custom') {
       setShowCustomRange(true);
       // Initialize with reasonable defaults if empty
@@ -192,12 +200,20 @@ const CategoryStatistics: React.FC = () => {
         const now = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(now.getMonth() - 1);
-        setCustomStartDate(oneMonthAgo.toISOString().split('T')[0]);
-        setCustomEndDate(now.toISOString().split('T')[0]);
+        const start = oneMonthAgo.toISOString().split('T')[0];
+        const end = now.toISOString().split('T')[0];
+        setCustomStartDate(start);
+        setCustomEndDate(end);
+        params.set('start', start);
+        params.set('end', end);
       }
     } else {
       setShowCustomRange(false);
+      params.delete('start');
+      params.delete('end');
     }
+
+    setSearchParams(params);
   };
 
   const getTimeFrameLabel = (timeFrame: TimeFrame): string => {
@@ -327,7 +343,12 @@ const CategoryStatistics: React.FC = () => {
                   <input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      const params = new URLSearchParams(searchParams);
+                      params.set('start', e.target.value);
+                      setSearchParams(params);
+                    }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -336,7 +357,12 @@ const CategoryStatistics: React.FC = () => {
                   <input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      const params = new URLSearchParams(searchParams);
+                      params.set('end', e.target.value);
+                      setSearchParams(params);
+                    }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

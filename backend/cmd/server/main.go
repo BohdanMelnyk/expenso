@@ -18,11 +18,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "expenso-backend/docs"
 	"expenso-backend/infrastructure/config"
 	"expenso-backend/infrastructure/http/handlers"
+	"expenso-backend/infrastructure/http/middleware"
+	"expenso-backend/infrastructure/logger"
 	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
 	"expenso-backend/usecases/interactors/category"
@@ -38,32 +39,40 @@ import (
 )
 
 func main() {
+	// Initialize logger
+	logger.SetLevel(logger.INFO)
+	logger.Info("Starting Expenso server...")
+
 	// Load configuration
 	cfg, err := config.LoadConfigForEnvironment()
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		logger.Fatal("Failed to load config", logger.Fields{"error": err.Error()})
 	}
 
 	// Database connection
 	databaseURL := cfg.GetDatabaseURL()
+	logger.Info("Connecting to database...")
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logger.Fatal("Failed to connect to database", logger.Fields{"error": err.Error()})
 	}
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		log.Fatal("Failed to ping database:", err)
+		logger.Fatal("Failed to ping database", logger.Fields{"error": err.Error()})
 	}
+	logger.Info("Database connection established")
 
 	// Run database migrations
+	logger.Info("Running database migrations...")
 	migrator := migration.NewMigrator(db, "./migrations")
 	if err := migrator.Initialize(); err != nil {
-		log.Fatal("Failed to initialize migrator:", err)
+		logger.Fatal("Failed to initialize migrator", logger.Fields{"error": err.Error()})
 	}
 	if err := migrator.RunMigrations(); err != nil {
-		log.Fatal("Migration failed:", err)
+		logger.Fatal("Migration failed", logger.Fields{"error": err.Error()})
 	}
+	logger.Info("Database migrations completed")
 
 	// Repository layer (implements interfaces from use case layer)
 	tagRepo := repositories.NewTagRepository(db)
@@ -87,7 +96,12 @@ func main() {
 	tagHandler := handlers.NewTagHandler(tagInteractor)
 
 	// Setup Gin router
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
+	router := gin.New()
+
+	// Add custom middleware in order
+	router.Use(middleware.ErrorRecovery())  // Recover from panics
+	router.Use(middleware.RequestLogger()) // Log all requests
 
 	// CORS middleware for Gin
 	router.Use(func(c *gin.Context) {
@@ -122,6 +136,7 @@ func main() {
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
 	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
 	api.GET("/expenses/check-duplicates", expenseHandler.CheckDuplicates)
+	api.GET("/expenses/averages", expenseHandler.GetAverageExpenses)
 
 	// Income routes
 	api.GET("/incomes", incomeHandler.GetIncomes)
@@ -168,7 +183,14 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	serverAddr := cfg.GetServerAddress()
-	log.Printf("Espenso server with Gin starting on %s", serverAddr)
-	log.Printf("Swagger UI available at: http://%s/swagger/index.html", serverAddr)
-	log.Fatal(router.Run(":" + fmt.Sprintf("%d", cfg.Server.Port)))
+	logger.Info("Server configuration", logger.Fields{
+		"address":     serverAddr,
+		"port":        cfg.Server.Port,
+		"swagger_url": fmt.Sprintf("http://%s/swagger/index.html", serverAddr),
+	})
+
+	logger.Info("Expenso server starting", logger.Fields{"address": serverAddr})
+	if err := router.Run(":" + fmt.Sprintf("%d", cfg.Server.Port)); err != nil {
+		logger.Fatal("Server failed to start", logger.Fields{"error": err.Error()})
+	}
 }
