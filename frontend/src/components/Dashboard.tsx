@@ -9,7 +9,7 @@ import SkeletonLoader from './SkeletonLoader';
 import SearchInput, { SearchFilters } from './SearchInput';
 import { exportToPDF } from '../utils/pdfExport';
 
-type DateRange = 'current_month' | 'previous_month' | 'this_year' | 'overall';
+type DateRange = 'this_month' | 'previous_month' | 'this_year' | 'overall';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -17,8 +17,8 @@ const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize from URL params or default to 'current_month'
-  const initialRange = (searchParams.get('range') as DateRange) || 'current_month';
+  // Initialize from URL params or default to 'this_month'
+  const initialRange = (searchParams.get('period') as DateRange) || 'this_month';
   const [selectedRange, setSelectedRange] = useState<DateRange>(initialRange);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
     const currentMonth = now.getMonth();
 
     switch (range) {
-      case 'current_month':
+      case 'this_month':
         const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
         const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
         return {
@@ -286,11 +286,11 @@ const Dashboard: React.FC = () => {
 
   const getRangeLabel = (range: DateRange): string => {
     switch (range) {
-      case 'current_month': return 'Current month';
+      case 'this_month': return 'This month';
       case 'previous_month': return 'Previous month';
       case 'this_year': return 'This Year';
       case 'overall': return 'Overall';
-      default: return 'Current month';
+      default: return 'This month';
     }
   };
 
@@ -332,12 +332,12 @@ const Dashboard: React.FC = () => {
                   setSelectedRange(newRange);
                   // Update URL params
                   const params = new URLSearchParams(searchParams);
-                  params.set('range', newRange);
+                  params.set('period', newRange);
                   setSearchParams(params);
                 }}
                 className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="current_month">Current month</option>
+                <option value="this_month">This month</option>
                 <option value="previous_month">Previous month</option>
                 <option value="this_year">This Year</option>
                 <option value="overall">Overall</option>

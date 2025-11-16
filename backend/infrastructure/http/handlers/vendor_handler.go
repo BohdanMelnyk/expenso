@@ -255,6 +255,7 @@ func (h *VendorHandler) vendorToDTO(v *entities.Vendor) dto.VendorResponseDTO {
 		ID:        int(v.ID()),
 		Name:      v.Name(),
 		Type:      string(v.Type()),
+		Category:  entities.GetCategoryForVendorType(v.Type()),
 		CreatedAt: v.CreatedAt(),
 		UpdatedAt: v.UpdatedAt(),
 	}

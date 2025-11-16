@@ -340,6 +340,7 @@ const ImportExpenseModal: React.FC<ImportExpenseModalProps> = ({
                           <VendorSelector
                             selectedVendorId={expense.vendor_id}
                             onVendorSelect={(vendorId) => handleVendorSelect(index, vendorId)}
+                            selectedCategoryName={expense.category}
                             required
                             className="text-sm"
                           />

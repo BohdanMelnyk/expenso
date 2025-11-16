@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Menu, X, Calculator } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -164,6 +164,7 @@ function App() {
           <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
             <Routes>
               <Route path="/" element={<Statistics />} />
+              <Route path="/statistics" element={<Navigate to="/" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/trends" element={<Trends />} />
               <Route path="/averages" element={<AverageExpenses />} />

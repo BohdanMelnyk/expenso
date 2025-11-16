@@ -342,6 +342,7 @@ const AddExpense: React.FC = () => {
             <VendorSelector
               selectedVendorId={formData.vendor_id}
               onVendorSelect={handleVendorSelect}
+              selectedCategoryName={formData.category}
               required
               error={formData.vendor_id === 0 && error !== null}
             />

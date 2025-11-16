@@ -14,8 +14,22 @@ const Statistics: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize from URL params or default to 'this_month'
-  const initialPeriod = (searchParams.get('period') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month') || 'this_month';
+
+  // Initialize from URL params or session storage or default to 'this_month'
+  const getInitialPeriod = () => {
+    // First priority: URL params
+    const urlPeriod = searchParams.get('period') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month';
+    if (urlPeriod) return urlPeriod;
+
+    // Second priority: session storage (previous page period)
+    const sessionPeriod = sessionStorage.getItem('statisticsPeriod') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month';
+    if (sessionPeriod) return sessionPeriod;
+
+    // Third priority: default
+    return 'this_month';
+  };
+
+  const initialPeriod = getInitialPeriod();
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year' | 'this_month'>(initialPeriod);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
@@ -24,6 +38,11 @@ const Statistics: React.FC = () => {
   useEffect(() => {
     fetchExpenses();
   }, []);
+
+  // Save selected period to session storage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('statisticsPeriod', selectedPeriod);
+  }, [selectedPeriod]);
 
   const fetchExpenses = async () => {
     try {
@@ -246,7 +265,7 @@ const Statistics: React.FC = () => {
   // Handle pie chart click
   const handlePieClick = (data: any) => {
     if (data && data.originalName) {
-      navigate(`/statistics/category/${data.originalName}`);
+      navigate(`/statistics/category/${data.originalName}?period=${selectedPeriod}`);
     }
   };
 
@@ -283,8 +302,8 @@ const Statistics: React.FC = () => {
         const startDateStr = startDate.toISOString().split('T')[0];
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        // Navigate to dashboard with month filter
-        navigate(`/dashboard?month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
+        // Navigate to dashboard with month filter and period
+        navigate(`/dashboard?period=${selectedPeriod}&month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
       }
     }
   };
@@ -448,7 +467,7 @@ const Statistics: React.FC = () => {
 
   // Handle vendor type click
   const handleVendorTypeClick = (vendorType: string) => {
-    navigate(`/statistics/vendor-type/${vendorType}`);
+    navigate(`/statistics/vendor-type/${vendorType}?period=${selectedPeriod}`);
   };
 
   if (loading) {

@@ -4,6 +4,7 @@ import { vendorAPI, Vendor } from '../api/client';
 interface VendorSelectorProps {
   selectedVendorId: number;
   onVendorSelect: (vendorId: number) => void;
+  selectedCategoryName?: string;
   className?: string;
   required?: boolean;
   error?: boolean;
@@ -12,6 +13,7 @@ interface VendorSelectorProps {
 const VendorSelector: React.FC<VendorSelectorProps> = ({
   selectedVendorId,
   onVendorSelect,
+  selectedCategoryName,
   className = '',
   required = false,
   error = false
@@ -40,18 +42,25 @@ const VendorSelector: React.FC<VendorSelectorProps> = ({
   }, [selectedVendorId, vendors, isOpen]);
 
   useEffect(() => {
-    // Filter vendors based on search term
-    if (searchTerm.trim() === '') {
-      setFilteredVendors(vendors);
-    } else {
-      const filtered = vendors.filter(vendor =>
+    // Filter vendors based on search term and category
+    let filtered = vendors;
+
+    // First, filter by category if one is selected
+    if (selectedCategoryName) {
+      filtered = filtered.filter(vendor => vendor.category === selectedCategoryName);
+    }
+
+    // Then, filter by search term
+    if (searchTerm.trim() !== '') {
+      filtered = filtered.filter(vendor =>
         vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vendor.type.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredVendors(filtered);
     }
+
+    setFilteredVendors(filtered);
     setSelectedIndex(-1);
-  }, [searchTerm, vendors]);
+  }, [searchTerm, vendors, selectedCategoryName]);
 
   useEffect(() => {
     // Close dropdown when clicking outside

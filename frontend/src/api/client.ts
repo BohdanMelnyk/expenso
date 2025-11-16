@@ -29,7 +29,8 @@ export interface Expense {
 export interface Vendor {
   id: number;
   name: string;
-  type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism' | 'car';
+  type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism' | 'car' | 'shop' | 'dining' | 'dining_with_field';
+  category: string;
   created_at: string;
   updated_at: string;
 }

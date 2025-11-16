@@ -29,8 +29,8 @@ const CategoryStatistics: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize from URL params or default to 'month'
-  const initialTimeFrame = (searchParams.get('timeframe') as TimeFrame) || 'month';
+  // Initialize from URL params or default to 'this_month'
+  const initialTimeFrame = (searchParams.get('period') as TimeFrame) || 'this_month';
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>(initialTimeFrame);
   const [selectedViewType, setSelectedViewType] = useState<ViewType>('daily');
   const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get('start') || '');
@@ -191,7 +191,7 @@ const CategoryStatistics: React.FC = () => {
 
     // Update URL params
     const params = new URLSearchParams(searchParams);
-    params.set('timeframe', timeFrame);
+    params.set('period', timeFrame);
 
     if (timeFrame === 'custom') {
       setShowCustomRange(true);
@@ -238,7 +238,7 @@ const CategoryStatistics: React.FC = () => {
   };
 
   const handleVendorClick = (vendorId: number) => {
-    navigate(`/vendor/${vendorId}`);
+    navigate(`/vendor/${vendorId}?period=${selectedTimeFrame}`);
   };
 
   if (loading) {
@@ -271,7 +271,7 @@ const CategoryStatistics: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/statistics')}
+              onClick={() => navigate(`/statistics?period=${selectedTimeFrame}`)}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
