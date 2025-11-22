@@ -16,7 +16,7 @@ var VendorTypeToCategoryMapping = map[VendorType]string{
 	VendorTypeCar:             "Car",
 	VendorTypeShop:            "Shopping",
 	VendorTypeDining:          "Dining",
-	VendorTypeDiningWithField: "Dining with Friends",
+	VendorTypeDiningWithFriends: "Dining with Friends",
 }
 
 // GetCategoryForVendorType returns the category name for a given vendor type

@@ -180,7 +180,7 @@ Vendors have types that map to categories:
 ```
 'food_store' → 'Food Store'
 'dining' → 'Dining'
-'dining_with_field' → 'Dining with Friends'
+'dining_with_friends' → 'Dining with Friends'
 ```
 
 ## Migration System

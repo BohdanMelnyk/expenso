@@ -22,13 +22,13 @@ const (
 	VendorTypeTransport     VendorType = "transport"
 	VendorTypeTourism         VendorType = "tourism"
 	VendorTypeCar             VendorType = "car"
-	VendorTypeDining          VendorType = "dining"
-	VendorTypeDiningWithField VendorType = "dining_with_field"
+	VendorTypeDining         VendorType = "dining"
+	VendorTypeDiningWithFriends VendorType = "dining_with_friends"
 )
 
 func (vt VendorType) IsValid() bool {
 	switch vt {
-	case VendorTypeFoodStore, VendorTypeCar, VendorTypeTourism, VendorTypeTransport, VendorTypeSalary, VendorTypeLiving, VendorTypeHousehold, VendorTypeCare, VendorTypeClothing, VendorTypeShop, VendorTypeEatingOut, VendorTypeSubscriptions, VendorTypeElse, VendorTypeDining, VendorTypeDiningWithField:
+	case VendorTypeFoodStore, VendorTypeCar, VendorTypeTourism, VendorTypeTransport, VendorTypeSalary, VendorTypeLiving, VendorTypeHousehold, VendorTypeCare, VendorTypeClothing, VendorTypeShop, VendorTypeEatingOut, VendorTypeSubscriptions, VendorTypeElse, VendorTypeDining, VendorTypeDiningWithFriends:
 		return true
 	}
 	return false
