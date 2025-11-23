@@ -34,6 +34,34 @@ func (ab AddedBy) String() string {
 	return string(ab)
 }
 
+type PaymentMethod string
+
+const (
+	PaymentMethodCash         PaymentMethod = "cash"
+	PaymentMethodBHaspaCredit PaymentMethod = "b_haspa_credit"
+	PaymentMethodBN26         PaymentMethod = "b_n26"
+	PaymentMethodMN26         PaymentMethod = "m_n26"
+	PaymentMethodMHaspaCredit PaymentMethod = "m_haspa_credit"
+	PaymentMethodPaypal       PaymentMethod = "paypal"
+	PaymentMethodDebit        PaymentMethod = "debit"
+	PaymentMethodMMonobank    PaymentMethod = "m_monobank"
+	PaymentMethodBMonobank    PaymentMethod = "b_monobank"
+)
+
+func (pm PaymentMethod) IsValid() bool {
+	switch pm {
+	case PaymentMethodCash, PaymentMethodBHaspaCredit, PaymentMethodBN26,
+		PaymentMethodMN26, PaymentMethodMHaspaCredit, PaymentMethodPaypal,
+		PaymentMethodDebit, PaymentMethodMMonobank, PaymentMethodBMonobank:
+		return true
+	}
+	return false
+}
+
+func (pm PaymentMethod) String() string {
+	return string(pm)
+}
+
 type Category string
 
 func NewCategory(value string) (Category, error) {
@@ -51,18 +79,18 @@ func (c Category) String() string {
 type ExpenseID int
 
 type Expense struct {
-	id          ExpenseID
-	amount      valueobjects.Money
-	date        time.Time
-	expenseType ExpenseType
-	category    Category
-	comment     string
-	vendor      *Vendor
-	paidByCard  bool
-	addedBy     AddedBy
-	tags        []*Tag
-	createdAt   time.Time
-	updatedAt   time.Time
+	id            ExpenseID
+	amount        valueobjects.Money
+	date          time.Time
+	expenseType   ExpenseType
+	category      Category
+	comment       string
+	vendor        *Vendor
+	paymentMethod PaymentMethod
+	addedBy       AddedBy
+	tags          []*Tag
+	createdAt     time.Time
+	updatedAt     time.Time
 }
 
 func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseType, category Category, comment string) (*Expense, error) {
@@ -90,33 +118,33 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 
 	now := time.Now()
 	return &Expense{
-		amount:      amount,
-		date:        date,
-		expenseType: expenseType,
-		category:    category,
-		comment:     strings.TrimSpace(comment),
-		paidByCard:  true,      // Default value is true (paid by card)
-		addedBy:     AddedByHe, // Default value is "he"
-		createdAt:   now,
-		updatedAt:   now,
+		amount:        amount,
+		date:          date,
+		expenseType:   expenseType,
+		category:      category,
+		comment:       strings.TrimSpace(comment),
+		paymentMethod: PaymentMethodBHaspaCredit, // Default value is B Haspa Credit
+		addedBy:       AddedByHe,                  // Default value is "he"
+		createdAt:     now,
+		updatedAt:     now,
 	}, nil
 }
 
 func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType,
-	category Category, comment string, vendor *Vendor, paidByCard bool, addedBy AddedBy, tags []*Tag, createdAt, updatedAt time.Time) *Expense {
+	category Category, comment string, vendor *Vendor, paymentMethod PaymentMethod, addedBy AddedBy, tags []*Tag, createdAt, updatedAt time.Time) *Expense {
 	return &Expense{
-		id:          id,
-		amount:      amount,
-		date:        date,
-		expenseType: expenseType,
-		category:    category,
-		comment:     comment,
-		vendor:      vendor,
-		paidByCard:  paidByCard,
-		addedBy:     addedBy,
-		tags:        tags,
-		createdAt:   createdAt,
-		updatedAt:   updatedAt,
+		id:            id,
+		amount:        amount,
+		date:          date,
+		expenseType:   expenseType,
+		category:      category,
+		comment:       comment,
+		vendor:        vendor,
+		paymentMethod: paymentMethod,
+		addedBy:       addedBy,
+		tags:          tags,
+		createdAt:     createdAt,
+		updatedAt:     updatedAt,
 	}
 }
 
@@ -156,8 +184,13 @@ func (e *Expense) UpdatedAt() time.Time {
 	return e.updatedAt
 }
 
+func (e *Expense) PaymentMethod() PaymentMethod {
+	return e.paymentMethod
+}
+
+// PaidByCard returns true if the payment method is not cash (for backward compatibility)
 func (e *Expense) PaidByCard() bool {
-	return e.paidByCard
+	return e.paymentMethod != PaymentMethodCash
 }
 
 func (e *Expense) AddedBy() AddedBy {
@@ -203,8 +236,22 @@ func (e *Expense) UpdateComment(comment string) {
 	e.updatedAt = time.Now()
 }
 
+func (e *Expense) UpdatePaymentMethod(paymentMethod PaymentMethod) error {
+	if !paymentMethod.IsValid() {
+		return errors.New("invalid payment method")
+	}
+	e.paymentMethod = paymentMethod
+	e.updatedAt = time.Now()
+	return nil
+}
+
+// UpdatePaidByCard updates payment method based on boolean (for backward compatibility)
 func (e *Expense) UpdatePaidByCard(paidByCard bool) {
-	e.paidByCard = paidByCard
+	if paidByCard {
+		e.paymentMethod = PaymentMethodBHaspaCredit
+	} else {
+		e.paymentMethod = PaymentMethodCash
+	}
 	e.updatedAt = time.Now()
 }
 

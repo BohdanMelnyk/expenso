@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getPaymentMethodLabel } from './paymentMethod';
 
 interface ExpenseData {
   id: number;
@@ -8,7 +9,8 @@ interface ExpenseData {
   date: string;
   category: string;
   vendor?: { name: string };
-  paid_by_card: boolean;
+  payment_method: string;
+  paid_by_card?: boolean; // Deprecated: kept for backward compatibility
   tags?: string[];
 }
 
@@ -48,14 +50,17 @@ export const exportToPDF = (data: ExportData) => {
     doc.text('Expenses', 20, yPosition);
     yPosition += 10;
     
-    const expenseRows = data.expenses.map(expense => [
-      expense.date,
-      expense.comment,
-      expense.category,
-      expense.vendor?.name || '-',
-      expense.paid_by_card ? 'Card' : 'Cash',
-      `€${expense.amount.toFixed(2)}`
-    ]);
+    const expenseRows = data.expenses.map(expense => {
+      const paymentMethod = expense.payment_method || (expense.paid_by_card ? 'card' : 'cash');
+      return [
+        expense.date,
+        expense.comment,
+        expense.category,
+        expense.vendor?.name || '-',
+        getPaymentMethodLabel(paymentMethod),
+        `€${expense.amount.toFixed(2)}`
+      ];
+    });
     
     autoTable(doc, {
       startY: yPosition,

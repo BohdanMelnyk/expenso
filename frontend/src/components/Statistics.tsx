@@ -6,6 +6,7 @@ import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from './Toast';
 import SkeletonLoader from './SkeletonLoader';
+import { isCardPayment } from '../utils/paymentMethod';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -257,8 +258,14 @@ const Statistics: React.FC = () => {
   const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   
   // Payment method statistics
-  const cardExpenses = filteredExpenses.filter(exp => exp.paid_by_card);
-  const cashExpenses = filteredExpenses.filter(exp => !exp.paid_by_card);
+  const cardExpenses = filteredExpenses.filter(exp => {
+    const paymentMethod = exp.payment_method || (exp.paid_by_card ? 'card' : 'cash');
+    return isCardPayment(paymentMethod);
+  });
+  const cashExpenses = filteredExpenses.filter(exp => {
+    const paymentMethod = exp.payment_method || (exp.paid_by_card ? 'card' : 'cash');
+    return paymentMethod === 'cash';
+  });
   const cardAmount = cardExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const cashAmount = cashExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 

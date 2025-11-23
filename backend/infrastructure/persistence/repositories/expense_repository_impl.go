@@ -24,7 +24,7 @@ func NewExpenseRepository(db *sql.DB, tagRepo *TagRepository) repositories.Expen
 
 func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 	query := `
-		INSERT INTO expenses (amount, date, type, category, comment, vendor_id, paid_by_card, added_by, created_at, updated_at)
+		INSERT INTO expenses (amount, date, type, category, comment, vendor_id, payment_method, added_by, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id
 	`
@@ -44,7 +44,7 @@ func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 		expense.Category().String(),
 		expense.Comment(),
 		vendorID,
-		expense.PaidByCard(),
+		string(expense.PaymentMethod()),
 		expense.AddedBy().String(),
 		expense.CreatedAt(),
 		expense.UpdatedAt(),
@@ -60,7 +60,7 @@ func (r *ExpenseRepositoryImpl) Save(expense *entities.Expense) error {
 
 func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -75,7 +75,7 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 
 	row := r.db.QueryRow(query, int(id))
 	err := row.Scan(
-		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 		&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 	)
 
@@ -108,7 +108,7 @@ func (r *ExpenseRepositoryImpl) FindByID(id entities.ExpenseID) (*entities.Expen
 
 func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -129,7 +129,7 @@ func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -169,8 +169,8 @@ func (r *ExpenseRepositoryImpl) FindAll() ([]*entities.Expense, error) {
 
 func (r *ExpenseRepositoryImpl) Update(expense *entities.Expense) error {
 	query := `
-		UPDATE expenses 
-		SET amount = $2, date = $3, type = $4, category = $5, comment = $6, vendor_id = $7, updated_at = $8
+		UPDATE expenses
+		SET amount = $2, date = $3, type = $4, category = $5, comment = $6, vendor_id = $7, payment_method = $8, updated_at = $9
 		WHERE id = $1
 	`
 
@@ -189,6 +189,7 @@ func (r *ExpenseRepositoryImpl) Update(expense *entities.Expense) error {
 		expense.Category().String(),
 		expense.Comment(),
 		vendorID,
+		string(expense.PaymentMethod()),
 		expense.UpdatedAt(),
 	)
 
@@ -230,7 +231,7 @@ func (r *ExpenseRepositoryImpl) Delete(id entities.ExpenseID) error {
 
 func (r *ExpenseRepositoryImpl) FindByCategory(category entities.Category) ([]*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -252,7 +253,7 @@ func (r *ExpenseRepositoryImpl) FindByCategory(category entities.Category) ([]*e
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -292,7 +293,7 @@ func (r *ExpenseRepositoryImpl) FindByCategory(category entities.Category) ([]*e
 
 func (r *ExpenseRepositoryImpl) FindByCategoryAndDateRange(category entities.Category, startDate, endDate *time.Time) ([]*entities.Expense, error) {
 	baseQuery := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -332,7 +333,7 @@ func (r *ExpenseRepositoryImpl) FindByCategoryAndDateRange(category entities.Cat
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -372,7 +373,7 @@ func (r *ExpenseRepositoryImpl) FindByCategoryAndDateRange(category entities.Cat
 
 func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -394,7 +395,7 @@ func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*ent
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -434,7 +435,7 @@ func (r *ExpenseRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*ent
 
 func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([]*entities.Expense, error) {
 	baseQuery := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -472,7 +473,7 @@ func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) (
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -512,7 +513,7 @@ func (r *ExpenseRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) (
 
 func (r *ExpenseRepositoryImpl) FindByAmountAndDateRange(amount float64, startDate, endDate time.Time) ([]*entities.Expense, error) {
 	query := `
-		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.paid_by_card, e.added_by, e.created_at, e.updated_at,
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM expenses e
 		LEFT JOIN vendors v ON e.vendor_id = v.id
@@ -534,7 +535,7 @@ func (r *ExpenseRepositoryImpl) FindByAmountAndDateRange(amount float64, startDa
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaidByCard, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {

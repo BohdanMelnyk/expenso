@@ -8,6 +8,8 @@ import ImportExpenseModal from './ImportExpenseModal';
 import SkeletonLoader from './SkeletonLoader';
 import SearchInput, { SearchFilters } from './SearchInput';
 import { exportToPDF } from '../utils/pdfExport';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
 
 type DateRange = 'this_month' | 'previous_month' | 'this_year' | 'overall';
 
@@ -132,8 +134,9 @@ const Dashboard: React.FC = () => {
     // Filter by payment method
     if (filters.paymentMethod && filters.paymentMethod !== 'all') {
       filtered = filtered.filter(expense => {
-        if (filters.paymentMethod === 'card') return expense.paid_by_card;
-        if (filters.paymentMethod === 'cash') return !expense.paid_by_card;
+        const paymentMethod = expense.payment_method || (expense.paid_by_card ? 'card' : 'cash');
+        if (filters.paymentMethod === 'card') return isCardPayment(paymentMethod);
+        if (filters.paymentMethod === 'cash') return paymentMethod === 'cash';
         return true;
       });
     }
@@ -230,7 +233,8 @@ const Dashboard: React.FC = () => {
     try {
       // For now, we'll export current expenses and fetch incomes if needed
       // You may need to add an incomes API call here
-      const exportData = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const exportData: any = {
         expenses: expenses.map(expense => ({
           ...expense,
           tags: expense.tags?.map(tag => tag.name)
@@ -238,7 +242,7 @@ const Dashboard: React.FC = () => {
         incomes: [], // Add income data if available
         period: getRangeLabel(selectedRange)
       };
-      
+
       exportToPDF(exportData);
     } catch (err: any) {
       setError(getErrorMessage(err, 'Failed to export PDF'));
@@ -472,11 +476,11 @@ const Dashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        expense.paid_by_card 
-                          ? 'bg-blue-100 text-blue-800' 
+                        isCardPayment(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))
+                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {expense.paid_by_card ? '💳 Card' : '💵 Cash'}
+                        {getPaymentMethodLabel(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -556,11 +560,11 @@ const Dashboard: React.FC = () => {
                     </span>
                   )}
                   <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                    expense.paid_by_card 
-                      ? 'bg-blue-100 text-blue-800' 
+                    isCardPayment(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {expense.paid_by_card ? '💳 Card' : '💵 Cash'}
+                    {getPaymentMethodLabel(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))}
                   </span>
                 </div>
                 

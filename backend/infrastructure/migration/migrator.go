@@ -194,9 +194,9 @@ func (m *Migrator) runSingleMigration(migration Migration) error {
 
 	// Record migration start (with success = false)
 	insertQuery := `
-		INSERT INTO schema_migrations (version, success, error_message) 
-		VALUES ($1, false, '') 
-		ON CONFLICT (version) 
+		INSERT INTO schema_migrations (version, success, error_message)
+		VALUES ($1, false, '')
+		ON CONFLICT (version)
 		DO UPDATE SET success = false, applied_at = NOW(), error_message = ''
 	`
 
@@ -212,40 +212,68 @@ func (m *Migrator) runSingleMigration(migration Migration) error {
 		return fmt.Errorf(errorMsg)
 	}
 
-	// Execute migration in a transaction
-	tx, err := m.db.Begin()
-	if err != nil {
-		errorMsg := fmt.Sprintf("failed to start transaction: %v", err)
-		m.recordMigrationFailure(migration.Version, errorMsg)
-		return fmt.Errorf(errorMsg)
-	}
-	defer tx.Rollback()
+	// Check if migration requires non-transactional execution
+	// Migrations containing ALTER TYPE ... ADD VALUE need special handling
+	requiresNonTransactional := strings.Contains(strings.ToUpper(string(content)), "ALTER TYPE") &&
+		strings.Contains(strings.ToUpper(string(content)), "ADD VALUE")
 
-	// Execute the migration SQL
-	if _, err := tx.Exec(string(content)); err != nil {
-		errorMsg := fmt.Sprintf("failed to execute migration SQL: %v", err)
-		m.recordMigrationFailure(migration.Version, errorMsg)
-		return fmt.Errorf(errorMsg)
-	}
+	var execErr error
+	if requiresNonTransactional {
+		// Execute directly without transaction (for enum operations)
+		if _, execErr = m.db.Exec(string(content)); execErr != nil {
+			errorMsg := fmt.Sprintf("failed to execute migration SQL: %v", execErr)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
 
-	// Update migration status to successful
-	updateQuery := `
-		UPDATE schema_migrations 
-		SET success = true, applied_at = NOW(), error_message = '' 
-		WHERE version = $1
-	`
+		// Record success
+		updateQuery := `
+			UPDATE schema_migrations
+			SET success = true, applied_at = NOW(), error_message = ''
+			WHERE version = $1
+		`
 
-	if _, err := tx.Exec(updateQuery, migration.Version); err != nil {
-		errorMsg := fmt.Sprintf("failed to update migration status: %v", err)
-		m.recordMigrationFailure(migration.Version, errorMsg)
-		return fmt.Errorf(errorMsg)
-	}
+		if _, err := m.db.Exec(updateQuery, migration.Version); err != nil {
+			errorMsg := fmt.Sprintf("failed to update migration status: %v", err)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
+	} else {
+		// Execute migration in a transaction
+		tx, err := m.db.Begin()
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to start transaction: %v", err)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
+		defer tx.Rollback()
 
-	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		errorMsg := fmt.Sprintf("failed to commit migration transaction: %v", err)
-		m.recordMigrationFailure(migration.Version, errorMsg)
-		return fmt.Errorf(errorMsg)
+		// Execute the migration SQL
+		if _, err := tx.Exec(string(content)); err != nil {
+			errorMsg := fmt.Sprintf("failed to execute migration SQL: %v", err)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
+
+		// Update migration status to successful
+		updateQuery := `
+			UPDATE schema_migrations
+			SET success = true, applied_at = NOW(), error_message = ''
+			WHERE version = $1
+		`
+
+		if _, err := tx.Exec(updateQuery, migration.Version); err != nil {
+			errorMsg := fmt.Sprintf("failed to update migration status: %v", err)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
+
+		// Commit the transaction
+		if err := tx.Commit(); err != nil {
+			errorMsg := fmt.Sprintf("failed to commit migration transaction: %v", err)
+			m.recordMigrationFailure(migration.Version, errorMsg)
+			return fmt.Errorf(errorMsg)
+		}
 	}
 
 	log.Printf("Migration %s completed successfully", migration.Version)

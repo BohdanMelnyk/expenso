@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, TrendingDown, TrendingUp, PieChart, DollarSign, Wallet, CreditCard, Banknote } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
+import { isCardPayment } from '../utils/paymentMethod';
 
 type TimeFrame = 'week' | 'current_month' | 'this_year' | 'overall';
 
@@ -104,8 +105,14 @@ const CashFlow: React.FC = () => {
     const balance = totalEarnings - totalExpenses;
     
     // Payment method breakdown
-    const cardExpenses = expenses.filter(expense => expense.paid_by_card);
-    const cashExpenses = expenses.filter(expense => !expense.paid_by_card);
+    const cardExpenses = expenses.filter(expense => {
+      const paymentMethod = expense.payment_method || (expense.paid_by_card ? 'card' : 'cash');
+      return isCardPayment(paymentMethod);
+    });
+    const cashExpenses = expenses.filter(expense => {
+      const paymentMethod = expense.payment_method || (expense.paid_by_card ? 'card' : 'cash');
+      return paymentMethod === 'cash';
+    });
     const cardAmount = cardExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const cashAmount = cashExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     

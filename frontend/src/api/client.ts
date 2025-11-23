@@ -19,7 +19,8 @@ export interface Expense {
   date: string;
   type: string;
   category: string;
-  paid_by_card: boolean;
+  payment_method: string;
+  paid_by_card?: boolean; // Deprecated: kept for backward compatibility
   added_by: 'he' | 'she';
   tags?: Tag[];
   created_at: string;
@@ -59,7 +60,8 @@ export interface CreateExpenseRequest {
   date: string;
   category: string;
   type: string;
-  paid_by_card?: boolean;
+  payment_method?: string;
+  paid_by_card?: boolean; // Deprecated: kept for backward compatibility
   added_by?: 'he' | 'she';
   tag_ids?: number[];
 }

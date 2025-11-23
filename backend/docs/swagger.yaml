@@ -1,5 +1,48 @@
 basePath: /api/v1
 definitions:
+  dto.CSVImportConfirmRequestDTO:
+    properties:
+      expenses:
+        items:
+          $ref: '#/definitions/dto.CreateExpenseRequestDTO'
+        type: array
+      row_number:
+        type: integer
+    type: object
+  dto.CSVImportPreviewDTO:
+    properties:
+      rows:
+        items:
+          $ref: '#/definitions/dto.CSVRowPreviewDTO'
+        type: array
+    type: object
+  dto.CSVImportRequestDTO:
+    properties:
+      csv_data:
+        type: string
+    required:
+    - csv_data
+    type: object
+  dto.CSVRowPreviewDTO:
+    properties:
+      date:
+        type: string
+      expenses:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+      issues:
+        items:
+          type: string
+        type: array
+      parsed_expenses:
+        items:
+          $ref: '#/definitions/dto.ParsedExpenseDTO'
+        type: array
+      row_number:
+        type: integer
+    type: object
   dto.CategoryResponseDTO:
     properties:
       color:
@@ -29,6 +72,12 @@ definitions:
     type: object
   dto.CreateExpenseRequestDTO:
     properties:
+      added_by:
+        description: Optional, defaults to "he" if not provided
+        enum:
+        - he
+        - she
+        type: string
       amount:
         type: number
       category:
@@ -38,8 +87,16 @@ definitions:
       date:
         type: string
       paid_by_card:
-        description: Optional, defaults to true if not provided
+        description: 'Deprecated: kept for backward compatibility'
         type: boolean
+      payment_method:
+        description: Optional, defaults to "b_haspa_credit" if not provided
+        type: string
+      tag_ids:
+        description: Optional list of tag IDs
+        items:
+          type: integer
+        type: array
       type:
         type: string
       vendor_id:
@@ -49,6 +106,44 @@ definitions:
     - category
     - date
     - type
+    type: object
+  dto.CreateIncomeRequestDTO:
+    properties:
+      added_by:
+        description: Optional, defaults to "he" if not provided
+        enum:
+        - he
+        - she
+        type: string
+      amount:
+        type: number
+      comment:
+        type: string
+      date:
+        type: string
+      source:
+        type: string
+      tag_ids:
+        description: Optional list of tag IDs
+        items:
+          type: integer
+        type: array
+      vendor_id:
+        type: integer
+    required:
+    - amount
+    - date
+    - source
+    type: object
+  dto.CreateTagRequestDTO:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+    required:
+    - color
+    - name
     type: object
   dto.CreateVendorRequestDTO:
     properties:
@@ -62,6 +157,8 @@ definitions:
     type: object
   dto.ExpenseResponseDTO:
     properties:
+      added_by:
+        type: string
       amount:
         type: number
       category:
@@ -75,13 +172,82 @@ definitions:
       id:
         type: integer
       paid_by_card:
+        description: 'Deprecated: kept for backward compatibility'
         type: boolean
+      payment_method:
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/dto.TagResponseDTO'
+        type: array
       type:
         type: string
       updated_at:
         type: string
       vendor:
         $ref: '#/definitions/dto.VendorResponseDTO'
+    type: object
+  dto.IncomeResponseDTO:
+    properties:
+      added_by:
+        type: string
+      amount:
+        type: number
+      comment:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: integer
+      source:
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/dto.TagResponseDTO'
+        type: array
+      updated_at:
+        type: string
+      vendor:
+        $ref: '#/definitions/dto.VendorResponseDTO'
+    type: object
+  dto.IncomeSummaryDTO:
+    properties:
+      income_count:
+        type: integer
+      total_income:
+        type: number
+    type: object
+  dto.ParsedExpenseDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      comment:
+        type: string
+      date:
+        type: string
+      issues:
+        items:
+          type: string
+        type: array
+      vendor_type:
+        type: string
+    type: object
+  dto.TagResponseDTO:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
     type: object
   dto.UpdateCategoryRequestDTO:
     properties:
@@ -94,6 +260,11 @@ definitions:
     type: object
   dto.UpdateExpenseRequestDTO:
     properties:
+      added_by:
+        enum:
+        - he
+        - she
+        type: string
       amount:
         type: number
       category:
@@ -103,14 +274,55 @@ definitions:
       date:
         type: string
       paid_by_card:
+        description: 'Deprecated: kept for backward compatibility'
         type: boolean
+      payment_method:
+        type: string
       type:
         type: string
       vendor_id:
         type: integer
     type: object
+  dto.UpdateIncomeRequestDTO:
+    properties:
+      added_by:
+        enum:
+        - he
+        - she
+        type: string
+      amount:
+        type: number
+      comment:
+        type: string
+      date:
+        type: string
+      source:
+        type: string
+      tag_ids:
+        items:
+          type: integer
+        type: array
+      vendor_id:
+        type: integer
+    type: object
+  dto.UpdateTagRequestDTO:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.UpdateVendorRequestDTO:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
   dto.VendorResponseDTO:
     properties:
+      category:
+        type: string
       created_at:
         type: string
       id:
@@ -303,7 +515,16 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a list of all expenses
+      description: Get a list of all expenses with optional date range filtering
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
       produces:
       - application/json
       responses:
@@ -313,6 +534,12 @@ paths:
             items:
               $ref: '#/definitions/dto.ExpenseResponseDTO'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -349,6 +576,96 @@ paths:
       summary: Create a new expense
       tags:
       - expenses
+  /expenses/{expense_id}/tags:
+    get:
+      description: Get all tags for a specific expense
+      parameters:
+      - description: Expense ID
+        in: path
+        name: expense_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TagResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get tags by expense
+      tags:
+      - tags
+  /expenses/{expense_id}/tags/{tag_id}:
+    delete:
+      description: Remove a tag from an expense
+      parameters:
+      - description: Expense ID
+        in: path
+        name: expense_id
+        required: true
+        type: integer
+      - description: Tag ID
+        in: path
+        name: tag_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Remove tag from expense
+      tags:
+      - tags
+    post:
+      description: Add a tag to an expense
+      parameters:
+      - description: Expense ID
+        in: path
+        name: expense_id
+        required: true
+        type: integer
+      - description: Tag ID
+        in: path
+        name: tag_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add tag to expense
+      tags:
+      - tags
   /expenses/{id}:
     delete:
       consumes:
@@ -462,6 +779,765 @@ paths:
       summary: Update an expense
       tags:
       - expenses
+  /expenses/actual:
+    get:
+      consumes:
+      - application/json
+      description: Get expenses excluding salary entries for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get actual expenses (excluding salary)
+      tags:
+      - expenses
+  /expenses/averages:
+    get:
+      consumes:
+      - application/json
+      description: Calculate average expenses per category and vendor type per month
+        for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get average expenses per category and vendor per month
+      tags:
+      - expenses
+  /expenses/balance:
+    get:
+      consumes:
+      - application/json
+      description: Get balance summary with total earnings, expenses, and balance
+        for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get balance summary (earnings vs expenses)
+      tags:
+      - expenses
+  /expenses/by-category:
+    get:
+      consumes:
+      - application/json
+      description: Get expenses filtered by category and optional date range, sorted
+        by amount (highest first)
+      parameters:
+      - description: Category name to filter by
+        in: query
+        name: category
+        required: true
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get expenses by category
+      tags:
+      - expenses
+  /expenses/check-duplicates:
+    get:
+      consumes:
+      - application/json
+      description: Check for existing expenses with the same amount within a date
+        range
+      parameters:
+      - description: Expense amount
+        in: query
+        name: amount
+        required: true
+        type: number
+      - description: Expense date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      - description: 'Day range for duplicate check (default: 2)'
+        in: query
+        name: day_range
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Check for duplicate expenses
+      tags:
+      - expenses
+  /expenses/earnings:
+    get:
+      consumes:
+      - application/json
+      description: Get salary entries (earnings) for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get earnings (salary entries)
+      tags:
+      - expenses
+  /expenses/export/csv:
+    get:
+      consumes:
+      - application/json
+      description: Export expenses filtered by card payment and "he" as CSV with vendor
+        type columns
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Export expenses as CSV
+      tags:
+      - expenses
+  /expenses/import/csv/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirm and create expenses from a CSV row
+      parameters:
+      - description: Expenses to import
+        in: body
+        name: import_data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CSVImportConfirmRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Confirm and import CSV row
+      tags:
+      - expenses
+  /expenses/import/csv/preview:
+    post:
+      consumes:
+      - application/json
+      description: Parse and preview CSV data for import validation
+      parameters:
+      - description: CSV data to preview
+        in: body
+        name: csv_data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CSVImportRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CSVImportPreviewDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Preview CSV import
+      tags:
+      - expenses
+  /incomes:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all incomes with optional date range filtering
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.IncomeResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all incomes
+      tags:
+      - incomes
+    post:
+      consumes:
+      - application/json
+      description: Create a new income record
+      parameters:
+      - description: Income data
+        in: body
+        name: income
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateIncomeRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.IncomeResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new income
+      tags:
+      - incomes
+  /incomes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an income record by ID
+      parameters:
+      - description: Income ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete an income
+      tags:
+      - incomes
+    get:
+      consumes:
+      - application/json
+      description: Get a specific income by its ID
+      parameters:
+      - description: Income ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.IncomeResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get income by ID
+      tags:
+      - incomes
+    put:
+      consumes:
+      - application/json
+      description: Update an existing income record
+      parameters:
+      - description: Income ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated income data
+        in: body
+        name: income
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateIncomeRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.IncomeResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an income
+      tags:
+      - incomes
+  /incomes/source/{source}:
+    get:
+      consumes:
+      - application/json
+      description: Get incomes filtered by source
+      parameters:
+      - description: Income source
+        in: path
+        name: source
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.IncomeResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get incomes by source
+      tags:
+      - incomes
+  /incomes/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get total income amount and count for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.IncomeSummaryDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get income summary
+      tags:
+      - incomes
+  /tags:
+    get:
+      description: Retrieve all available tags
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TagResponseDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all tags
+      tags:
+      - tags
+    post:
+      consumes:
+      - application/json
+      description: Create a new tag for expense categorization
+      parameters:
+      - description: Tag creation data
+        in: body
+        name: tag
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTagRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.TagResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new tag
+      tags:
+      - tags
+  /tags/{id}:
+    delete:
+      description: Delete a tag by ID
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete tag
+      tags:
+      - tags
+    get:
+      description: Retrieve a specific tag by its ID
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TagResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get tag by ID
+      tags:
+      - tags
+    put:
+      consumes:
+      - application/json
+      description: Update an existing tag
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tag update data
+        in: body
+        name: tag
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTagRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TagResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update tag
+      tags:
+      - tags
   /vendors:
     get:
       consumes:
@@ -519,6 +1595,36 @@ paths:
       tags:
       - vendors
   /vendors/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a vendor by ID
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a vendor
+      tags:
+      - vendors
     get:
       consumes:
       - application/json
@@ -555,6 +1661,44 @@ paths:
               type: string
             type: object
       summary: Get a vendor by ID
+      tags:
+      - vendors
+    put:
+      consumes:
+      - application/json
+      description: Update a vendor with the provided data
+      parameters:
+      - description: Vendor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Vendor data
+        in: body
+        name: vendor
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateVendorRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VendorResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a vendor
       tags:
       - vendors
   /vendors/type/{type}:

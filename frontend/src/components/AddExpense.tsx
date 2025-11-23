@@ -20,6 +20,19 @@ const AddExpense: React.FC = () => {
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [pendingExpenseData, setPendingExpenseData] = useState<CreateExpenseRequest | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const PAYMENT_METHODS = [
+    { value: 'b_haspa_credit', label: '💳 B Haspa Credit' },
+    { value: 'b_n26', label: '💳 B N26' },
+    { value: 'm_n26', label: '💳 M N26' },
+    { value: 'm_haspa_credit', label: '💳 M Haspa Credit' },
+    { value: 'paypal', label: '💻 PayPal' },
+    { value: 'debit', label: '🏦 Debit' },
+    { value: 'm_monobank', label: '📱 M Monobank' },
+    { value: 'b_monobank', label: '📱 B Monobank' },
+    { value: 'cash', label: '💵 Cash' },
+  ];
+
   const initialFormData = {
     comment: '',
     amount: 0,
@@ -27,7 +40,7 @@ const AddExpense: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     category: '',
     type: 'expense',
-    paid_by_card: true,
+    payment_method: 'b_haspa_credit',
     added_by: 'he',
   };
 
@@ -149,16 +162,18 @@ const AddExpense: React.FC = () => {
     setSuccess(null);
 
     // Optional: Run validation to update error states, but don't block submission
-    validateForm();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const isValid = validateForm();
 
-    const expenseData: CreateExpenseRequest = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const expenseData: any = {
       comment: formData.comment,
       amount: formData.amount,
       vendor_id: formData.vendor_id,
       date: formData.date,
       category: formData.category,
       type: formData.type,
-      paid_by_card: formData.paid_by_card,
+      payment_method: formData.payment_method,
       added_by: formData.added_by,
       tag_ids: selectedTags
     };
@@ -359,31 +374,22 @@ const AddExpense: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
               Payment Method
             </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paid_by_card"
-                  checked={formData.paid_by_card === true}
-                  onChange={() => setFieldValue('paid_by_card', true)}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💳 Card</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paid_by_card"
-                  checked={formData.paid_by_card === false}
-                  onChange={() => setFieldValue('paid_by_card', false)}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💵 Cash</span>
-              </label>
-            </div>
+            <select
+              id="payment_method"
+              name="payment_method"
+              value={formData.payment_method}
+              onChange={(e) => setFieldValue('payment_method', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            >
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -10,42 +10,42 @@ import (
 )
 
 type CreateExpenseCommand struct {
-	Amount     float64
-	Date       time.Time
-	Type       string
-	Category   string
-	Comment    string
-	VendorID   *entities.VendorID
-	PaidByCard *bool            // Optional, defaults to true if nil
-	AddedBy    *string          // Optional, defaults to "he" if nil
-	TagIDs     []entities.TagID // Optional list of tag IDs to assign
+	Amount        float64
+	Date          time.Time
+	Type          string
+	Category      string
+	Comment       string
+	VendorID      *entities.VendorID
+	PaymentMethod *entities.PaymentMethod // Optional, defaults to b_haspa_credit if nil
+	AddedBy       *string                 // Optional, defaults to "he" if nil
+	TagIDs        []entities.TagID        // Optional list of tag IDs to assign
 }
 
 // CreateExpenseFromCSVCommand allows setting custom created/updated dates for CSV imports
 type CreateExpenseFromCSVCommand struct {
-	Amount     float64
-	Date       time.Time
-	Type       string
-	Category   string
-	Comment    string
-	VendorID   *entities.VendorID
-	PaidByCard *bool            // Optional, defaults to true if nil
-	AddedBy    *string          // Optional, defaults to "he" if nil
-	TagIDs     []entities.TagID // Optional list of tag IDs to assign
-	CreatedAt  time.Time        // Custom created date
-	UpdatedAt  time.Time        // Custom updated date
+	Amount        float64
+	Date          time.Time
+	Type          string
+	Category      string
+	Comment       string
+	VendorID      *entities.VendorID
+	PaymentMethod *entities.PaymentMethod // Optional, defaults to b_haspa_credit if nil
+	AddedBy       *string                 // Optional, defaults to "he" if nil
+	TagIDs        []entities.TagID        // Optional list of tag IDs to assign
+	CreatedAt     time.Time               // Custom created date
+	UpdatedAt     time.Time               // Custom updated date
 }
 
 type UpdateExpenseCommand struct {
-	ID         entities.ExpenseID
-	Amount     *float64
-	Date       *time.Time
-	Category   *string
-	Comment    *string
-	VendorID   *entities.VendorID
-	PaidByCard *bool
-	AddedBy    *string
-	TagIDs     *[]entities.TagID // Optional list of tag IDs to assign (nil means no change, empty slice means clear tags)
+	ID            entities.ExpenseID
+	Amount        *float64
+	Date          *time.Time
+	Category      *string
+	Comment       *string
+	VendorID      *entities.VendorID
+	PaymentMethod *entities.PaymentMethod
+	AddedBy       *string
+	TagIDs        *[]entities.TagID // Optional list of tag IDs to assign (nil means no change, empty slice means clear tags)
 }
 
 type ExpenseInteractor struct {
@@ -87,11 +87,13 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 		return nil, err
 	}
 
-	// Handle PaidByCard field - if not provided, defaults to true (card payment)
-	if cmd.PaidByCard != nil {
-		expense.UpdatePaidByCard(*cmd.PaidByCard)
+	// Handle PaymentMethod field - if not provided, defaults to b_haspa_credit from NewExpense
+	if cmd.PaymentMethod != nil {
+		if err := expense.UpdatePaymentMethod(*cmd.PaymentMethod); err != nil {
+			return nil, err
+		}
 	}
-	// If cmd.PaidByCard is nil, the default value (true) from NewExpense is used
+	// If cmd.PaymentMethod is nil, the default value (b_haspa_credit) from NewExpense is used
 
 	// Handle AddedBy field - if not provided, defaults to "he"
 	if cmd.AddedBy != nil {
@@ -156,10 +158,13 @@ func (i *ExpenseInteractor) CreateExpenseFromCSV(cmd CreateExpenseFromCSVCommand
 		return nil, err
 	}
 
-	// Handle PaidByCard field - if not provided, defaults to true (card payment)
-	if cmd.PaidByCard != nil {
-		expense.UpdatePaidByCard(*cmd.PaidByCard)
+	// Handle PaymentMethod field - if not provided, defaults to b_haspa_credit from NewExpense
+	if cmd.PaymentMethod != nil {
+		if err := expense.UpdatePaymentMethod(*cmd.PaymentMethod); err != nil {
+			return nil, err
+		}
 	}
+	// If cmd.PaymentMethod is nil, the default value (b_haspa_credit) from NewExpense is used
 
 	// Handle AddedBy field - if not provided, defaults to "he"
 	if cmd.AddedBy != nil {
@@ -301,6 +306,13 @@ func (i *ExpenseInteractor) UpdateExpense(cmd UpdateExpenseCommand) (*entities.E
 	// Update comment if provided
 	if cmd.Comment != nil {
 		expense.UpdateComment(*cmd.Comment)
+	}
+
+	// Update payment method if provided
+	if cmd.PaymentMethod != nil {
+		if err := expense.UpdatePaymentMethod(*cmd.PaymentMethod); err != nil {
+			return nil, err
+		}
 	}
 
 	// Update addedBy if provided

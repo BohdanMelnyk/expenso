@@ -105,7 +105,13 @@ func main() {
 
 	// CORS middleware for Gin
 	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:3000")
+		origin := c.Request.Header.Get("Origin")
+		// Allow both localhost:3000 and localhost:3001 for development
+		if origin == "http://localhost:3000" || origin == "http://localhost:3001" {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "http://localhost:3000")
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "*")
 

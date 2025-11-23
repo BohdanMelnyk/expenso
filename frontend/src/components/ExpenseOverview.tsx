@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  DollarSign, 
-  Store, 
-  CreditCard, 
-  Banknote, 
-  Tag, 
-  User, 
+import {
+  ArrowLeft,
+  Calendar,
+  DollarSign,
+  Store,
+  CreditCard,
+  Banknote,
+  Tag,
+  User,
   MessageCircle,
   Clock,
   Edit
 } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
+import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
 
 const ExpenseOverview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -218,7 +219,7 @@ const ExpenseOverview: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-3">
-              {expense.paid_by_card ? (
+              {isCardPayment(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash')) ? (
                 <CreditCard className="w-5 h-5 text-blue-500" />
               ) : (
                 <Banknote className="w-5 h-5 text-green-500" />
@@ -227,11 +228,11 @@ const ExpenseOverview: React.FC = () => {
                 <p className="text-sm text-gray-500">Payment Method</p>
                 <div className="flex items-center space-x-2">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    expense.paid_by_card 
-                      ? 'bg-blue-100 text-blue-800' 
+                    isCardPayment(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {expense.paid_by_card ? '💳 Card Payment' : '💵 Cash Payment'}
+                    {getPaymentMethodLabel(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))}
                   </span>
                 </div>
               </div>

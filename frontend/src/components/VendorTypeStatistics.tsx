@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ArrowLeft, Calendar, TrendingDown, DollarSign, Store } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
+import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
 
 type TimeFrame = 'week' | 'month' | 'quarter' | 'year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'this_year' | 'custom';
 type ViewType = 'daily' | 'weekly' | 'monthly';
@@ -601,11 +602,11 @@ const VendorTypeStatistics: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          expense.paid_by_card
+                          isCardPayment(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
-                          {expense.paid_by_card ? '💳 Card' : '💵 Cash'}
+                          {getPaymentMethodLabel(expense.payment_method || (expense.paid_by_card ? 'card' : 'cash'))}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">

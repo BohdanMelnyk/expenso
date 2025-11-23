@@ -23,6 +23,18 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
+  const PAYMENT_METHODS = [
+    { value: 'b_haspa_credit', label: '💳 B Haspa Credit' },
+    { value: 'b_n26', label: '💳 B N26' },
+    { value: 'm_n26', label: '💳 M N26' },
+    { value: 'm_haspa_credit', label: '💳 M Haspa Credit' },
+    { value: 'paypal', label: '💻 PayPal' },
+    { value: 'debit', label: '🏦 Debit' },
+    { value: 'm_monobank', label: '📱 M Monobank' },
+    { value: 'b_monobank', label: '📱 B Monobank' },
+    { value: 'cash', label: '💵 Cash' },
+  ];
+
   const [formData, setFormData] = useState<CreateExpenseRequest>({
     comment: expense.comment,
     amount: expense.amount,
@@ -30,7 +42,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
     date: expense.date,
     category: expense.category,
     type: expense.type,
-    paid_by_card: expense.paid_by_card,
+    payment_method: expense.payment_method,
     added_by: expense.added_by,
   });
 
@@ -45,7 +57,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
         date: expense.date,
         category: expense.category,
         type: expense.type,
-        paid_by_card: expense.paid_by_card,
+        payment_method: expense.payment_method,
         added_by: expense.added_by,
       });
       // Initialize selected tags with existing expense tags
@@ -252,31 +264,22 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
               Payment Method
             </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paid_by_card"
-                  checked={formData.paid_by_card === true}
-                  onChange={() => setFormData(prev => ({ ...prev, paid_by_card: true }))}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💳 Card</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="paid_by_card"
-                  checked={formData.paid_by_card === false}
-                  onChange={() => setFormData(prev => ({ ...prev, paid_by_card: false }))}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">💵 Cash</span>
-              </label>
-            </div>
+            <select
+              id="payment_method"
+              name="payment_method"
+              value={formData.payment_method}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ArrowLeft, Calendar, TrendingDown, DollarSign, Store, CreditCard, Banknote } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
+import { isCardPayment } from '../utils/paymentMethod';
 
 type TimeFrame = 'week' | 'month' | 'quarter' | 'year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'this_year' | 'custom';
 type ViewType = 'daily' | 'weekly' | 'monthly';
@@ -20,7 +21,8 @@ interface TransactionData {
   amount: number;
   comment: string;
   type: 'expense' | 'income';
-  paid_by_card?: boolean;
+  payment_method?: string;
+  paid_by_card?: boolean; // Deprecated: kept for backward compatibility
   added_by?: 'he' | 'she';
 }
 
@@ -145,6 +147,7 @@ const VendorStatistics: React.FC = () => {
         amount: exp.amount,
         comment: exp.comment,
         type: 'expense' as const,
+        payment_method: exp.payment_method,
         paid_by_card: exp.paid_by_card,
         added_by: exp.added_by
       })),
@@ -204,6 +207,7 @@ const VendorStatistics: React.FC = () => {
         amount: exp.amount,
         comment: exp.comment,
         type: 'expense' as const,
+        payment_method: exp.payment_method,
         paid_by_card: exp.paid_by_card,
         added_by: exp.added_by
       })),
@@ -315,8 +319,14 @@ const VendorStatistics: React.FC = () => {
   const vendorTypeLabel = vendorType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   
   // Payment method analysis
-  const cardExpenses = expenses.filter(exp => exp.paid_by_card).length;
-  const cashExpenses = expenses.filter(exp => !exp.paid_by_card).length;
+  const cardExpenses = expenses.filter(exp => {
+    const paymentMethod = exp.payment_method || (exp.paid_by_card ? 'card' : 'cash');
+    return isCardPayment(paymentMethod);
+  }).length;
+  const cashExpenses = expenses.filter(exp => {
+    const paymentMethod = exp.payment_method || (exp.paid_by_card ? 'card' : 'cash');
+    return paymentMethod === 'cash';
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -597,10 +607,10 @@ const VendorStatistics: React.FC = () => {
                         <div className="flex items-center space-x-4 text-xs text-gray-500">
                           <span>{new Date(transaction.date).toLocaleDateString()}</span>
                           <span>{transaction.type === 'expense' ? 'Expense' : 'Income'}</span>
-                          {transaction.paid_by_card !== undefined && (
+                          {(transaction.payment_method || transaction.paid_by_card !== undefined) && (
                             <span className="flex items-center">
-                              {transaction.paid_by_card ? <CreditCard className="w-3 h-3 mr-1" /> : <Banknote className="w-3 h-3 mr-1" />}
-                              {transaction.paid_by_card ? 'Card' : 'Cash'}
+                              {isCardPayment(transaction.payment_method || (transaction.paid_by_card ? 'card' : 'cash')) ? <CreditCard className="w-3 h-3 mr-1" /> : <Banknote className="w-3 h-3 mr-1" />}
+                              {isCardPayment(transaction.payment_method || (transaction.paid_by_card ? 'card' : 'cash')) ? 'Card' : 'Cash'}
                             </span>
                           )}
                           {transaction.added_by && (

@@ -151,15 +151,37 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		return
 	}
 
+	// Handle payment method with backward compatibility
+	var paymentMethod *entities.PaymentMethod
+	if requestDTO.PaymentMethod != nil {
+		// Use the provided payment method
+		pm := entities.PaymentMethod(*requestDTO.PaymentMethod)
+		if !pm.IsValid() {
+			middleware.RespondWithBadRequest(c, "Invalid payment method", nil)
+			return
+		}
+		paymentMethod = &pm
+	} else if requestDTO.PaidByCard != nil {
+		// Backward compatibility: convert boolean to payment method
+		if *requestDTO.PaidByCard {
+			pm := entities.PaymentMethodBHaspaCredit
+			paymentMethod = &pm
+		} else {
+			pm := entities.PaymentMethodCash
+			paymentMethod = &pm
+		}
+	}
+	// If both are nil, the entity will use its default (b_haspa_credit)
+
 	// Convert DTO to use case command
 	cmd := expense.CreateExpenseCommand{
-		Amount:     requestDTO.Amount,
-		Date:       date,
-		Type:       requestDTO.Type,
-		Category:   requestDTO.Category,
-		Comment:    requestDTO.Comment,
-		PaidByCard: requestDTO.PaidByCard, // Will be nil if not provided, defaults to true
-		AddedBy:    requestDTO.AddedBy,    // Will be nil if not provided, defaults to "he"
+		Amount:        requestDTO.Amount,
+		Date:          date,
+		Type:          requestDTO.Type,
+		Category:      requestDTO.Category,
+		Comment:       requestDTO.Comment,
+		PaymentMethod: paymentMethod,
+		AddedBy:       requestDTO.AddedBy, // Will be nil if not provided, defaults to "he"
 	}
 
 	if requestDTO.VendorID != nil {
@@ -247,6 +269,26 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 		cmd.VendorID = &vendorID
 	}
 
+	// Handle payment method with backward compatibility
+	if requestDTO.PaymentMethod != nil {
+		// Use the provided payment method
+		pm := entities.PaymentMethod(*requestDTO.PaymentMethod)
+		if !pm.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment method"})
+			return
+		}
+		cmd.PaymentMethod = &pm
+	} else if requestDTO.PaidByCard != nil {
+		// Backward compatibility: convert boolean to payment method
+		if *requestDTO.PaidByCard {
+			pm := entities.PaymentMethodBHaspaCredit
+			cmd.PaymentMethod = &pm
+		} else {
+			pm := entities.PaymentMethodCash
+			cmd.PaymentMethod = &pm
+		}
+	}
+
 	if requestDTO.AddedBy != nil {
 		cmd.AddedBy = requestDTO.AddedBy
 	}
@@ -309,16 +351,17 @@ func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 // Helper method to convert domain entity to DTO
 func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponseDTO {
 	responseDTO := dto.ExpenseResponseDTO{
-		ID:         int(exp.ID()),
-		Amount:     exp.Amount().Amount(),
-		Date:       exp.Date().Format("2006-01-02"),
-		Type:       string(exp.Type()),
-		Category:   exp.Category().String(),
-		Comment:    exp.Comment(),
-		PaidByCard: exp.PaidByCard(),
-		AddedBy:    exp.AddedBy().String(),
-		CreatedAt:  exp.CreatedAt(),
-		UpdatedAt:  exp.UpdatedAt(),
+		ID:            int(exp.ID()),
+		Amount:        exp.Amount().Amount(),
+		Date:          exp.Date().Format("2006-01-02"),
+		Type:          string(exp.Type()),
+		Category:      exp.Category().String(),
+		Comment:       exp.Comment(),
+		PaymentMethod: exp.PaymentMethod().String(),
+		PaidByCard:    exp.PaidByCard(), // Deprecated: kept for backward compatibility
+		AddedBy:       exp.AddedBy().String(),
+		CreatedAt:     exp.CreatedAt(),
+		UpdatedAt:     exp.UpdatedAt(),
 	}
 
 	// Add vendor if present
@@ -654,10 +697,21 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 
 	for _, expenseRequest := range requestDTO.Expenses {
 		// Set defaults for imported expenses
-		if expenseRequest.PaidByCard == nil {
-			paidByCard := true
-			expenseRequest.PaidByCard = &paidByCard
+		if expenseRequest.PaymentMethod == nil && expenseRequest.PaidByCard == nil {
+			// Default to b_haspa_credit if neither field is provided
+			paymentMethod := "b_haspa_credit"
+			expenseRequest.PaymentMethod = &paymentMethod
+		} else if expenseRequest.PaymentMethod == nil && expenseRequest.PaidByCard != nil {
+			// Backward compatibility: convert boolean to payment method
+			if *expenseRequest.PaidByCard {
+				paymentMethod := "b_haspa_credit"
+				expenseRequest.PaymentMethod = &paymentMethod
+			} else {
+				paymentMethod := "cash"
+				expenseRequest.PaymentMethod = &paymentMethod
+			}
 		}
+
 		if expenseRequest.AddedBy == nil {
 			addedBy := "he"
 			expenseRequest.AddedBy = &addedBy
@@ -673,21 +727,32 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 			return
 		}
 
+		// Validate payment method
+		var paymentMethod *entities.PaymentMethod
+		if expenseRequest.PaymentMethod != nil {
+			pm := entities.PaymentMethod(*expenseRequest.PaymentMethod)
+			if !pm.IsValid() {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid payment method: %s", *expenseRequest.PaymentMethod)})
+				return
+			}
+			paymentMethod = &pm
+		}
+
 		// For CSV imports, use the expense date as both created and updated timestamps
 		// This ensures the expense appears to have been created when it actually happened
 		expenseDateTime := time.Date(date.Year(), date.Month(), date.Day(), 12, 0, 0, 0, time.UTC)
 
 		// Convert to use case command for CSV import
 		cmd := expense.CreateExpenseFromCSVCommand{
-			Amount:     expenseRequest.Amount,
-			Date:       date,
-			Type:       expenseRequest.Type,
-			Category:   expenseRequest.Category,
-			Comment:    expenseRequest.Comment,
-			PaidByCard: expenseRequest.PaidByCard,
-			AddedBy:    expenseRequest.AddedBy,
-			CreatedAt:  expenseDateTime,
-			UpdatedAt:  expenseDateTime,
+			Amount:        expenseRequest.Amount,
+			Date:          date,
+			Type:          expenseRequest.Type,
+			Category:      expenseRequest.Category,
+			Comment:       expenseRequest.Comment,
+			PaymentMethod: paymentMethod,
+			AddedBy:       expenseRequest.AddedBy,
+			CreatedAt:     expenseDateTime,
+			UpdatedAt:     expenseDateTime,
 		}
 
 		if expenseRequest.VendorID != nil {
