@@ -3,8 +3,9 @@ import { Calendar, TrendingDown, TrendingUp, PieChart, DollarSign, Wallet, Credi
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import { isCardPayment } from '../utils/paymentMethod';
-
-type TimeFrame = 'week' | 'current_month' | 'this_year' | 'overall';
+import { usePeriod } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
+import { formatDateLocal } from '../utils/dateFormatter';
 
 interface VendorSummary {
   vendorName: string;
@@ -21,58 +22,27 @@ interface CategorySummary {
 }
 
 const CashFlow: React.FC = () => {
+  const { period } = usePeriod();
+  const { startDate, endDate } = usePeriodDateRange(period);
   const [allTransactions, setAllTransactions] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('current_month');
-
-  const getDateRangeParams = (timeFrame: TimeFrame): { startDate?: string; endDate?: string } => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    switch (timeFrame) {
-      case 'week':
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
-        return {
-          startDate: startOfWeek.toISOString().split('T')[0],
-          endDate: endOfWeek.toISOString().split('T')[0]
-        };
-      case 'current_month':
-        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-        return {
-          startDate: firstDayOfMonth.toISOString().split('T')[0],
-          endDate: lastDayOfMonth.toISOString().split('T')[0]
-        };
-      case 'this_year':
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`
-        };
-      case 'overall':
-      default:
-        return {};
-    }
-  };
 
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
-      const { startDate, endDate } = getDateRangeParams(selectedTimeFrame);
-      
+      const startDateStr = formatDateLocal(startDate);
+      const endDateStr = formatDateLocal(endDate);
+
       // Fetch all data in parallel
       const [allTransactionsResponse, incomesResponse, expensesResponse] = await Promise.all([
-        expenseAPI.getExpenses(startDate, endDate),
-        incomeAPI.getIncomes(startDate, endDate),
-        expenseAPI.getActualExpenses(startDate, endDate)
+        expenseAPI.getExpenses(startDateStr, endDateStr),
+        incomeAPI.getIncomes(startDateStr, endDateStr),
+        expenseAPI.getActualExpenses(startDateStr, endDateStr)
       ]);
-      
+
       setAllTransactions(allTransactionsResponse.data);
       setIncomes(incomesResponse.data);
       setExpenses(expensesResponse.data);
@@ -82,21 +52,11 @@ const CashFlow: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedTimeFrame]);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
-
-  const getTimeFrameLabel = (timeFrame: TimeFrame): string => {
-    switch (timeFrame) {
-      case 'week': return 'This Week';
-      case 'current_month': return 'This Month';
-      case 'this_year': return 'This Year';
-      case 'overall': return 'Overall';
-      default: return 'This Month';
-    }
-  };
 
   // Calculate totals from actual data instead of backend summary
   const calculateTotals = () => {
@@ -240,24 +200,10 @@ const CashFlow: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Time Frame Selection */}
+      {/* Header */}
       <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Cash Flow Analysis: Income vs Expenses</h2>
-          
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <select
-              value={selectedTimeFrame}
-              onChange={(e) => setSelectedTimeFrame(e.target.value as TimeFrame)}
-              className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="week">This Week</option>
-              <option value="current_month">This Month</option>
-              <option value="this_year">This Year</option>
-              <option value="overall">Overall</option>
-            </select>
-          </div>
         </div>
 
         {/* Summary Cards */}
@@ -356,7 +302,7 @@ const CashFlow: React.FC = () => {
       {expenses.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Payment Method Analytics - {getTimeFrameLabel(selectedTimeFrame)}
+            Payment Method Analytics
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -448,7 +394,7 @@ const CashFlow: React.FC = () => {
       {/* Cash Flow Trends & Insights */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Cash Flow Insights - {getTimeFrameLabel(selectedTimeFrame)}
+          Cash Flow Insights
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -563,7 +509,7 @@ const CashFlow: React.FC = () => {
       {incomes.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Earnings Breakdown - {getTimeFrameLabel(selectedTimeFrame)}
+            Earnings Breakdown
           </h3>
           
           <div className="space-y-4">
@@ -646,7 +592,7 @@ const CashFlow: React.FC = () => {
       {/* Expenses by Category */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Expenses by Category - {getTimeFrameLabel(selectedTimeFrame)}
+          Expenses by Category
         </h3>
         
         <div className="space-y-4">
@@ -684,7 +630,7 @@ const CashFlow: React.FC = () => {
       {/* Top Expense Vendors */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Top Expense Vendors - {getTimeFrameLabel(selectedTimeFrame)}
+          Top Expense Vendors
         </h3>
         <p className="text-sm text-gray-600 mb-4">Excluding salary entries, showing actual spending patterns</p>
         

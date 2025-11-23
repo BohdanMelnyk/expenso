@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, Wallet, Calculator } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Calculator } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { PeriodProvider } from './contexts/PeriodContext';
 import ThemeToggle from './components/ThemeToggle';
+import PeriodSelector from './components/PeriodSelector';
 import Dashboard from './components/Dashboard';
 import AddExpense from './components/AddExpense';
 import Statistics from './components/Statistics';
@@ -54,6 +56,7 @@ function Navigation() {
   const navigationItems = [
     { to: '/', icon: BarChart3, label: 'Statistics', end: true, special: true },
     { to: '/dashboard', icon: Home, label: 'Dashboard', end: false, special: false },
+    { to: '/trends', icon: TrendingUp, label: 'Trends', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
     { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false },
     { to: '/averages', icon: Calculator, label: 'Averages', end: false, special: false }
@@ -102,6 +105,7 @@ function Navigation() {
                   <span className="hidden lg:inline">{label}</span>
                 </NavLink>
               ))}
+              <PeriodSelector />
               <ThemeToggle />
             </div>
           </div>
@@ -179,27 +183,29 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
-          <Navigation />
+        <PeriodProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
+            <Navigation />
 
-          <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full md:pb-0 pb-32">
-            <Routes>
-              <Route path="/" element={<Statistics />} />
-              <Route path="/statistics" element={<Navigate to="/" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/trends" element={<Trends />} />
-              <Route path="/averages" element={<AverageExpenses />} />
-              <Route path="/add" element={<AddExpense />} />
-              <Route path="/balance" element={<BalanceDashboard />} />
-              <Route path="/cash-flow" element={<CashFlow />} />
-              <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
-              <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
-              <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
-              <Route path="/expenses/:id" element={<ExpenseOverview />} />
-              <Route path="/incomes/:id" element={<IncomeOverview />} />
-            </Routes>
-          </main>
-        </div>
+            <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full md:pb-0 pb-32">
+              <Routes>
+                <Route path="/" element={<Statistics />} />
+                <Route path="/statistics" element={<Navigate to="/" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/trends" element={<Trends />} />
+                <Route path="/averages" element={<AverageExpenses />} />
+                <Route path="/add" element={<AddExpense />} />
+                <Route path="/balance" element={<BalanceDashboard />} />
+                <Route path="/cash-flow" element={<CashFlow />} />
+                <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
+                <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
+                <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
+                <Route path="/expenses/:id" element={<ExpenseOverview />} />
+                <Route path="/incomes/:id" element={<IncomeOverview />} />
+              </Routes>
+            </main>
+          </div>
+        </PeriodProvider>
       </Router>
     </ThemeProvider>
   );

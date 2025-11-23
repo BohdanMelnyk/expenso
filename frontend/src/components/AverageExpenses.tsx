@@ -12,6 +12,9 @@ import {
 } from 'chart.js';
 import SkeletonLoader from './SkeletonLoader';
 import ErrorMessage from './ErrorMessage';
+import { usePeriod } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
+import { formatDateLocal } from '../utils/dateFormatter';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -38,42 +41,20 @@ interface AverageData {
 }
 
 const AverageExpenses: React.FC = () => {
+  const { period } = usePeriod();
+  const { startDate, endDate } = usePeriodDateRange(period);
   const [averageData, setAverageData] = useState<AverageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'3months' | '6months' | '1year' | 'all'>('1year');
-
-  const getDateRange = (range: typeof timeRange) => {
-    const endDate = new Date();
-    const startDate = new Date();
-
-    switch (range) {
-      case '3months':
-        startDate.setMonth(startDate.getMonth() - 3);
-        break;
-      case '6months':
-        startDate.setMonth(startDate.getMonth() - 6);
-        break;
-      case '1year':
-        startDate.setFullYear(startDate.getFullYear() - 1);
-        break;
-      case 'all':
-        return { startDate: undefined, endDate: undefined };
-    }
-
-    return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-    };
-  };
 
   const fetchAverages = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { startDate, endDate } = getDateRange(timeRange);
-      const response = await expenseAPI.getAverageExpenses(startDate, endDate);
+      const startDateStr = formatDateLocal(startDate);
+      const endDateStr = formatDateLocal(endDate);
+      const response = await expenseAPI.getAverageExpenses(startDateStr, endDateStr);
 
       setAverageData(response.data);
     } catch (err: any) {
@@ -86,7 +67,7 @@ const AverageExpenses: React.FC = () => {
 
   useEffect(() => {
     fetchAverages();
-  }, [timeRange]);
+  }, [startDate, endDate]);
 
   if (loading) {
     return (
@@ -212,50 +193,6 @@ const AverageExpenses: React.FC = () => {
               </span>
             )}
           </p>
-        </div>
-
-        {/* Time Range Selector */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTimeRange('3months')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '3months'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            3 Months
-          </button>
-          <button
-            onClick={() => setTimeRange('6months')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '6months'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            6 Months
-          </button>
-          <button
-            onClick={() => setTimeRange('1year')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '1year'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            1 Year
-          </button>
-          <button
-            onClick={() => setTimeRange('all')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            All Time
-          </button>
         </div>
       </div>
 

@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Trash2, Calendar, Edit, Download, Upload, FileText } from 'lucide-react';
+import { Trash2, Edit, Download, Upload, FileText } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
+import { usePeriod } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
 import { getErrorMessage } from '../utils/errorHandler';
+import { isCardPayment, getPaymentMethodLabel } from '../utils/paymentMethod';
+import { formatDateLocal } from '../utils/dateFormatter';
 import EditExpenseModal from './EditExpenseModal';
 import ImportExpenseModal from './ImportExpenseModal';
 import SkeletonLoader from './SkeletonLoader';
 import SearchInput, { SearchFilters } from './SearchInput';
 import { exportToPDF } from '../utils/pdfExport';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
-
-type DateRange = 'this_month' | 'previous_month' | 'this_year' | 'overall';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { period } = usePeriod();
+  const { startDate, endDate } = usePeriodDateRange(period);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize from URL params or default to 'this_month'
-  const initialRange = (searchParams.get('period') as DateRange) || 'this_month';
-  const [selectedRange, setSelectedRange] = useState<DateRange>(initialRange);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -29,56 +28,13 @@ const Dashboard: React.FC = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({ paymentMethod: 'all' });
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   
-  // Check for URL parameters for month filtering
-  const urlMonth = searchParams.get('month');
-  const urlYear = searchParams.get('year');
-  const urlStart = searchParams.get('start');
-  const urlEnd = searchParams.get('end');
-
-  const getDateRangeParams = (range: DateRange): { startDate?: string; endDate?: string } => {
-    // Check if URL parameters override the range selection
-    if (urlStart && urlEnd) {
-      return {
-        startDate: urlStart,
-        endDate: urlEnd
-      };
-    }
-    
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    switch (range) {
-      case 'this_month':
-        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-        return {
-          startDate: firstDayOfMonth.toISOString().split('T')[0],
-          endDate: lastDayOfMonth.toISOString().split('T')[0]
-        };
-      case 'previous_month':
-        const firstDayOfPrevMonth = new Date(currentYear, currentMonth - 1, 1);
-        const lastDayOfPrevMonth = new Date(currentYear, currentMonth, 0);
-        return {
-          startDate: firstDayOfPrevMonth.toISOString().split('T')[0],
-          endDate: lastDayOfPrevMonth.toISOString().split('T')[0]
-        };
-      case 'this_year':
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`
-        };
-      case 'overall':
-      default:
-        return {};
-    }
-  };
-
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
-      const { startDate, endDate } = getDateRangeParams(selectedRange);
-      const response = await expenseAPI.getActualExpenses(startDate, endDate);
+      // Format dates in local timezone (not UTC) to avoid timezone shifts
+      const startDateStr = formatDateLocal(startDate);
+      const endDateStr = formatDateLocal(endDate);
+      const response = await expenseAPI.getActualExpenses(startDateStr, endDateStr);
       setExpenses(response.data);
       setFilteredExpenses(response.data);
     } catch (err: any) {
@@ -87,7 +43,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedRange, urlStart, urlEnd]);
+  }, [startDate, endDate]);
 
   // Filter and search functionality
   const handleSearch = useCallback((query: string, filters: SearchFilters) => {
@@ -196,15 +152,16 @@ const Dashboard: React.FC = () => {
 
   const handleExportCSV = async () => {
     try {
-      const { startDate, endDate } = getDateRangeParams(selectedRange);
-      const response = await expenseAPI.exportCSV(startDate, endDate);
-      
+      const startDateStr = formatDateLocal(startDate);
+      const endDateStr = formatDateLocal(endDate);
+      const response = await expenseAPI.exportCSV(startDateStr, endDateStr);
+
       // Create blob and download
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `expenses_${selectedRange}_export.csv`;
+      link.download = `expenses_${period}_export.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -233,14 +190,14 @@ const Dashboard: React.FC = () => {
     try {
       // For now, we'll export current expenses and fetch incomes if needed
       // You may need to add an incomes API call here
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const exportData: any = {
+      const exportData = {
         expenses: expenses.map(expense => ({
           ...expense,
-          tags: expense.tags?.map(tag => tag.name)
+          paid_by_card: expense.paid_by_card ?? false,
+          tags: expense.tags?.map(tag => tag.name) || []
         })),
         incomes: [], // Add income data if available
-        period: getRangeLabel(selectedRange)
+        period: period
       };
 
       exportToPDF(exportData);
@@ -288,16 +245,6 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const getRangeLabel = (range: DateRange): string => {
-    switch (range) {
-      case 'this_month': return 'This month';
-      case 'previous_month': return 'Previous month';
-      case 'this_year': return 'This Year';
-      case 'overall': return 'Overall';
-      default: return 'This month';
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="bg-white shadow rounded-lg p-6">
@@ -305,48 +252,14 @@ const Dashboard: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
               Expense Dashboard
-              {urlMonth && urlYear && (
-                <span className="text-lg text-blue-600 ml-2">- {urlMonth} {urlYear}</span>
-              )}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {urlMonth && urlYear ? `Showing expenses for ${urlMonth} ${urlYear}` : 'Showing actual expenses (salary income excluded)'}
-              {urlMonth && urlYear && (
-                <button
-                  onClick={() => {
-                    setSearchParams({});
-                    navigate('/dashboard');
-                  }}
-                  className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
-                >
-                  Clear filter
-                </button>
-              )}
+              Showing actual expenses (salary income excluded)
             </p>
           </div>
-          
-          {/* Controls: Date Range Filter and Export Button */}
+
+          {/* Controls: Export Buttons */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <select
-                value={selectedRange}
-                onChange={(e) => {
-                  const newRange = e.target.value as DateRange;
-                  setSelectedRange(newRange);
-                  // Update URL params
-                  const params = new URLSearchParams(searchParams);
-                  params.set('period', newRange);
-                  setSearchParams(params);
-                }}
-                className="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="this_month">This month</option>
-                <option value="previous_month">Previous month</option>
-                <option value="this_year">This Year</option>
-                <option value="overall">Overall</option>
-              </select>
-            </div>
             
             <div className="flex flex-wrap gap-2">
               <button
@@ -400,7 +313,7 @@ const Dashboard: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="text-lg font-medium text-gray-900">
-                Actual Expenses - {getRangeLabel(selectedRange)}
+                Actual Expenses
               </h3>
               <p className="text-sm text-gray-500 mt-1">
                 Showing spending transactions only (salary income excluded)

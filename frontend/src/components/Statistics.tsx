@@ -1,37 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download, Share2 } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { useToast } from '../hooks/useToast';
+import { usePeriod, Period } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
+import { formatDateLocal } from '../utils/dateFormatter';
 import { ToastContainer } from './Toast';
 import SkeletonLoader from './SkeletonLoader';
 import { isCardPayment } from '../utils/paymentMethod';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { toasts, removeToast, showSuccess, showError } = useToast();
+  const { period } = usePeriod();
+  const { startDate: periodStartDate, endDate: periodEndDate } = usePeriodDateRange(period);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Initialize from URL params or session storage or default to 'this_month'
-  const getInitialPeriod = () => {
-    // First priority: URL params
-    const urlPeriod = searchParams.get('period') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month';
-    if (urlPeriod) return urlPeriod;
-
-    // Second priority: session storage (previous page period)
-    const sessionPeriod = sessionStorage.getItem('statisticsPeriod') as 'month' | 'quarter' | 'year' | 'current_year' | 'this_month';
-    if (sessionPeriod) return sessionPeriod;
-
-    // Third priority: default
-    return 'this_month';
-  };
-
-  const initialPeriod = getInitialPeriod();
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year' | 'current_year' | 'this_month'>(initialPeriod);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
   const pieChartRef = useRef<any>(null);
   const barChartRef = useRef<any>(null);
@@ -39,11 +26,6 @@ const Statistics: React.FC = () => {
   useEffect(() => {
     fetchExpenses();
   }, []);
-
-  // Save selected period to session storage whenever it changes
-  useEffect(() => {
-    sessionStorage.setItem('statisticsPeriod', selectedPeriod);
-  }, [selectedPeriod]);
 
   const fetchExpenses = async () => {
     try {
@@ -59,52 +41,11 @@ const Statistics: React.FC = () => {
   };
 
 
-  // Filter expenses by period
+  // Filter expenses by global period
   const getFilteredExpenses = () => {
-    const now = new Date();
-    let startDate: Date | null = null;
-    let endDate: Date | null = null;
-
-    switch (selectedPeriod) {
-      case 'month':
-        // Start of previous month
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        startDate.setHours(0, 0, 0, 0);
-        // End of previous month
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'this_month':
-        // Start of current month
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0);
-        // End of current month
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'quarter':
-        startDate = new Date();
-        startDate.setMonth(now.getMonth() - 3);
-        break;
-      case 'year':
-        startDate = new Date();
-        startDate.setFullYear(now.getFullYear() - 1);
-        break;
-      case 'current_year':
-        // Start of current year
-        startDate = new Date(now.getFullYear(), 0, 1);
-        startDate.setHours(0, 0, 0, 0);
-        // End of current year
-        endDate = new Date(now.getFullYear(), 11, 31);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-    }
-
     return expenses.filter(expense => {
       const expenseDate = new Date(expense.date);
-      const afterStart = !startDate || expenseDate >= startDate;
-      const beforeEnd = !endDate || expenseDate <= endDate;
-      return afterStart && beforeEnd;
+      return expenseDate >= periodStartDate && expenseDate <= periodEndDate;
     });
   };
 
@@ -272,7 +213,7 @@ const Statistics: React.FC = () => {
   // Handle pie chart click
   const handlePieClick = (data: any) => {
     if (data && data.originalName) {
-      navigate(`/statistics/category/${data.originalName}?period=${selectedPeriod}`);
+      navigate(`/statistics/category/${data.originalName}?period=${period}`);
     }
   };
 
@@ -305,12 +246,12 @@ const Statistics: React.FC = () => {
         const startDate = new Date(parseInt(year), monthNum, 1);
         const endDate = new Date(parseInt(year), monthNum + 1, 0);
         
-        // Format dates for URL parameters
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
+        // Format dates for URL parameters (use local timezone, not UTC)
+        const startDateStr = formatDateLocal(startDate);
+        const endDateStr = formatDateLocal(endDate);
         
         // Navigate to dashboard with month filter and period
-        navigate(`/dashboard?period=${selectedPeriod}&month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
+        navigate(`/dashboard?period=${period}&month=${monthName}&year=${year}&start=${startDateStr}&end=${endDateStr}`);
       }
     }
   };
@@ -370,13 +311,13 @@ const Statistics: React.FC = () => {
         csvContent = 'Category,Amount,Percentage,Period\n';
         data = pieData;
         data.forEach(item => {
-          csvContent += `"${item.name}",${item.value},"${item.percentage}%","${selectedPeriod}"\n`;
+          csvContent += `"${item.name}",${item.value},"${item.percentage}%","${period}"\n`;
         });
       } else if (chartType === 'bar') {
         csvContent = 'Month,Amount,Period\n';
         data = monthlyData;
         data.forEach(item => {
-          csvContent += `"${item.month}",${item.amount},"${selectedPeriod}"\n`;
+          csvContent += `"${item.month}",${item.amount},"${period}"\n`;
         });
       }
       
@@ -391,7 +332,7 @@ const Statistics: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `expenso-${filename}-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `expenso-${filename}-${period}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -432,7 +373,7 @@ const Statistics: React.FC = () => {
       try {
         await navigator.share({
           title: `Expenso - ${chartType}`,
-          text: `${summaryText}\n\nTotal spent (${selectedPeriod}): ${formatAmount(totalAmount)}\nTransactions: ${filteredExpenses.length}`,
+          text: `${summaryText}\n\nTotal spent (${period}): ${formatAmount(totalAmount)}\nTransactions: ${filteredExpenses.length}`,
           url: window.location.href
         });
         
@@ -454,7 +395,7 @@ const Statistics: React.FC = () => {
       }
     } else {
       // Fallback: copy comprehensive data to clipboard
-      const text = `Expenso - ${chartType}\n\n${summaryText}\n\nTotal spent (${selectedPeriod}): ${formatAmount(totalAmount)}\nTransactions: ${filteredExpenses.length}\n\n${window.location.href}`;
+      const text = `Expenso - ${chartType}\n\n${summaryText}\n\nTotal spent (${period}): ${formatAmount(totalAmount)}\nTransactions: ${filteredExpenses.length}\n\n${window.location.href}`;
       
       try {
         await navigator.clipboard.writeText(text);
@@ -474,7 +415,7 @@ const Statistics: React.FC = () => {
 
   // Handle vendor type click
   const handleVendorTypeClick = (vendorType: string) => {
-    navigate(`/statistics/vendor-type/${vendorType}?period=${selectedPeriod}`);
+    navigate(`/statistics/vendor-type/${vendorType}?period=${period}`);
   };
 
   if (loading) {
@@ -509,53 +450,7 @@ const Statistics: React.FC = () => {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Expense Statistics</h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => {
-                setSelectedPeriod('current_year');
-                setSearchParams({ period: 'current_year' });
-              }}
-              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'current_year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              Current Year
-            </button>
-            <button
-              onClick={() => {
-                setSelectedPeriod('this_month');
-                setSearchParams({ period: 'this_month' });
-              }}
-              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'this_month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => {
-                setSelectedPeriod('month');
-                setSearchParams({ period: 'month' });
-              }}
-              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              Previous Month
-            </button>
-            <button
-              onClick={() => {
-                setSelectedPeriod('quarter');
-                setSearchParams({ period: 'quarter' });
-              }}
-              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'quarter' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              Last 3 Months
-            </button>
-            <button
-              onClick={() => {
-                setSelectedPeriod('year');
-                setSearchParams({ period: 'year' });
-              }}
-              className={`px-3 py-1 rounded-md text-sm ${selectedPeriod === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-            >
-              Last Year
-            </button>
-          </div>
+          <p className="text-sm text-gray-600">Use the period selector in the navigation to change the time range</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

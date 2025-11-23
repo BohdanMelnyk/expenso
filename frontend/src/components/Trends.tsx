@@ -3,11 +3,15 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Download, Share2, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
 import { useToast } from '../hooks/useToast';
+import { usePeriod } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
 import { ToastContainer } from './Toast';
 import SkeletonLoader from './SkeletonLoader';
 
 const Trends: React.FC = () => {
   const { toasts, removeToast, showSuccess, showError } = useToast();
+  const { period } = usePeriod();
+  const { startDate, endDate } = usePeriodDateRange(period);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,40 +38,48 @@ const Trends: React.FC = () => {
     }
   };
 
-  // Filter expenses for current year only
-  const getCurrentYearExpenses = () => {
-    const currentYear = new Date().getFullYear();
+  // Filter expenses by period
+  const getPeriodExpenses = () => {
     return expenses.filter(expense => {
       const expenseDate = new Date(expense.date);
-      return expenseDate.getFullYear() === currentYear;
+      return expenseDate >= startDate && expenseDate <= endDate;
     });
   };
 
-  // Filter incomes for current year only
-  const getCurrentYearIncomes = () => {
-    const currentYear = new Date().getFullYear();
+  // Filter incomes by period
+  const getPeriodIncomes = () => {
     return incomes.filter(income => {
       const incomeDate = new Date(income.date);
-      return incomeDate.getFullYear() === currentYear;
+      return incomeDate >= startDate && incomeDate <= endDate;
     });
   };
 
-  // Monthly spending trend for current year
+  // Monthly spending trend
   const getMonthlyTrend = () => {
-    const currentYear = new Date().getFullYear();
     const monthlyData: { [key: string]: number } = {};
+    const periodExpenses = getPeriodExpenses();
 
-    // Initialize all months with 0
-    for (let month = 0; month < 12; month++) {
-      const monthKey = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
+    // Get the start and end months from the period
+    const startMonth = startDate.getMonth();
+    const startYear = startDate.getFullYear();
+    const endMonth = endDate.getMonth();
+    const endYear = endDate.getFullYear();
+
+    // Initialize all months in the period with 0
+    let currentDate = new Date(startYear, startMonth, 1);
+    while (currentDate <= endDate) {
+      const monthKey = currentDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       monthlyData[monthKey] = 0;
+      currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
     // Add actual expense data
-    getCurrentYearExpenses().forEach(expense => {
+    periodExpenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
-      const monthKey = expenseDate.toLocaleDateString('en-US', { month: 'short' });
-      monthlyData[monthKey] += expense.amount;
+      const monthKey = expenseDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      if (monthlyData.hasOwnProperty(monthKey)) {
+        monthlyData[monthKey] += expense.amount;
+      }
     });
 
     return Object.entries(monthlyData).map(([month, amount]) => ({
@@ -77,47 +89,47 @@ const Trends: React.FC = () => {
     }));
   };
 
-  // Weekly spending trend for current month
+  // Weekly spending trend
   const getWeeklyTrend = () => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const periodExpenses = getPeriodExpenses();
+    const weeklyData: { [key: string]: { start: Date; amount: number } } = {};
 
-    const weeklyData: { [key: string]: number } = {};
+    // Generate weeks in the period
+    let weekStart = new Date(startDate);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start from Sunday
+    let weekNumber = 0;
 
-    // Get all weeks in current month
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-
-    // Initialize weeks
-    for (let day = 1; day <= lastDay.getDate(); day += 7) {
-      const weekStart = new Date(currentYear, currentMonth, day);
-      const weekEnd = new Date(currentYear, currentMonth, Math.min(day + 6, lastDay.getDate()));
-      const weekKey = `Week ${Math.ceil(day / 7)}`;
-      weeklyData[weekKey] = 0;
+    while (weekStart <= endDate) {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      const weekKey = `Week of ${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      weeklyData[weekKey] = { start: new Date(weekStart), amount: 0 };
+      weekStart.setDate(weekStart.getDate() + 7);
+      weekNumber++;
     }
 
     // Add expense data
-    getCurrentYearExpenses().forEach(expense => {
+    periodExpenses.forEach(expense => {
       const expenseDate = new Date(expense.date);
-      if (expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear) {
-        const weekNumber = Math.ceil(expenseDate.getDate() / 7);
-        const weekKey = `Week ${weekNumber}`;
-        if (weeklyData[weekKey] !== undefined) {
-          weeklyData[weekKey] += expense.amount;
+      for (const [weekKey, data] of Object.entries(weeklyData)) {
+        const weekEnd = new Date(data.start);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        if (expenseDate >= data.start && expenseDate <= weekEnd) {
+          data.amount += expense.amount;
+          break;
         }
       }
     });
 
-    return Object.entries(weeklyData).map(([week, amount]) => ({
+    return Object.entries(weeklyData).map(([week, data]) => ({
       week,
-      amount
+      amount: data.amount
     }));
   };
 
   // Category spending over time
   const getCategoryTrend = () => {
-    const currentYearExpenses = getCurrentYearExpenses();
+    const currentYearExpenses = getPeriodExpenses();
     const categoryMonthly: { [key: string]: { [key: string]: number } } = {};
 
     currentYearExpenses.forEach(expense => {
@@ -169,13 +181,13 @@ const Trends: React.FC = () => {
     }
 
     // Add expense data
-    getCurrentYearExpenses().forEach(expense => {
+    getPeriodExpenses().forEach(expense => {
       const monthKey = new Date(expense.date).toLocaleDateString('en-US', { month: 'short' });
       monthlyData[monthKey].expenses += expense.amount;
     });
 
     // Add income data
-    getCurrentYearIncomes().forEach(income => {
+    getPeriodIncomes().forEach(income => {
       const monthKey = new Date(income.date).toLocaleDateString('en-US', { month: 'short' });
       monthlyData[monthKey].income += income.amount;
     });
@@ -200,13 +212,13 @@ const Trends: React.FC = () => {
     }
 
     // Add expense data
-    getCurrentYearExpenses().forEach(expense => {
+    getPeriodExpenses().forEach(expense => {
       const monthKey = new Date(expense.date).toLocaleDateString('en-US', { month: 'short' });
       monthlyData[monthKey].expenses += expense.amount;
     });
 
     // Add income data
-    getCurrentYearIncomes().forEach(income => {
+    getPeriodIncomes().forEach(income => {
       const monthKey = new Date(income.date).toLocaleDateString('en-US', { month: 'short' });
       monthlyData[monthKey].income += income.amount;
     });
@@ -239,7 +251,7 @@ const Trends: React.FC = () => {
 
   // Income breakdown by source
   const getIncomeBySource = () => {
-    const currentYearIncomes = getCurrentYearIncomes();
+    const currentYearIncomes = getPeriodIncomes();
     const sourceData: { [key: string]: number } = {};
 
     currentYearIncomes.forEach(income => {
@@ -259,8 +271,8 @@ const Trends: React.FC = () => {
   const incomeVsExpensesTrend = getIncomeVsExpensesTrend();
   const cumulativeIncomeVsExpenses = getCumulativeIncomeVsExpenses();
   const netIncomeTrend = getNetIncomeTrend();
-  const currentYearExpenses = getCurrentYearExpenses();
-  const currentYearIncomes = getCurrentYearIncomes();
+  const currentYearExpenses = getPeriodExpenses();
+  const currentYearIncomes = getPeriodIncomes();
   const totalExpenses = currentYearExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const totalIncomes = currentYearIncomes.reduce((sum, inc) => sum + inc.amount, 0);
   const netBalance = totalIncomes - totalExpenses;

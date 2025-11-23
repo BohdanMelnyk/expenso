@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { expenseAPI, incomeAPI, Expense as APIExpense, Income } from '../api/client';
+import { usePeriod } from '../contexts/PeriodContext';
+import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
+import { formatDateLocal } from '../utils/dateFormatter';
 
 interface BalanceSummary {
   total_earnings: number;
@@ -13,25 +16,26 @@ interface BalanceSummary {
 
 export default function BalanceDashboard() {
   const navigate = useNavigate();
+  const { period } = usePeriod();
+  const { startDate, endDate } = usePeriodDateRange(period);
   const [balanceSummary, setBalanceSummary] = useState<BalanceSummary | null>(null);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [actualExpenses, setActualExpenses] = useState<APIExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // January 1st of current year
-    endDate: new Date().toISOString().split('T')[0] // Today
-  });
 
   const fetchBalanceData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
+      const startDateStr = formatDateLocal(startDate);
+      const endDateStr = formatDateLocal(endDate);
+
       const [balanceResponse, incomesResponse, expensesResponse] = await Promise.all([
-        expenseAPI.getBalanceSummary(dateRange.startDate, dateRange.endDate),
-        incomeAPI.getIncomes(dateRange.startDate, dateRange.endDate),
-        expenseAPI.getActualExpenses(dateRange.startDate, dateRange.endDate)
+        expenseAPI.getBalanceSummary(startDateStr, endDateStr),
+        incomeAPI.getIncomes(startDateStr, endDateStr),
+        expenseAPI.getActualExpenses(startDateStr, endDateStr)
       ]);
 
       setBalanceSummary(balanceResponse.data);
@@ -43,7 +47,7 @@ export default function BalanceDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [startDate, endDate]);
 
   // Calculate totals from actual data instead of backend summary
   const calculateTotals = () => {
@@ -76,36 +80,6 @@ export default function BalanceDashboard() {
     if (balance > 0) return 'text-green-600';
     if (balance < 0) return 'text-red-600';
     return 'text-gray-600';
-  };
-
-  const setPresetDateRange = (preset: 'this_month' | 'last_month' | 'this_year' | 'last_3_months') => {
-    const now = new Date();
-    let startDate: Date;
-    let endDate = new Date();
-
-    switch (preset) {
-      case 'this_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'this_year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      case 'last_3_months':
-        startDate = new Date();
-        startDate.setMonth(now.getMonth() - 3);
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), 0, 1);
-    }
-
-    setDateRange({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    });
   };
 
 
@@ -152,75 +126,6 @@ export default function BalanceDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Financial Balance Dashboard</h1>
-          
-          {/* Date Range Filter */}
-          <div className="space-y-4">
-            {/* Date Inputs and Submit Button */}
-            <div className="flex flex-wrap gap-4 items-end">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                  From
-                </label>
-                <input
-                  type="date"
-                  id="startDate"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
-                  To
-                </label>
-                <input
-                  type="date"
-                  id="endDate"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <button
-                  onClick={fetchBalanceData}
-                  disabled={loading}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  {loading ? 'Loading...' : 'Submit'}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Preset Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-gray-600 font-medium mr-2">Quick select:</span>
-              <button
-                onClick={() => setPresetDateRange('this_month')}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => setPresetDateRange('last_month')}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Last Month
-              </button>
-              <button
-                onClick={() => setPresetDateRange('last_3_months')}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Last 3 Months
-              </button>
-              <button
-                onClick={() => setPresetDateRange('this_year')}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                This Year
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Summary Cards */}
