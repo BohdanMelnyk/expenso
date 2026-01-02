@@ -348,6 +348,50 @@ func (h *ExpenseHandler) DeleteExpense(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ParseExpense godoc
+// @Summary Parse natural language expense input
+// @Description Parse natural language text into structured expense data using LLM
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param request body dto.ParseExpenseRequestDTO true "Natural language expense text"
+// @Success 200 {object} dto.ParsedExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/parse [post]
+func (h *ExpenseHandler) ParseExpense(c *gin.Context) {
+	var req dto.ParseExpenseRequestDTO
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.RespondWithBadRequest(c, "Invalid request format", err)
+		return
+	}
+
+	// Call parser
+	parsed, err := h.expenseInteractor.ParseExpense(req.Text)
+	if err != nil {
+		middleware.RespondWithInternalError(c, "Failed to parse expense", err)
+		return
+	}
+
+	// Map to response DTO
+	response := dto.ParsedExpenseResponseDTO{
+		Amount:            parsed.Amount,
+		Currency:          parsed.Currency,
+		Category:          parsed.Category,
+		VendorName:        parsed.VendorName,
+		Date:              parsed.Date,
+		PaymentMethod:     parsed.PaymentMethod,
+		AddedBy:           parsed.AddedBy,
+		Description:       parsed.Description,
+		ConfidenceScore:   parsed.ConfidenceScore,
+		MatchedVendorID:   parsed.MatchedVendorID,
+		MatchedVendorName: parsed.MatchedVendorName,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // Helper method to convert domain entity to DTO
 func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponseDTO {
 	responseDTO := dto.ExpenseResponseDTO{
@@ -1192,9 +1236,9 @@ func (h *ExpenseHandler) GetAverageExpenses(c *gin.Context) {
 func (h *ExpenseHandler) calculateAverages(expenses []*entities.Expense, startDate, endDate *time.Time) map[string]interface{} {
 	if len(expenses) == 0 {
 		return map[string]interface{}{
-			"category_averages":     []map[string]interface{}{},
-			"vendor_type_averages":  []map[string]interface{}{},
-			"total_months":          0,
+			"category_averages":    []map[string]interface{}{},
+			"vendor_type_averages": []map[string]interface{}{},
+			"total_months":         0,
 			"date_range": map[string]string{
 				"start": "",
 				"end":   "",

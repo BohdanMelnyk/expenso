@@ -6,6 +6,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Expenso is a multi-platform expense tracking application with Go backend, React frontend, and iOS native app.
 
+## Quick Start for Developers
+
+Get the app running in 2 simple steps:
+
+### Prerequisites
+- Go 1.21+
+- Node.js 18+
+- PostgreSQL (running locally on port 5432)
+
+### Environment Setup (First Time Only)
+
+1. **Backend `.env` file:**
+   ```bash
+   # Copy the template
+   cp backend/.env.example backend/.env
+
+   # Edit and add your Anthropic API key
+   # Get key from: https://console.anthropic.com/account/keys
+   nano backend/.env
+   ```
+
+   Set:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
+   ```
+
+2. **Database Setup:**
+   - Configure `backend/configs/local.yaml` with your PostgreSQL details
+   - Migrations run automatically on backend startup
+
+### Start the App
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+go run cmd/server/main.go
+```
+Backend runs on `http://localhost:8080`
+Swagger API docs: `http://localhost:8080/swagger/index.html`
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm install  # First time only
+npm start
+```
+Frontend runs on `http://localhost:3000`
+
 ## Tech Stack
 
 - **Backend**: Go with Gin framework, Clean Architecture pattern

@@ -18,11 +18,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "expenso-backend/docs"
 	"expenso-backend/infrastructure/config"
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/http/middleware"
+	"expenso-backend/infrastructure/llm"
 	"expenso-backend/infrastructure/logger"
 	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
@@ -33,12 +35,18 @@ import (
 	"expenso-backend/usecases/interactors/vendors"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Could not load .env file, continuing with existing environment variables\n")
+	}
+
 	// Initialize logger
 	logger.SetLevel(logger.INFO)
 	logger.Info("Starting Expenso server...")
@@ -48,6 +56,14 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to load config", logger.Fields{"error": err.Error()})
 	}
+
+	// Log LLM config status for debugging
+	logger.Info("LLM configuration loaded", logger.Fields{
+		"llm_model":       cfg.LLM.Model,
+		"llm_max_tokens":  cfg.LLM.MaxTokens,
+		"llm_api_key_set": cfg.LLM.APIKey != "",
+		"llm_api_key_len": len(cfg.LLM.APIKey),
+	})
 
 	// Database connection
 	databaseURL := cfg.GetDatabaseURL()
@@ -74,6 +90,10 @@ func main() {
 	}
 	logger.Info("Database migrations completed")
 
+	// Initialize LLM client for AI-powered expense parsing
+	logger.Info("Initializing LLM client")
+	anthropicClient := llm.NewAnthropicClient(cfg.LLM)
+
 	// Repository layer (implements interfaces from use case layer)
 	tagRepo := repositories.NewTagRepository(db)
 	expenseRepo := repositories.NewExpenseRepository(db, tagRepo)
@@ -83,6 +103,11 @@ func main() {
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
+
+	// Setup expense parser for LLM-powered parsing
+	expenseParser := expense.NewExpenseParser(anthropicClient, vendorRepo)
+	expenseInteractor.SetExpenseParser(expenseParser)
+
 	incomeInteractor := income.NewIncomeInteractor(incomeRepo, vendorRepo, tagRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
@@ -100,7 +125,7 @@ func main() {
 	router := gin.New()
 
 	// Add custom middleware in order
-	router.Use(middleware.ErrorRecovery())  // Recover from panics
+	router.Use(middleware.ErrorRecovery()) // Recover from panics
 	router.Use(middleware.RequestLogger()) // Log all requests
 
 	// CORS middleware for Gin
@@ -129,6 +154,7 @@ func main() {
 	// Expense routes
 	api.GET("/expenses", expenseHandler.GetExpenses)
 	api.POST("/expenses", expenseHandler.CreateExpense)
+	api.POST("/expenses/parse", expenseHandler.ParseExpense)
 	api.GET("/expenses/:id", expenseHandler.GetExpense)
 	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
 	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)

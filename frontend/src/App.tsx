@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Calculator, Lightbulb } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PeriodProvider } from './contexts/PeriodContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -17,6 +17,7 @@ import BalanceDashboard from './components/BalanceDashboard';
 import ExpenseOverview from './components/ExpenseOverview';
 import IncomeOverview from './components/IncomeOverview';
 import AverageExpenses from './components/AverageExpenses';
+import Insights from './components/Insights/Insights';
 
 function Navigation() {
   const location = useLocation();
@@ -56,7 +57,9 @@ function Navigation() {
   const navigationItems = [
     { to: '/', icon: BarChart3, label: 'Statistics', end: true, special: true },
     { to: '/dashboard', icon: Home, label: 'Dashboard', end: false, special: false },
+    { to: '/add', icon: PlusCircle, label: 'Add', end: false, special: false },
     { to: '/trends', icon: TrendingUp, label: 'Trends', end: false, special: false },
+    { to: '/insights', icon: Lightbulb, label: 'Insights', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
     { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false },
     { to: '/averages', icon: Calculator, label: 'Averages', end: false, special: false }
@@ -193,6 +196,7 @@ function App() {
                 <Route path="/statistics" element={<Navigate to="/" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trends" element={<Trends />} />
+                <Route path="/insights" element={<Insights />} />
                 <Route path="/averages" element={<AverageExpenses />} />
                 <Route path="/add" element={<AddExpense />} />
                 <Route path="/balance" element={<BalanceDashboard />} />

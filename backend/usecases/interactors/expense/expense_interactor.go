@@ -49,9 +49,10 @@ type UpdateExpenseCommand struct {
 }
 
 type ExpenseInteractor struct {
-	expenseRepo repositories.ExpenseRepository
-	vendorRepo  repositories.VendorRepository
-	tagRepo     repositories.TagRepository
+	expenseRepo   repositories.ExpenseRepository
+	vendorRepo    repositories.VendorRepository
+	tagRepo       repositories.TagRepository
+	expenseParser *ExpenseParser // For LLM-powered parsing
 }
 
 func NewExpenseInteractor(expenseRepo repositories.ExpenseRepository, vendorRepo repositories.VendorRepository, tagRepo repositories.TagRepository) *ExpenseInteractor {
@@ -60,6 +61,19 @@ func NewExpenseInteractor(expenseRepo repositories.ExpenseRepository, vendorRepo
 		vendorRepo:  vendorRepo,
 		tagRepo:     tagRepo,
 	}
+}
+
+// SetExpenseParser sets the expense parser for LLM-powered parsing
+func (i *ExpenseInteractor) SetExpenseParser(parser *ExpenseParser) {
+	i.expenseParser = parser
+}
+
+// ParseExpense parses natural language input into structured expense data using LLM
+func (i *ExpenseInteractor) ParseExpense(userInput string) (*ParsedExpenseData, error) {
+	if i.expenseParser == nil {
+		return nil, errors.New("expense parser not initialized")
+	}
+	return i.expenseParser.ParseExpense(userInput)
 }
 
 func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.Expense, error) {

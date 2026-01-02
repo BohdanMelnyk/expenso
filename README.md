@@ -23,22 +23,48 @@ A modern expense tracking application built with Go backend, React frontend, and
 
 - Go 1.21+
 - Node.js 18+
-- Docker & Docker Compose
+- PostgreSQL (running locally)
 
-### 1. Clone and Setup
+### Setup Steps
+
+#### 1. Clone and Navigate
 
 ```bash
 git clone <repository-url>
 cd expenso
 ```
 
-### 2. Start Database
+#### 2. Configure Environment Variables (First Time Only)
 
 ```bash
-docker-compose up postgres -d
+# Copy the environment template
+cp backend/.env.example backend/.env
+
+# Edit and add your Anthropic API key
+nano backend/.env
 ```
 
-### 3. Start Backend
+Add your API key (get it from https://console.anthropic.com/account/keys):
+```
+ANTHROPIC_API_KEY=sk-ant-your-actual-key-here
+```
+
+#### 3. Configure Database (First Time Only)
+
+Update `backend/configs/local.yaml` with your PostgreSQL connection details:
+
+```yaml
+database:
+  host: localhost
+  port: 5432
+  user: your_username
+  password: your_password
+  name: expenso
+```
+
+The database schema and migrations will run automatically when you start the backend.
+
+#### 4. Start Backend (Terminal 1)
 
 ```bash
 cd backend
@@ -46,12 +72,13 @@ go run cmd/server/main.go
 ```
 
 Backend will be available at `http://localhost:8080`
+API Documentation (Swagger): `http://localhost:8080/swagger/index.html`
 
-### 4. Start Frontend
+#### 5. Start Frontend (Terminal 2)
 
 ```bash
 cd frontend
-npm install
+npm install  # Run only on first setup
 npm start
 ```
 

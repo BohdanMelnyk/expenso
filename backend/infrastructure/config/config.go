@@ -25,11 +25,19 @@ type ServerConfig struct {
 	Port int    `yaml:"port"`
 }
 
+// LLMConfig holds LLM/AI configuration
+type LLMConfig struct {
+	APIKey    string `yaml:"api_key"`
+	Model     string `yaml:"model"`
+	MaxTokens int    `yaml:"max_tokens"`
+}
+
 // Config holds all application configuration
 type Config struct {
 	Environment string         `yaml:"environment"`
 	Server      ServerConfig   `yaml:"server"`
 	Database    DatabaseConfig `yaml:"database"`
+	LLM         LLMConfig      `yaml:"llm"`
 }
 
 // GetDatabaseURL constructs database URL from config
@@ -94,6 +102,17 @@ func LoadConfigForEnvironment() (*Config, error) {
 		// For now, we'll just return an error if DATABASE_URL is set
 		// You can implement URL parsing if needed
 		return config, nil
+	}
+
+	// Override LLM API key from environment variable if present
+	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
+		config.LLM.APIKey = apiKey
+	}
+
+	// Debug: Log what was loaded from YAML vs environment
+	if config.LLM.APIKey == "" {
+		// This is a warning - no API key was found
+		fmt.Fprintf(os.Stderr, "WARNING: ANTHROPIC_API_KEY environment variable is not set!\n")
 	}
 
 	return config, nil

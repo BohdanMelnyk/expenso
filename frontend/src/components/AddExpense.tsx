@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { expenseAPI, tagAPI, Tag, CreateExpenseRequest, Expense } from '../api/client';
+import { expenseAPI, tagAPI, Tag, CreateExpenseRequest, Expense, ParsedExpenseResponse } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import { useFormValidation, ValidationRules } from '../hooks/useFormValidation';
 import FormField from './FormField';
 import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
 import DuplicateWarning from './DuplicateWarning';
+import AIExpenseParser from './AIExpenseParser';
 
 const AddExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const AddExpense: React.FC = () => {
     category: '',
     type: 'expense',
     added_by: 'he',
+    payment_method: 'b_haspa_credit',
   };
 
   const validationRules: ValidationRules = {
@@ -157,6 +159,7 @@ const AddExpense: React.FC = () => {
       date: formData.date,
       category: formData.category,
       type: formData.type,
+      payment_method: formData.payment_method,
       added_by: formData.added_by,
       tag_ids: selectedTags
     };
@@ -218,6 +221,30 @@ const AddExpense: React.FC = () => {
     setFieldValue('category', categoryName);
   };
 
+  const handleParsedExpense = (parsed: ParsedExpenseResponse) => {
+    // Pre-fill form with parsed data
+    setFieldValue('amount', parsed.amount);
+    setFieldValue('comment', parsed.description || '');
+    setFieldValue('category', parsed.category);
+    setFieldValue('date', parsed.date);
+    setFieldValue('payment_method', parsed.payment_method || 'b_haspa_credit');
+    setFieldValue('added_by', parsed.added_by || 'he');
+
+    // If vendor was matched, set it
+    if (parsed.matched_vendor_id) {
+      setFieldValue('vendor_id', parsed.matched_vendor_id);
+    }
+
+    // Show success notification with confidence
+    setError(null);
+    setSuccess(
+      `Parsed with ${(parsed.confidence_score * 100).toFixed(0)}% confidence. Please review and submit.`
+    );
+
+    // Clear success message after 5 seconds
+    setTimeout(() => setSuccess(null), 5000);
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white shadow rounded-lg p-6">
@@ -234,6 +261,8 @@ const AddExpense: React.FC = () => {
             {success}
           </div>
         )}
+
+        <AIExpenseParser onParsed={handleParsedExpense} />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <FormField
@@ -288,6 +317,29 @@ const AddExpense: React.FC = () => {
             placeholder="0.00"
             required
           />
+
+          <div>
+            <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Method
+            </label>
+            <select
+              id="payment_method"
+              name="payment_method"
+              value={formData.payment_method}
+              onChange={(e) => setFieldValue('payment_method', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="cash">💵 Cash</option>
+              <option value="b_haspa_credit">🏦 B Haspa Credit</option>
+              <option value="b_n26">🏦 B N26</option>
+              <option value="m_n26">📱 M N26</option>
+              <option value="m_haspa_credit">📱 M Haspa Credit</option>
+              <option value="paypal">🅿️ PayPal</option>
+              <option value="debit">💳 Debit Card</option>
+              <option value="m_monobank">📱 M Monobank</option>
+              <option value="b_monobank">🏦 B Monobank</option>
+            </select>
+          </div>
 
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">

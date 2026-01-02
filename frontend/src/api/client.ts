@@ -88,6 +88,20 @@ export interface ParsedExpense {
   issues?: string[];
 }
 
+export interface ParsedExpenseResponse {
+  amount: number;
+  currency: string;
+  category: string;
+  vendor_name?: string;
+  date: string;
+  payment_method: string;
+  added_by: 'he' | 'she';
+  description: string;
+  confidence_score: number;
+  matched_vendor_id?: number;
+  matched_vendor_name?: string;
+}
+
 export interface Income {
   id: number;
   amount: number;
@@ -175,6 +189,7 @@ export const expenseAPI = {
     params.append('day_range', dayRange.toString());
     return apiClient.get<Expense[]>(`/expenses/check-duplicates?${params.toString()}`);
   },
+  parseExpense: (data: { text: string }) => apiClient.post<ParsedExpenseResponse>('/expenses/parse', data),
   getAverageExpenses: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);

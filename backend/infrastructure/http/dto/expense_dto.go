@@ -94,3 +94,22 @@ type TagResponseDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// Parse Expense DTOs (for AI/LLM parsing)
+type ParseExpenseRequestDTO struct {
+	Text string `json:"text" validate:"required,min=5,max=500"`
+}
+
+type ParsedExpenseResponseDTO struct {
+	Amount            float64 `json:"amount"`
+	Currency          string  `json:"currency"`
+	Category          string  `json:"category"`
+	VendorName        string  `json:"vendor_name,omitempty"`
+	Date              string  `json:"date"`
+	PaymentMethod     string  `json:"payment_method"`
+	AddedBy           string  `json:"added_by"`
+	Description       string  `json:"description"`
+	ConfidenceScore   float64 `json:"confidence_score"`
+	MatchedVendorID   *int    `json:"matched_vendor_id,omitempty"`
+	MatchedVendorName string  `json:"matched_vendor_name,omitempty"`
+}
