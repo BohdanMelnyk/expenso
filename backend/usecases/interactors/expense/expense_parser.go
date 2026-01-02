@@ -1,10 +1,13 @@
 package expense
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
+	"text/template"
 	"time"
 
 	"expenso-backend/infrastructure/llm"
@@ -14,17 +17,19 @@ import (
 
 // ParsedExpenseData represents structured expense data extracted from natural language
 type ParsedExpenseData struct {
-	Amount            float64
-	Currency          string
-	Category          string
-	VendorName        string
-	Date              string
-	PaymentMethod     string
-	AddedBy           string
-	Description       string
-	ConfidenceScore   float64
-	MatchedVendorID   *int
-	MatchedVendorName string
+	Amount            float64 `json:"amount"`
+	Currency          string  `json:"currency"`
+	Category          string  `json:"category"`
+	VendorName        string  `json:"vendor_name"`
+	VendorType        string  `json:"vendor_type"` // e.g., "food_store", "dining", "shop"
+	VendorTypeID      *int    `json:"-"`           // ID of the vendor type category for UI dropdown (computed, not from LLM)
+	Date              string  `json:"date"`
+	PaymentMethod     string  `json:"payment_method"`
+	AddedBy           string  `json:"added_by"`
+	Description       string  `json:"description"`
+	ConfidenceScore   float64 `json:"confidence_score"`
+	MatchedVendorID   *int    `json:"-"` // Computed after LLM parsing
+	MatchedVendorName string  `json:"-"` // Computed after LLM parsing
 }
 
 // ExpenseParser handles parsing natural language input into structured expense data
@@ -90,9 +95,14 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 	// 6. Map payment method
 	parsed.PaymentMethod = p.mapPaymentMethod(parsed.PaymentMethod)
 
+	// 7. Map vendor type to category ID for UI dropdown
+	parsed.VendorTypeID = p.mapVendorTypeToID(parsed.VendorType)
+
 	logger.Info("Expense parsing completed successfully", logger.Fields{
 		"amount":            parsed.Amount,
 		"category":          parsed.Category,
+		"vendor_type":       parsed.VendorType,
+		"vendor_type_id":    parsed.VendorTypeID,
 		"confidence_score":  parsed.ConfidenceScore,
 		"matched_vendor_id": parsed.MatchedVendorID,
 	})
@@ -100,8 +110,55 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 	return &parsed, nil
 }
 
-// buildPrompt creates the LLM prompt for expense parsing
+// buildPrompt creates the LLM prompt for expense parsing from external template
 func (p *ExpenseParser) buildPrompt(userInput string) string {
+	today := time.Now().Format("2006-01-02")
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+
+	// Load template file
+	templateContent, err := ioutil.ReadFile("infrastructure/llm/expense_parser_prompt.txt")
+	if err != nil {
+		logger.Error("Failed to load prompt template", logger.Fields{
+			"error": err.Error(),
+		})
+		// Fallback to inline template if file not found
+		return p.fallbackPrompt(userInput)
+	}
+
+	// Parse template
+	tmpl, err := template.New("expense_parser").Parse(string(templateContent))
+	if err != nil {
+		logger.Error("Failed to parse prompt template", logger.Fields{
+			"error": err.Error(),
+		})
+		return p.fallbackPrompt(userInput)
+	}
+
+	// Execute template
+	type PromptData struct {
+		UserInput     string
+		TodayDate     string
+		YesterdayDate string
+	}
+
+	var result bytes.Buffer
+	err = tmpl.Execute(&result, PromptData{
+		UserInput:     userInput,
+		TodayDate:     today,
+		YesterdayDate: yesterday,
+	})
+	if err != nil {
+		logger.Error("Failed to execute prompt template", logger.Fields{
+			"error": err.Error(),
+		})
+		return p.fallbackPrompt(userInput)
+	}
+
+	return result.String()
+}
+
+// fallbackPrompt provides a fallback prompt in case template file cannot be loaded
+func (p *ExpenseParser) fallbackPrompt(userInput string) string {
 	today := time.Now().Format("2006-01-02")
 	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
@@ -118,6 +175,7 @@ Extract the following fields and return ONLY valid JSON (no markdown, no code bl
   "currency": <"EUR" or "USD", default "EUR">,
   "category": <one of: "Food Store", "Dining", "Dining with Friends", "Shopping", "Transportation", "Car", "Living", "Household", "Bills & Utilities", "Health & Fitness", "Travel", "Entertainment", "Education", "Gifts & Donations", "Other">,
   "vendor_name": <string, name of the store/merchant, can be empty>,
+  "vendor_type": <string, type of vendor for category mapping>,
   "date": <YYYY-MM-DD format, REQUIRED>,
   "payment_method": <one of: "credit_card", "debit_card", "cash", "paypal", "n26", "revolut", "wise", "monobank">,
   "added_by": <"he" or "she", default "he">,
@@ -166,7 +224,8 @@ IMPORTANT:
 2. All currency values should be positive numbers
 3. Description should be brief (max 100 characters)
 4. If amount is missing or cannot be determined, return confidence_score of 0 and amount of 0
-5. Do not include markdown code blocks or explanations`,
+5. Do not include markdown code blocks or explanations
+6. Include vendor_type if you can identify it to help with category mapping`,
 		userInput,
 		today,
 		today,
@@ -260,23 +319,73 @@ func (p *ExpenseParser) matchVendor(data *ParsedExpenseData) error {
 	return nil
 }
 
-// mapPaymentMethod maps LLM output to backend payment method enums
+// mapPaymentMethod validates and normalizes LLM output payment method to backend enums
 func (p *ExpenseParser) mapPaymentMethod(llmMethod string) string {
+	// Valid backend payment method enums
+	validMethods := map[string]bool{
+		"cash":           true,
+		"b_haspa_credit": true,
+		"b_n26":          true,
+		"m_n26":          true,
+		"m_haspa_credit": true,
+		"paypal":         true,
+		"debit":          true,
+		"m_monobank":     true,
+		"b_monobank":     true,
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(llmMethod))
+
+	// If LLM already returned a valid backend enum, use it directly
+	if validMethods[normalized] {
+		return normalized
+	}
+
+	// Fallback mapping for common intermediate terms (backward compatibility)
 	mapping := map[string]string{
 		"credit_card": "b_haspa_credit",
 		"debit_card":  "debit",
-		"cash":        "cash",
-		"paypal":      "paypal",
 		"n26":         "b_n26",
-		"revolut":     "b_revolut",
-		"wise":        "m_wise",
 		"monobank":    "b_monobank",
 	}
 
-	if mapped, exists := mapping[strings.ToLower(strings.TrimSpace(llmMethod))]; exists {
+	if mapped, exists := mapping[normalized]; exists {
 		return mapped
 	}
 
 	// Default to credit card if not found
 	return "b_haspa_credit"
+}
+
+// mapVendorTypeToID maps vendor type string to category ID for UI dropdown selection
+func (p *ExpenseParser) mapVendorTypeToID(vendorType string) *int {
+	// Mapping from vendor type to category ID
+	vendorTypeToID := map[string]int{
+		"food_store":          1,  // Food Store
+		"transport":           2,  // Transportation
+		"shop":                3,  // Shopping
+		"clothing":            3,  // Shopping
+		"entertainment":       4,  // Entertainment
+		"subscriptions":       5,  // Bills & Utilities
+		"care":                6,  // Health & Fitness
+		"tourism":             7,  // Travel
+		"education":           8,  // Education
+		"else":                10, // Other
+		"salary":              11, // Salary
+		"investment":          13, // Investment
+		"car":                 15, // Car
+		"living":              16, // Living
+		"dining":              17, // Dining
+		"eating_out":          17, // Dining
+		"household":           18, // Household
+		"dining_with_friends": 21, // Dining with Friends
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(vendorType))
+	if id, exists := vendorTypeToID[normalized]; exists {
+		return &id
+	}
+
+	// Return nil if vendor type not found (no category mapping)
+	return nil
 }

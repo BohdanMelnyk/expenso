@@ -380,6 +380,8 @@ func (h *ExpenseHandler) ParseExpense(c *gin.Context) {
 		Currency:          parsed.Currency,
 		Category:          parsed.Category,
 		VendorName:        parsed.VendorName,
+		VendorType:        parsed.VendorType,
+		VendorTypeID:      parsed.VendorTypeID,
 		Date:              parsed.Date,
 		PaymentMethod:     parsed.PaymentMethod,
 		AddedBy:           parsed.AddedBy,

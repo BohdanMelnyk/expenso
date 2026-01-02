@@ -105,6 +105,8 @@ type ParsedExpenseResponseDTO struct {
 	Currency          string  `json:"currency"`
 	Category          string  `json:"category"`
 	VendorName        string  `json:"vendor_name,omitempty"`
+	VendorType        string  `json:"vendor_type,omitempty"`
+	VendorTypeID      *int    `json:"vendor_type_id,omitempty"`
 	Date              string  `json:"date"`
 	PaymentMethod     string  `json:"payment_method"`
 	AddedBy           string  `json:"added_by"`
