@@ -2,10 +2,12 @@ package expense
 
 import (
 	"errors"
+	"io"
 	"time"
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/domain/valueobjects"
+	"expenso-backend/infrastructure/csv"
 	"expenso-backend/usecases/interfaces/repositories"
 )
 
@@ -49,10 +51,11 @@ type UpdateExpenseCommand struct {
 }
 
 type ExpenseInteractor struct {
-	expenseRepo   repositories.ExpenseRepository
-	vendorRepo    repositories.VendorRepository
-	tagRepo       repositories.TagRepository
-	expenseParser *ExpenseParser // For LLM-powered parsing
+	expenseRepo           repositories.ExpenseRepository
+	vendorRepo            repositories.VendorRepository
+	tagRepo               repositories.TagRepository
+	expenseParser         *ExpenseParser         // For LLM-powered parsing
+	bankTransactionMapper *BankTransactionMapper // For bank transaction mapping
 }
 
 func NewExpenseInteractor(expenseRepo repositories.ExpenseRepository, vendorRepo repositories.VendorRepository, tagRepo repositories.TagRepository) *ExpenseInteractor {
@@ -74,6 +77,11 @@ func (i *ExpenseInteractor) ParseExpense(userInput string) (*ParsedExpenseData, 
 		return nil, errors.New("expense parser not initialized")
 	}
 	return i.expenseParser.ParseExpense(userInput)
+}
+
+// SetBankTransactionMapper sets the bank transaction mapper for bank CSV processing
+func (i *ExpenseInteractor) SetBankTransactionMapper(mapper *BankTransactionMapper) {
+	i.bankTransactionMapper = mapper
 }
 
 func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.Expense, error) {
@@ -430,4 +438,87 @@ func (i *ExpenseInteractor) CheckDuplicates(amount float64, date time.Time, dayR
 	}
 
 	return expenses, nil
+}
+
+// ParseBankCSV parses a bank CSV file and returns mapped expense data
+// format: the format of the CSV file (e.g., "haspa_credit")
+// file: the CSV file reader
+// Returns a slice of ParsedExpenseData ready for user review
+func (i *ExpenseInteractor) ParseBankCSV(format string, file io.Reader) ([]*ParsedExpenseData, error) {
+	if i.bankTransactionMapper == nil {
+		return nil, errors.New("bank transaction mapper not initialized")
+	}
+
+	// Select appropriate CSV parser based on format
+	var parser csv.CSVParser
+	switch format {
+	case "haspa_credit":
+		parser = csv.NewHaspaCreditParser()
+	default:
+		return nil, errors.New("unsupported CSV format: " + format)
+	}
+
+	// Parse CSV file
+	transactions, err := parser.ParseFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map each transaction to expense data using LLM
+	var parsedExpenses []*ParsedExpenseData
+	for _, transaction := range transactions {
+		parsed, err := i.bankTransactionMapper.MapToExpenseData(transaction)
+		if err != nil {
+			// Log error but continue processing other transactions
+			// The caller can decide what to do with partial results
+			continue
+		}
+
+		parsedExpenses = append(parsedExpenses, parsed)
+	}
+
+	if len(parsedExpenses) == 0 {
+		return nil, errors.New("no valid expenses could be parsed from CSV")
+	}
+
+	return parsedExpenses, nil
+}
+
+// ValidateParsedExpense validates parsed expense data before creation
+func (i *ExpenseInteractor) ValidateParsedExpense(parsed *ParsedExpenseData) error {
+	if parsed == nil {
+		return errors.New("parsed expense data is nil")
+	}
+
+	if parsed.Amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+
+	if parsed.Currency == "" {
+		return errors.New("currency is required")
+	}
+
+	if parsed.Category == "" {
+		return errors.New("category is required")
+	}
+
+	if parsed.Date == "" {
+		return errors.New("date is required")
+	}
+
+	// Validate date format
+	if _, err := time.Parse("2006-01-02", parsed.Date); err != nil {
+		return errors.New("invalid date format: " + err.Error())
+	}
+
+	if parsed.PaymentMethod == "" {
+		return errors.New("payment method is required")
+	}
+
+	// Validate confidence score
+	if parsed.ConfidenceScore < 0 || parsed.ConfidenceScore > 1 {
+		return errors.New("confidence score must be between 0 and 1")
+	}
+
+	return nil
 }

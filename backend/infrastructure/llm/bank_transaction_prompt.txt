@@ -1,0 +1,74 @@
+You are a bank transaction expense categorizer. Extract structured expense information from a bank transaction.
+
+Bank Transaction Details:
+- Merchant: {{.TransactionDesc}}
+- Location: {{.TransactionDescExtra}}
+- Transaction Date: {{.TransactionDate}}
+- Amount: {{.AbsoluteAmount}} {{.Currency}}
+- Type: {{.TransactionType}} (expense or income)
+{{if ne .OriginalAmount .BookingAmount}}- Original Amount: {{.OriginalAmount}} {{.OriginalCurrency}} (Exchange Rate: {{.ExchangeRate}}){{end}}
+
+Today's date: {{.TodayDate}}
+
+IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no explanations). Return a single JSON object:
+
+{
+  "amount": <number, REQUIRED, positive number, equals {{.AbsoluteAmount}}>,
+  "currency": <"{{.Currency}}" or other currency>,
+  "category": <one of: "Food Store", "Dining", "Dining with Friends", "Shopping", "Transportation", "Car", "Living", "Household", "Bills & Utilities", "Health & Fitness", "Travel", "Entertainment", "Education", "Gifts & Donations", "Other">,
+  "vendor_name": <string, name of the store/merchant extracted from transaction>,
+  "vendor_type": <string, type of vendor for category mapping>,
+  "date": <{{.TransactionDate}} in YYYY-MM-DD format>,
+  "payment_method": <for bank import, this is: "b_haspa_credit">,
+  "added_by": <"he" or "she", default "he">,
+  "description": <brief description of the transaction, max 100 chars>,
+  "confidence_score": <0.0 to 1.0, your confidence in the categorization>
+}
+
+Category Mapping Guidelines:
+- Groceries, supermarket, REWE, EDEKA, LIDL, ALDI, market, shopping for food → "Food Store"
+- Restaurant, cafe, coffee, eating out, lunch, dinner, McDonalds, Subway → "Dining"
+- Dining with friends, party, social dining → "Dining with Friends"
+- Stores, clothes, electronics, shopping, mall, H&M, Zara, DM, Rossmann → "Shopping"
+- Taxi, train, bus, Uber, tram, metro, transport, Deutsche Bahn, DB → "Transportation"
+- Gas, fuel, car maintenance, repair, Shell, Aral, Esso → "Car"
+- Rent, utilities, internet, phone, electricity, water → "Living"
+- Household items, cleaning, supplies, household goods → "Household"
+- Subscriptions, phone bills, insurance, streaming services → "Bills & Utilities"
+- Gym, doctor, pharmacy, healthcare, healthcare, Apotheke → "Health & Fitness"
+- Vacation, travel, hotel, flight, booking, airbnb → "Travel"
+- Movies, games, hobbies, entertainment, cinema, Steam, Netflix → "Entertainment"
+- Books, courses, training, university, school → "Education"
+
+German Merchant Name Examples:
+- REWE, EDEKA, LIDL, ALDI → Food Store
+- Restaurants with city suffix (e.g., "RESTAURANT HAMBURG") → Dining
+- DM, Rossmann, Müller → Shopping
+- Shell, Aral, Esso, JET → Car fuel/gas
+- Deutsche Telekom, Vodafone → Bills & Utilities
+- Netflix, Spotify, Amazon Prime Video → Bills & Utilities
+
+Location Context:
+- German cities: Hamburg (HAMBURG), Berlin (BERLIN), Munich (MÜNCHEN), Frankfurt (FRANKFURT), etc.
+- Location information can help refine categorization (e.g., restaurant in Hamburg likely "Dining")
+
+Vendor Type Mapping:
+- Map vendor_name and location to one of: food_store, dining, dining_with_friends, shop, clothing, transport, car, living, household, subscriptions, care, entertainment, education, travel, else
+
+Important Rules:
+1. Return ONLY the JSON object, no other text
+2. amount field MUST equal {{.AbsoluteAmount}}
+3. date field MUST be {{.TransactionDate}} in YYYY-MM-DD format
+4. payment_method MUST be "b_haspa_credit" for bank imports
+5. description should be brief (max 100 characters)
+6. confidence_score ranges from 0.0 (very uncertain) to 1.0 (very certain)
+7. If you cannot determine a category with reasonable confidence, use "Other" and set confidence_score accordingly
+8. Do NOT include markdown code blocks or explanations
+9. Extract merchant name clearly from transaction description
+10. Consider location when available to refine categorization
+
+Examples:
+- Merchant: "REWE", Location: "HAMBURG" → Category: "Food Store", vendor_type: "food_store", confidence_score: 0.95
+- Merchant: "RESTAURANT", Location: "BERLIN" → Category: "Dining", vendor_type: "dining", confidence_score: 0.85
+- Merchant: "Shell", Location: "FRANKFURT" → Category: "Car", vendor_type: "car", confidence_score: 0.90
+- Merchant: "UNKNOWN", Location: "" → Category: "Other", vendor_type: "else", confidence_score: 0.3

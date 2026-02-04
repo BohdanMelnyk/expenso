@@ -16,8 +16,11 @@ import CashFlow from './components/CashFlow';
 import BalanceDashboard from './components/BalanceDashboard';
 import ExpenseOverview from './components/ExpenseOverview';
 import IncomeOverview from './components/IncomeOverview';
+import EditExpense from './components/EditExpense';
 import AverageExpenses from './components/AverageExpenses';
 import Insights from './components/Insights/Insights';
+import { BankImportScreen } from './components/BankImportScreen';
+import { BankTransactionReview } from './components/BankTransactionReview';
 
 function Navigation() {
   const location = useLocation();
@@ -199,6 +202,7 @@ function App() {
                 <Route path="/insights" element={<Insights />} />
                 <Route path="/averages" element={<AverageExpenses />} />
                 <Route path="/add" element={<AddExpense />} />
+                <Route path="/expense/:id/edit" element={<EditExpense />} />
                 <Route path="/balance" element={<BalanceDashboard />} />
                 <Route path="/cash-flow" element={<CashFlow />} />
                 <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
@@ -206,6 +210,8 @@ function App() {
                 <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
                 <Route path="/expenses/:id" element={<ExpenseOverview />} />
                 <Route path="/incomes/:id" element={<IncomeOverview />} />
+                <Route path="/import/bank" element={<BankImportScreen />} />
+                <Route path="/import/bank/review" element={<BankTransactionReview />} />
               </Routes>
             </main>
           </div>

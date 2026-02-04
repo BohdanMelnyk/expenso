@@ -103,10 +103,6 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		return nil, errors.New("expense amount cannot be negative")
 	}
 
-	if date.After(time.Now()) {
-		return nil, errors.New("expense date cannot be in the future")
-	}
-
 	// Check if date is too far in the past (business rule)
 	if date.Before(time.Now().AddDate(-10, 0, 0)) {
 		return nil, errors.New("expense date cannot be more than 10 years ago")
@@ -124,7 +120,7 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		category:      category,
 		comment:       strings.TrimSpace(comment),
 		paymentMethod: PaymentMethodBHaspaCredit, // Default value is B Haspa Credit
-		addedBy:       AddedByHe,                  // Default value is "he"
+		addedBy:       AddedByHe,                 // Default value is "he"
 		createdAt:     now,
 		updatedAt:     now,
 	}, nil
@@ -214,9 +210,6 @@ func (e *Expense) UpdateAmount(amount valueobjects.Money) error {
 }
 
 func (e *Expense) UpdateDate(date time.Time) error {
-	if date.After(time.Now()) {
-		return errors.New("expense date cannot be in the future")
-	}
 	if date.Before(time.Now().AddDate(-10, 0, 0)) {
 		return errors.New("expense date cannot be more than 10 years ago")
 	}

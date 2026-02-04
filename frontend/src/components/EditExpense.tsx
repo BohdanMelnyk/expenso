@@ -1,26 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { expenseAPI, tagAPI, Tag, CreateExpenseRequest, Expense, ParsedExpenseResponse } from '../api/client';
+import { useNavigate, useParams } from 'react-router-dom';
+import { expenseAPI, tagAPI, Tag, CreateExpenseRequest, Expense } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import { useFormValidation, ValidationRules } from '../hooks/useFormValidation';
 import FormField from './FormField';
 import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
-import DuplicateWarning from './DuplicateWarning';
-import AIExpenseParser from './AIExpenseParser';
 
-const AddExpense: React.FC = () => {
+const EditExpense: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [duplicates, setDuplicates] = useState<Expense[]>([]);
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [pendingExpenseData, setPendingExpenseData] = useState<CreateExpenseRequest | null>(null);
-
+  const [expense, setExpense] = useState<Expense | null>(null);
 
   const initialFormData = {
     comment: '',
@@ -84,8 +80,41 @@ const AddExpense: React.FC = () => {
     errors,
     setFieldValue,
     validateForm,
-    reset
   } = useFormValidation(initialFormData, validationRules);
+
+  const fetchExpense = async () => {
+    if (!id) {
+      setError('Expense ID is required');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await expenseAPI.getExpense(parseInt(id));
+      const expenseData = response.data;
+      setExpense(expenseData);
+
+      // Pre-fill form with expense data
+      setFieldValue('comment', expenseData.comment);
+      setFieldValue('amount', expenseData.amount);
+      setFieldValue('vendor_id', expenseData.vendor_id);
+      setFieldValue('date', expenseData.date);
+      setFieldValue('category', expenseData.category);
+      setFieldValue('type', expenseData.type);
+      setFieldValue('added_by', expenseData.added_by);
+      setFieldValue('payment_method', expenseData.payment_method);
+
+      // Set tags if they exist
+      if (expenseData.tags && expenseData.tags.length > 0) {
+        setSelectedTags(expenseData.tags.map(tag => tag.id));
+      }
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to load expense'));
+      console.error('Error fetching expense:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTags = async () => {
     try {
@@ -98,7 +127,9 @@ const AddExpense: React.FC = () => {
 
   useEffect(() => {
     fetchTags();
-  }, []);
+    fetchExpense();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleTagToggle = (tagId: number) => {
     setSelectedTags(prev =>
@@ -108,45 +139,21 @@ const AddExpense: React.FC = () => {
     );
   };
 
-  const checkForDuplicates = async (amount: number, date: string): Promise<Expense[]> => {
-    try {
-      const response = await expenseAPI.checkDuplicates(amount, date, 2);
-      return response.data;
-    } catch (err) {
-      console.error('Error checking for duplicates:', err);
-      return [];
-    }
-  };
-
-  const createExpenseDirectly = async (expenseData: CreateExpenseRequest) => {
-    try {
-      await expenseAPI.createExpense(expenseData);
-      setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
-
-      // Reset form using validation hook
-      reset(initialFormData);
-      setSelectedTags([]);
-      setPendingExpenseData(null);
-      setDuplicates([]);
-      setShowDuplicateWarning(false);
-
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    } catch (err: any) {
-      setError(getErrorMessage(err, 'Failed to add expense'));
-      console.error('Error adding expense:', err);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    // Optional: Run validation to update error states, but don't block submission
-    validateForm();
+    // Validate form
+    if (!validateForm()) {
+      setError('Please fix the errors in the form');
+      return;
+    }
+
+    if (!id) {
+      setError('Expense ID is required');
+      return;
+    }
 
     const expenseData: CreateExpenseRequest = {
       comment: formData.comment,
@@ -160,53 +167,21 @@ const AddExpense: React.FC = () => {
       tag_ids: selectedTags
     };
 
-    // Only check for duplicates on expenses (not income)
-    if (formData.type === 'expense') {
-      setCheckingDuplicates(true);
-      try {
-        const foundDuplicates = await checkForDuplicates(formData.amount, formData.date);
-
-        if (foundDuplicates.length > 0) {
-          // Show duplicate warning
-          setDuplicates(foundDuplicates);
-          setPendingExpenseData(expenseData);
-          setShowDuplicateWarning(true);
-          setCheckingDuplicates(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking duplicates:', err);
-        // Continue with creation even if duplicate check fails
-      }
-      setCheckingDuplicates(false);
-    }
-
-    // No duplicates found or this is income, proceed with creation
-    setLoading(true);
+    setSaving(true);
     try {
-      await createExpenseDirectly(expenseData);
+      await expenseAPI.updateExpense(parseInt(id), expenseData);
+      setSuccess(`${formData.type === 'income' ? 'Income' : 'Expense'} updated successfully!`);
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err: any) {
+      setError(getErrorMessage(err, 'Failed to update expense'));
+      console.error('Error updating expense:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
-
-  const handleDuplicateConfirm = async () => {
-    if (!pendingExpenseData) return;
-
-    setLoading(true);
-    setShowDuplicateWarning(false);
-
-    try {
-      await createExpenseDirectly(pendingExpenseData);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDuplicateCancel = () => {
-    setShowDuplicateWarning(false);
-    setPendingExpenseData(null);
-    setDuplicates([]);
   };
 
   const handleVendorSelect = (vendorId: number) => {
@@ -217,57 +192,48 @@ const AddExpense: React.FC = () => {
     setFieldValue('category', categoryName);
   };
 
-  const handleParsedExpense = (parsed: ParsedExpenseResponse) => {
-    // Pre-fill form with parsed data
-    setFieldValue('amount', parsed.amount);
-    setFieldValue('comment', parsed.description || '');
-    setFieldValue('category', parsed.category);
-    setFieldValue('date', parsed.date);
-    setFieldValue('payment_method', parsed.payment_method || 'b_haspa_credit');
-    setFieldValue('added_by', parsed.added_by || 'he');
-
-    // If vendor was matched, set it
-    if (parsed.matched_vendor_id) {
-      setFieldValue('vendor_id', parsed.matched_vendor_id);
-    }
-
-    // Show success notification with confidence
-    setError(null);
-    setSuccess(
-      `Parsed with ${(parsed.confidence_score * 100).toFixed(0)}% confidence. Please review and submit.`
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center">
+          <p className="text-gray-700 dark:text-gray-300">Loading expense...</p>
+        </div>
+      </div>
     );
+  }
 
-    // Clear success message after 5 seconds
-    setTimeout(() => setSuccess(null), 5000);
-  };
+  if (!expense) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <p className="text-red-600 dark:text-red-400">Expense not found</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Add New Transaction</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/import/bank')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-          >
-            Import Bank Statement
-          </button>
-        </div>
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Transaction</h2>
 
         {error && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="mb-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          <div className="mb-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded">
             {success}
           </div>
         )}
-
-        <AIExpenseParser onParsed={handleParsedExpense} />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <FormField
@@ -283,7 +249,7 @@ const AddExpense: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Type *
             </label>
             <div className="flex items-center space-x-6">
@@ -296,7 +262,7 @@ const AddExpense: React.FC = () => {
                   onChange={() => setFieldValue('type', 'expense')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-700">💸 Expense</span>
+                <span className="text-gray-700 dark:text-gray-300">💸 Expense</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -307,7 +273,7 @@ const AddExpense: React.FC = () => {
                   onChange={() => setFieldValue('type', 'income')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-700">💰 Income</span>
+                <span className="text-gray-700 dark:text-gray-300">💰 Income</span>
               </label>
             </div>
           </div>
@@ -324,7 +290,7 @@ const AddExpense: React.FC = () => {
           />
 
           <div>
-            <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Payment Method
             </label>
             <select
@@ -332,7 +298,7 @@ const AddExpense: React.FC = () => {
               name="payment_method"
               value={formData.payment_method}
               onChange={(e) => setFieldValue('payment_method', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
             >
               <option value="cash">💵 Cash</option>
               <option value="b_haspa_credit">🏦 B Haspa Credit</option>
@@ -347,7 +313,7 @@ const AddExpense: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Category *
             </label>
             <CategorySelector
@@ -359,7 +325,7 @@ const AddExpense: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Tags
             </label>
             <div className="flex flex-wrap gap-2">
@@ -370,8 +336,8 @@ const AddExpense: React.FC = () => {
                   onClick={() => handleTagToggle(tag.id)}
                   className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
                     selectedTags.includes(tag.id)
-                      ? 'bg-blue-100 text-blue-800 border-blue-300'
-                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                   style={{
                     backgroundColor: selectedTags.includes(tag.id) ? `${tag.color}20` : undefined,
@@ -384,14 +350,14 @@ const AddExpense: React.FC = () => {
               ))}
             </div>
             {selectedTags.length > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Vendor *
             </label>
             <VendorSelector
@@ -414,7 +380,7 @@ const AddExpense: React.FC = () => {
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Added By
             </label>
             <div className="flex items-center space-x-6">
@@ -427,7 +393,7 @@ const AddExpense: React.FC = () => {
                   onChange={() => setFieldValue('added_by', 'he')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-700">👨 He</span>
+                <span className="text-gray-700 dark:text-gray-300">👨 He</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -438,7 +404,7 @@ const AddExpense: React.FC = () => {
                   onChange={() => setFieldValue('added_by', 'she')}
                   className="mr-2 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-700">👩 She</span>
+                <span className="text-gray-700 dark:text-gray-300">👩 She</span>
               </label>
             </div>
           </div>
@@ -446,46 +412,27 @@ const AddExpense: React.FC = () => {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading || checkingDuplicates}
+              disabled={saving}
               className={`flex-1 py-2 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed transition-colors ${
-                !loading && !checkingDuplicates
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                !saving
+                  ? 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-blue-500'
+                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
               }`}
             >
-              {checkingDuplicates
-                ? 'Checking for duplicates...'
-                : loading
-                ? 'Adding...'
-                : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
             <button
               type="button"
-              onClick={() => navigate('/')}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              onClick={() => navigate('/dashboard')}
+              className="flex-1 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
             </button>
           </div>
         </form>
       </div>
-
-      {/* Duplicate Warning Modal */}
-      {showDuplicateWarning && (
-        <DuplicateWarning
-          duplicates={duplicates}
-          newExpense={{
-            amount: formData.amount,
-            date: formData.date,
-            comment: formData.comment
-          }}
-          onConfirm={handleDuplicateConfirm}
-          onCancel={handleDuplicateCancel}
-          loading={loading}
-        />
-      )}
     </div>
   );
 };
 
-export default AddExpense;
+export default EditExpense;

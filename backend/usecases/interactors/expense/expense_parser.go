@@ -253,12 +253,6 @@ func (p *ExpenseParser) validateParsedData(data *ParsedExpenseData) error {
 		data.Date = time.Now().Format("2006-01-02")
 	}
 
-	// Check date is not in future
-	parsedDate, _ := time.Parse("2006-01-02", data.Date)
-	if parsedDate.After(time.Now()) {
-		return errors.New("date cannot be in the future")
-	}
-
 	// Default added_by to "he" if not specified
 	if data.AddedBy == "" {
 		data.AddedBy = "he"

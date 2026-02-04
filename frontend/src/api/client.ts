@@ -263,6 +263,22 @@ export const incomeAPI = {
   },
 };
 
+// Bank Import API
+export const bankImportAPI = {
+  uploadBankCSV: (file: File, format: string = 'haspa_credit') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('format', format);
+    return apiClient.post('/expenses/import/bank/preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  confirmBankTransaction: (request: any) =>
+    apiClient.post('/expenses/import/bank/confirm', request),
+};
+
 // Utility function for formatting currency
 export const formatAmount = (amount: number) => {
   return new Intl.NumberFormat('de-DE', {

@@ -108,6 +108,10 @@ func main() {
 	expenseParser := expense.NewExpenseParser(anthropicClient, vendorRepo)
 	expenseInteractor.SetExpenseParser(expenseParser)
 
+	// Setup bank transaction mapper for LLM-powered bank import
+	bankTransactionMapper := expense.NewBankTransactionMapper(anthropicClient, vendorRepo, expenseParser)
+	expenseInteractor.SetBankTransactionMapper(bankTransactionMapper)
+
 	incomeInteractor := income.NewIncomeInteractor(incomeRepo, vendorRepo, tagRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
@@ -119,6 +123,7 @@ func main() {
 	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
 	tagHandler := handlers.NewTagHandler(tagInteractor)
+	bankImportHandler := handlers.NewBankImportHandler(expenseInteractor)
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
@@ -161,6 +166,10 @@ func main() {
 	api.GET("/expenses/export/csv", expenseHandler.ExportExpensesCSV)
 	api.POST("/expenses/import/csv/preview", expenseHandler.ImportExpensesCSVPreview)
 	api.POST("/expenses/import/csv/confirm", expenseHandler.ImportExpensesCSVConfirm)
+
+	// Bank statement import routes
+	api.POST("/expenses/import/bank/preview", bankImportHandler.UploadBankCSV)
+	api.POST("/expenses/import/bank/confirm", bankImportHandler.CreateExpenseFromBank)
 
 	// Balance and earnings routes
 	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
