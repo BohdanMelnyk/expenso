@@ -4,6 +4,25 @@ import { BankTransaction, CreateExpenseRequest, BankImportPreview } from '../typ
 import { bankImportAPI } from '../api/client';
 import { BankTransactionCard } from './BankTransactionCard';
 
+/**
+ * BankTransactionReview Component - Bank Statement Import Review Interface
+ *
+ * FEATURE: "Added by" field is always set to "He" and hidden from UI
+ * - The "Added by" field has been removed from the bank import UI
+ * - All bank-imported expenses default to "He" for consistency
+ * - This is a deliberate UX decision to simplify the import workflow
+ * - The field is still stored in the database but not exposed in bank imports
+ * - Users adding expenses manually can still choose "He" or "She" in the regular Add form
+ *
+ * WORKFLOW:
+ * 1. Upload bank CSV file from BankImportScreen
+ * 2. Review each transaction one at a time
+ * 3. Edit expense details (amount, date, category, description)
+ * 4. Click "Add Expense" or "Skip" to process
+ * 5. Navigate with Back/Next buttons
+ * 6. Progress tracking shows X of Y added
+ */
+
 export const BankTransactionReview: React.FC = () => {
   const navigate = useNavigate();
   const [previewData, setPreviewData] = useState<BankImportPreview | null>(null);
@@ -32,6 +51,13 @@ export const BankTransactionReview: React.FC = () => {
     }
   }, [navigate]);
 
+  /**
+   * FEATURE: "Added by" defaults to "He" for all bank imports
+   * - Field is hidden from UI (not shown to users)
+   * - Always defaults to 'he' for consistency
+   * - Users cannot change this during bank import
+   * - Regular expense additions still allow 'he'/'she' selection
+   */
   const initializeEditedExpense = (transaction: BankTransaction) => {
     setEditedExpense({
       amount: transaction.parsed_expense.amount,
@@ -41,7 +67,7 @@ export const BankTransactionReview: React.FC = () => {
       comment: transaction.parsed_expense.description,
       vendor_id: transaction.parsed_expense.matched_vendor_id,
       payment_method: transaction.parsed_expense.payment_method,
-      added_by: transaction.parsed_expense.added_by as 'he' | 'she',
+      added_by: 'he', // FEATURE: Always defaults to "he" - hidden from UI
     });
   };
 
@@ -74,7 +100,11 @@ export const BankTransactionReview: React.FC = () => {
     try {
       const request = {
         transaction_data: currentTransaction,
-        expense_data: editedExpense,
+        expense_data: {
+          ...editedExpense,
+          // FEATURE: Enforce "he" for bank imports (hidden from UI, always set to "he")
+          added_by: 'he',
+        },
       };
 
       const response = await bankImportAPI.confirmBankTransaction(request);
@@ -217,19 +247,6 @@ export const BankTransactionReview: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                     />
-                  </div>
-
-                  {/* Added By */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Who</label>
-                    <select
-                      value={editedExpense.added_by || 'he'}
-                      onChange={(e) => handleExpenseFieldChange('added_by', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="he">He</option>
-                      <option value="she">She</option>
-                    </select>
                   </div>
                 </>
               )}

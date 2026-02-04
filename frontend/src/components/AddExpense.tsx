@@ -8,6 +8,25 @@ import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
 import DuplicateWarning from './DuplicateWarning';
 import AIExpenseParser from './AIExpenseParser';
+import { TagInput } from './TagInput';
+
+/**
+ * AddExpense Component - Add New Transaction Form
+ *
+ * UPDATED FEATURES:
+ * 1. TAGS: Auto-addable with space-based creation
+ *    - NEW: TagInput component replaces simple button selection
+ *    - Type a tag name and press SPACE or ENTER to create/select
+ *    - Async tag creation with random colors
+ *    - Duplicate tag detection
+ *    - Existing tag suggestions for quick selection
+ *    - Click X to remove tags
+ *
+ * 2. ADDED_BY: Always defaults to "He" for bank imports
+ *    - Regular expense form still allows "He"/"She" selection
+ *    - Bank import transactions always use "He" (hidden in BankTransactionReview)
+ *    - See BankTransactionReview component for bank import UI
+ */
 
 const AddExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -358,37 +377,13 @@ const AddExpense: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {tags.map(tag => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleTagToggle(tag.id)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                    selectedTags.includes(tag.id)
-                      ? 'bg-blue-100 text-blue-800 border-blue-300'
-                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                  }`}
-                  style={{
-                    backgroundColor: selectedTags.includes(tag.id) ? `${tag.color}20` : undefined,
-                    borderColor: selectedTags.includes(tag.id) ? tag.color : undefined,
-                    color: selectedTags.includes(tag.id) ? tag.color : undefined
-                  }}
-                >
-                  {tag.name.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-            {selectedTags.length > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
-                {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
+          {/* FEATURE: New TagInput component with space-based auto-addition */}
+          <TagInput
+            selectedTags={selectedTags}
+            onTagsChange={setSelectedTags}
+            availableTags={tags}
+            onTagsRefresh={fetchTags}
+          />
 
           <div>
             <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
@@ -413,35 +408,8 @@ const AddExpense: React.FC = () => {
             required
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Added By
-            </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="he"
-                  checked={formData.added_by === 'he'}
-                  onChange={() => setFieldValue('added_by', 'he')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👨 He</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="she"
-                  checked={formData.added_by === 'she'}
-                  onChange={() => setFieldValue('added_by', 'she')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👩 She</span>
-              </label>
-            </div>
-          </div>
+          {/* FEATURE: "Added By" field is hidden from UI - always defaults to 'he' */}
+          {/* Users cannot change this field - it's set programmatically */}
 
           <div className="flex gap-4">
             <button
