@@ -21,11 +21,18 @@ import { TagInput } from './TagInput';
  *    - Duplicate tag detection
  *    - Existing tag suggestions for quick selection
  *    - Click X to remove tags
+ *    - Positioned at the end of the form (after Date field)
  *
  * 2. ADDED_BY: Always defaults to "He" for bank imports
  *    - Regular expense form still allows "He"/"She" selection
  *    - Bank import transactions always use "He" (hidden in BankTransactionReview)
  *    - See BankTransactionReview component for bank import UI
+ *
+ * 3. DATE FIELD: Supports future dates for pre-booked transactions
+ *    - Users can add transactions with future dates
+ *    - Perfect for pre-booked items like flights, hotels, events
+ *    - Past dates limited to 1 year ago
+ *    - Future dates have no limit
  */
 
 const AddExpense: React.FC = () => {
@@ -86,6 +93,8 @@ const AddExpense: React.FC = () => {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(new Date().getFullYear() - 1);
 
+        // FEATURE: Allow future dates for pre-booked transactions (e.g., flight tickets)
+        // Only restrict past dates to within 1 year
         if (selectedDate < oneYearAgo) {
           return 'Date cannot be more than a year ago';
         }
@@ -377,14 +386,6 @@ const AddExpense: React.FC = () => {
             />
           </div>
 
-          {/* FEATURE: New TagInput component with space-based auto-addition */}
-          <TagInput
-            selectedTags={selectedTags}
-            onTagsChange={setSelectedTags}
-            availableTags={tags}
-            onTagsRefresh={fetchTags}
-          />
-
           <div>
             <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
               Vendor *
@@ -398,6 +399,7 @@ const AddExpense: React.FC = () => {
             />
           </div>
 
+          {/* FEATURE: Date field supports future dates for pre-booked items (flights, hotels, etc) */}
           <FormField
             label="Date"
             name="date"
@@ -406,6 +408,17 @@ const AddExpense: React.FC = () => {
             onChange={(value) => setFieldValue('date', value)}
             error={errors.date}
             required
+          />
+          <p className="text-xs text-gray-500 -mt-4">
+            📅 You can add transactions with past (within 1 year) or future dates
+          </p>
+
+          {/* FEATURE: New TagInput component with space-based auto-addition - moved to end */}
+          <TagInput
+            selectedTags={selectedTags}
+            onTagsChange={setSelectedTags}
+            availableTags={tags}
+            onTagsRefresh={fetchTags}
           />
 
           {/* FEATURE: "Added By" field is hidden from UI - always defaults to 'he' */}

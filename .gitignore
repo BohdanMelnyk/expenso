@@ -87,3 +87,6 @@ github
 github.pub
 id_rsa*
 *.pub
+
+# Bank statement samples and sensitive documents
+docs/
