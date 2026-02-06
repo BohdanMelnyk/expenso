@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -39,7 +40,17 @@ const expectedHeaderCount = 11
 
 // ParseFile reads and parses an entire Haspa CSV file
 func (p *HaspaCreditParser) ParseFile(reader io.Reader) ([]*entities.BankTransaction, error) {
-	csvReader := csv.NewReader(reader)
+	// Wrap reader with bufio to handle BOM
+	bufferedReader := bufio.NewReader(reader)
+
+	// Read first 3 bytes to check for UTF-8 BOM
+	firstBytes, err := bufferedReader.Peek(3)
+	if err == nil && len(firstBytes) >= 3 && firstBytes[0] == 0xEF && firstBytes[1] == 0xBB && firstBytes[2] == 0xBF {
+		// Skip BOM if present
+		bufferedReader.Discard(3)
+	}
+
+	csvReader := csv.NewReader(bufferedReader)
 	csvReader.Comma = ';'
 	csvReader.FieldsPerRecord = -1 // Allow variable number of fields
 
@@ -97,15 +108,26 @@ func (p *HaspaCreditParser) ValidateHeader(headers []string) error {
 	}
 
 	// Validate key header values (German names)
-	expectedHeaders := map[int]string{
-		haspaCreditCardNumber: "Umsatz getätigt von",
-		haspaDocumentDate:     "Belegdatum",
-		haspaBookingDate:      "Buchungsdatum",
+	// Check for "Umsatz" and "Belegdatum" which are distinctive Haspa headers
+	expectedPatterns := map[int][]string{
+		haspaCreditCardNumber: {"umsatz"}, // First column contains "Umsatz"
+		haspaDocumentDate:     {"belegdatum"},
+		haspaBookingDate:      {"buchungsdatum"},
 	}
 
-	for idx, expected := range expectedHeaders {
-		if idx < len(headers) && !strings.Contains(strings.ToLower(headers[idx]), strings.ToLower(expected)) {
-			return fmt.Errorf("unexpected header at column %d: got %q, expected to contain %q", idx, headers[idx], expected)
+	for idx, patterns := range expectedPatterns {
+		if idx < len(headers) {
+			headerLower := strings.ToLower(strings.TrimSpace(headers[idx]))
+			found := false
+			for _, pattern := range patterns {
+				if strings.Contains(headerLower, pattern) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("unexpected header at column %d: got %q, expected to contain %q (after BOM removal)", idx, headers[idx], patterns)
+			}
 		}
 	}
 
@@ -160,13 +182,23 @@ func (p *HaspaCreditParser) parseRow(record []string, rowNum int) (*entities.Ban
 		exchangeRate = 1.0
 	}
 
+	// Handle original currency - if empty, use booking currency (for same-currency transactions)
+	originalCurrency := strings.TrimSpace(record[haspaOriginalCurrency])
+	if originalCurrency == "" {
+		originalCurrency = strings.TrimSpace(record[haspaBookingCurrency])
+		// For same-currency transactions, if originalAmount is 0, use bookingAmount
+		if originalAmount == 0 {
+			originalAmount = bookingAmount
+		}
+	}
+
 	// Create BankTransaction
 	transaction, err := entities.NewBankTransaction(
 		record[haspaCreditCardNumber],     // Card number
 		documentDate,                      // Document date
 		bookingDate,                       // Booking date
 		originalAmount,                    // Original amount
-		record[haspaOriginalCurrency],     // Original currency
+		originalCurrency,                  // Original currency (defaulted if empty)
 		exchangeRate,                      // Exchange rate
 		bookingAmount,                     // Booking amount
 		record[haspaBookingCurrency],      // Booking currency

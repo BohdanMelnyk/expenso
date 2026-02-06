@@ -160,9 +160,8 @@ func main() {
 	api.GET("/expenses", expenseHandler.GetExpenses)
 	api.POST("/expenses", expenseHandler.CreateExpense)
 	api.POST("/expenses/parse", expenseHandler.ParseExpense)
-	api.GET("/expenses/:id", expenseHandler.GetExpense)
-	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
-	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+
+	// Specific expense routes MUST come BEFORE parameterized routes
 	api.GET("/expenses/export/csv", expenseHandler.ExportExpensesCSV)
 	api.POST("/expenses/import/csv/preview", expenseHandler.ImportExpensesCSVPreview)
 	api.POST("/expenses/import/csv/confirm", expenseHandler.ImportExpensesCSVConfirm)
@@ -171,13 +170,18 @@ func main() {
 	api.POST("/expenses/import/bank/preview", bankImportHandler.UploadBankCSV)
 	api.POST("/expenses/import/bank/confirm", bankImportHandler.CreateExpenseFromBank)
 
-	// Balance and earnings routes
+	// Balance and earnings routes (specific)
 	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
 	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
 	api.GET("/expenses/check-duplicates", expenseHandler.CheckDuplicates)
 	api.GET("/expenses/averages", expenseHandler.GetAverageExpenses)
+
+	// Parameterized routes MUST come LAST
+	api.GET("/expenses/:id", expenseHandler.GetExpense)
+	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
+	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
 
 	// Income routes
 	api.GET("/incomes", incomeHandler.GetIncomes)

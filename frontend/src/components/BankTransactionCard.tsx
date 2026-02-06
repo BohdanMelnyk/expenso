@@ -70,13 +70,76 @@ export const BankTransactionCard: React.FC<BankTransactionCardProps> = ({ transa
         </button>
 
         {showRawData && (
-          <div className="mt-3 bg-gray-50 p-3 rounded text-sm text-gray-700 space-y-1 max-h-48 overflow-y-auto">
-            {Object.entries(transaction.raw_data).map(([key, value]) => (
-              <div key={key} className="flex justify-between">
-                <span className="font-mono text-gray-600">{key}:</span>
-                <span className="font-mono">{value || '(empty)'}</span>
-              </div>
-            ))}
+          <div className="mt-3 bg-gray-50 p-3 rounded text-sm text-gray-700 overflow-x-auto">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-300 bg-gray-100">
+                  <th className="text-left px-2 py-1 font-semibold text-gray-800">Column</th>
+                  <th className="text-left px-2 py-1 font-semibold text-gray-800">CSV Header</th>
+                  <th className="text-left px-2 py-1 font-semibold text-gray-800">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">0</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Umsatz getätigt von</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.card_number || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">1</td>
+                  <td className="px-2 py-1 font-mono text-gray-600 font-bold text-green-700">Belegdatum</td>
+                  <td className="px-2 py-1 font-mono text-gray-900 font-bold text-green-700">{transaction.raw_data.document_date || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">2</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Buchungsdatum</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.booking_date || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">3</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Originalbetrag</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.original_amount || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">4</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Originalwährung</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.original_currency || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">5</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Umrechnungskurs</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.exchange_rate || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">6</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Buchungsbetrag</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.booking_amount || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">7</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Buchungsw√§hrung</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.booking_currency || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">8</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Transaktionsbeschreibung</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.transaction_desc || '(empty)'}</td>
+                </tr>
+                <tr className="border-b border-gray-200 hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">9</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Transaktionsbeschreibung Zusatz</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.transaction_desc_extra || '(empty)'}</td>
+                </tr>
+                <tr className="hover:bg-blue-50">
+                  <td className="px-2 py-1 font-mono text-gray-600">10</td>
+                  <td className="px-2 py-1 font-mono text-gray-600">Buchungsreferenz</td>
+                  <td className="px-2 py-1 font-mono text-gray-900">{transaction.raw_data.booking_reference || '(empty)'}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+              <strong>Belegdatum (Column 1):</strong> Document date from the invoice - <strong>{transaction.raw_data.document_date}</strong> ✓
+            </div>
           </div>
         )}
       </div>

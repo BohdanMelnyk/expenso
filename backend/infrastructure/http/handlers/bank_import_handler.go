@@ -88,8 +88,17 @@ func (h *BankImportHandler) UploadBankCSV(c *gin.Context) {
 	for i, parsed := range parsedExpenses {
 		txDTO := dto.BankTransactionDTO{
 			RawData: map[string]string{
-				"merchant": parsed.VendorName,
-				"location": "",
+				"card_number":            parsed.CardNumber,
+				"document_date":          parsed.DocumentDate,
+				"booking_date":           parsed.BookingDate,
+				"original_amount":        fmt.Sprintf("%.2f", parsed.OriginalAmount),
+				"original_currency":      parsed.OriginalCurrency,
+				"exchange_rate":          fmt.Sprintf("%.4f", parsed.ExchangeRate),
+				"booking_amount":         fmt.Sprintf("%.2f", parsed.BookingAmount),
+				"booking_currency":       parsed.BookingCurrency,
+				"transaction_desc":       parsed.TransactionDesc,
+				"transaction_desc_extra": parsed.Location,
+				"booking_reference":      parsed.BookingReference,
 			},
 			ParsedExpense: dto.ParsedExpenseResponseDTO{
 				Amount:            parsed.Amount,

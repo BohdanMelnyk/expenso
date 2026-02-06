@@ -30,6 +30,18 @@ type ParsedExpenseData struct {
 	ConfidenceScore   float64 `json:"confidence_score"`
 	MatchedVendorID   *int    `json:"-"` // Computed after LLM parsing
 	MatchedVendorName string  `json:"-"` // Computed after LLM parsing
+	// CSV row data for raw display
+	CardNumber       string  `json:"-"`
+	DocumentDate     string  `json:"-"`
+	BookingDate      string  `json:"-"`
+	OriginalAmount   float64 `json:"-"`
+	OriginalCurrency string  `json:"-"`
+	ExchangeRate     float64 `json:"-"`
+	BookingAmount    float64 `json:"-"`
+	BookingCurrency  string  `json:"-"`
+	TransactionDesc  string  `json:"-"`
+	Location         string  `json:"-"`
+	BookingReference string  `json:"-"`
 }
 
 // ExpenseParser handles parsing natural language input into structured expense data

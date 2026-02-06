@@ -37,9 +37,10 @@ func NewBankTransactionMapper(
 // MapToExpenseData converts a bank transaction to structured expense data
 func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTransaction) (*ParsedExpenseData, error) {
 	logger.Info("Starting bank transaction mapping", logger.Fields{
-		"merchant":     transaction.TransactionDesc(),
-		"amount":       transaction.BookingAmount(),
-		"booking_date": transaction.BookingDate().Format("2006-01-02"),
+		"merchant":      transaction.TransactionDesc(),
+		"amount":        transaction.BookingAmount(),
+		"document_date": transaction.DocumentDate().Format("2006-01-02"),
+		"booking_date":  transaction.BookingDate().Format("2006-01-02"),
 	})
 
 	// 1. Build LLM prompt
@@ -65,6 +66,19 @@ func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTrans
 		})
 		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
+
+	// 3.5. Store CSV row data for frontend display
+	parsed.CardNumber = transaction.CardNumber()
+	parsed.DocumentDate = transaction.DocumentDate().Format("2006-01-02")
+	parsed.BookingDate = transaction.BookingDate().Format("2006-01-02")
+	parsed.OriginalAmount = transaction.OriginalAmount()
+	parsed.OriginalCurrency = transaction.OriginalCurrency()
+	parsed.ExchangeRate = transaction.ExchangeRate()
+	parsed.BookingAmount = transaction.BookingAmount()
+	parsed.BookingCurrency = transaction.BookingCurrency()
+	parsed.TransactionDesc = transaction.TransactionDesc()
+	parsed.Location = transaction.TransactionDescExtra()
+	parsed.BookingReference = transaction.BookingReference()
 
 	// 4. Validate parsed data
 	if err := m.validateBankParsedData(&parsed, transaction); err != nil {
@@ -141,6 +155,7 @@ func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransactio
 		OriginalAmount       float64
 		OriginalCurrency     string
 		ExchangeRate         float64
+		BookingAmount        float64
 		TodayDate            string
 	}
 
@@ -148,13 +163,14 @@ func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransactio
 	err = tmpl.Execute(&result, PromptData{
 		TransactionDesc:      transaction.TransactionDesc(),
 		TransactionDescExtra: transaction.TransactionDescExtra(),
-		TransactionDate:      transaction.BookingDate().Format("2006-01-02"),
+		TransactionDate:      transaction.DocumentDate().Format("2006-01-02"),
 		AbsoluteAmount:       transaction.AbsoluteAmount(),
 		Currency:             transaction.BookingCurrency(),
 		TransactionType:      transactionType,
 		OriginalAmount:       transaction.OriginalAmount(),
 		OriginalCurrency:     transaction.OriginalCurrency(),
 		ExchangeRate:         transaction.ExchangeRate(),
+		BookingAmount:        transaction.BookingAmount(),
 		TodayDate:            today,
 	})
 	if err != nil {
@@ -247,7 +263,7 @@ Important Rules:
 10. Consider location when available to refine categorization`,
 		transaction.TransactionDesc(),
 		transaction.TransactionDescExtra(),
-		transaction.BookingDate().Format("2006-01-02"),
+		transaction.DocumentDate().Format("2006-01-02"),
 		transaction.AbsoluteAmount(),
 		transaction.BookingCurrency(),
 		transactionType,
@@ -255,9 +271,9 @@ Important Rules:
 		today,
 		transaction.AbsoluteAmount(),
 		transaction.BookingCurrency(),
-		transaction.BookingDate().Format("2006-01-02"),
+		transaction.DocumentDate().Format("2006-01-02"),
 		transaction.AbsoluteAmount(),
-		transaction.BookingDate().Format("2006-01-02"),
+		transaction.DocumentDate().Format("2006-01-02"),
 	)
 }
 
@@ -282,12 +298,12 @@ func (m *BankTransactionMapper) validateBankParsedData(data *ParsedExpenseData, 
 		data.Currency = transaction.BookingCurrency()
 	}
 
-	// Validate/correct date
-	transactionDateStr := transaction.BookingDate().Format("2006-01-02")
+	// Validate/correct date - use Document Date (Belegdatum) instead of Booking Date
+	transactionDateStr := transaction.DocumentDate().Format("2006-01-02")
 	if data.Date != transactionDateStr {
-		logger.Warn("Date mismatch, correcting to transaction date", logger.Fields{
-			"parsed_date":      data.Date,
-			"transaction_date": transactionDateStr,
+		logger.Warn("Date mismatch, correcting to transaction document date", logger.Fields{
+			"parsed_date":   data.Date,
+			"document_date": transactionDateStr,
 		})
 		data.Date = transactionDateStr
 	}
