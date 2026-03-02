@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"text/template"
 	"time"
 
@@ -57,8 +58,11 @@ func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTrans
 	}
 
 	// 3. Parse JSON response
+	// Strip markdown code fence if present (e.g., ```json ... ```)
+	cleanedResponse := m.stripMarkdownCodeFence(response)
+
 	var parsed ParsedExpenseData
-	if err := json.Unmarshal([]byte(response), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(cleanedResponse), &parsed); err != nil {
 		logger.Error("Failed to parse LLM response", logger.Fields{
 			"error":    err.Error(),
 			"response": response,
@@ -275,6 +279,23 @@ Important Rules:
 		transaction.AbsoluteAmount(),
 		transaction.DocumentDate().Format("2006-01-02"),
 	)
+}
+
+// stripMarkdownCodeFence removes markdown code fence from response if present
+func (m *BankTransactionMapper) stripMarkdownCodeFence(response string) string {
+	response = strings.TrimSpace(response)
+
+	// Check for ```json ... ``` pattern
+	if strings.HasPrefix(response, "```json") {
+		response = strings.TrimPrefix(response, "```json")
+		response = strings.TrimSuffix(response, "```")
+	} else if strings.HasPrefix(response, "```") {
+		// Generic code fence
+		response = strings.TrimPrefix(response, "```")
+		response = strings.TrimSuffix(response, "```")
+	}
+
+	return strings.TrimSpace(response)
 }
 
 // validateBankParsedData validates and normalizes parsed expense data from bank transaction

@@ -133,7 +133,8 @@ export const BankImportScreen: React.FC = () => {
             onChange={(e) => setFormat(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="haspa_credit">Haspa Credit Card</option>
+            <option value="haspa_credit">Haspa Credit Card (Umsatz)</option>
+            <option value="haspa_debit">Haspa Debit Account (CAMT.053)</option>
             <option value="n26">N26 (Coming Soon)</option>
             <option value="monobank">Monobank (Coming Soon)</option>
           </select>
@@ -167,7 +168,7 @@ export const BankImportScreen: React.FC = () => {
 
         {/* Help Text */}
         <p className="mt-4 text-xs text-gray-500 text-center">
-          Supported formats: Haspa credit card statements (CSV)
+          Supported formats: Haspa Credit Card (Umsatz), Haspa Debit Account (CAMT.053)
         </p>
       </div>
     </div>

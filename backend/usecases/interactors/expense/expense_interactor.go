@@ -454,6 +454,8 @@ func (i *ExpenseInteractor) ParseBankCSV(format string, file io.Reader) ([]*Pars
 	switch format {
 	case "haspa_credit":
 		parser = csv.NewHaspaCreditParser()
+	case "haspa_debit":
+		parser = csv.NewHaspaDebitParser()
 	default:
 		return nil, errors.New("unsupported CSV format: " + format)
 	}
