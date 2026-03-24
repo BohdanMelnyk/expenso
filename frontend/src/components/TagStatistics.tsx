@@ -36,6 +36,12 @@ const TagStatistics: React.FC = () => {
       return;
     }
 
+    // Only fetch if we have valid date objects
+    if (!periodStartDate || !periodEndDate) {
+      console.warn('Dates not ready yet', { periodStartDate, periodEndDate });
+      return;
+    }
+
     fetchTagAndExpenses();
   }, [tagId, periodStartDate, periodEndDate]);
 
@@ -46,19 +52,41 @@ const TagStatistics: React.FC = () => {
       setLoading(true);
       const tagNum = parseInt(tagId, 10);
 
+      // Validate tag ID
+      if (isNaN(tagNum)) {
+        setError('Invalid tag ID');
+        return;
+      }
+
       // Fetch tag details
       const tagResponse = await tagAPI.getTag(tagNum);
       setTag(tagResponse.data);
 
-      // Fetch expenses for this tag
+      // Format dates
       const startDateStr = formatDateLocal(periodStartDate);
       const endDateStr = formatDateLocal(periodEndDate);
+
+      // Validate date strings
+      if (!startDateStr || !endDateStr) {
+        setError('Invalid date range');
+        return;
+      }
+
+      console.log('Fetching expenses with:', { tagId: tagNum, startDate: startDateStr, endDate: endDateStr });
+
+      // Fetch expenses for this tag
       const expensesResponse = await expenseAPI.getExpensesByTag(tagNum, startDateStr, endDateStr);
       setExpenses(expensesResponse.data);
-    } catch (err) {
-      setError('Failed to fetch tag details and expenses');
-      showError('Failed to fetch tag details and expenses');
-      console.error('Error fetching data:', err);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || 'Failed to fetch tag details and expenses';
+      setError(errorMsg);
+      showError(errorMsg);
+      console.error('Error fetching data:', {
+        error: err,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        url: err?.config?.url
+      });
     } finally {
       setLoading(false);
     }

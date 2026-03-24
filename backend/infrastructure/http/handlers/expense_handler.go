@@ -1061,13 +1061,13 @@ func (h *ExpenseHandler) GetExpensesByTag(c *gin.Context) {
 	// Parse required tag_id parameter
 	tagIDStr := c.Query("tag_id")
 	if tagIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tag_id parameter is required"})
+		middleware.RespondWithBadRequest(c, "tag_id parameter is required", nil)
 		return
 	}
 
 	tagID, err := strconv.Atoi(tagIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tag_id must be a valid integer"})
+		middleware.RespondWithBadRequest(c, "tag_id must be a valid integer", err)
 		return
 	}
 
@@ -1081,7 +1081,7 @@ func (h *ExpenseHandler) GetExpensesByTag(c *gin.Context) {
 	if startDateStr != "" {
 		parsed, err := time.Parse("2006-01-02", startDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
+			middleware.RespondWithBadRequest(c, "Invalid start_date format. Use YYYY-MM-DD", err)
 			return
 		}
 		startDate = &parsed
@@ -1091,16 +1091,18 @@ func (h *ExpenseHandler) GetExpensesByTag(c *gin.Context) {
 	if endDateStr != "" {
 		parsed, err := time.Parse("2006-01-02", endDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
+			middleware.RespondWithBadRequest(c, "Invalid end_date format. Use YYYY-MM-DD", err)
 			return
 		}
+		// Add 1 day to end date to include the entire end date in the range
+		parsed = parsed.AddDate(0, 0, 1)
 		endDate = &parsed
 	}
 
 	// Execute use case
 	expenses, err := h.expenseInteractor.GetExpensesByTagAndDateRange(entities.TagID(tagID), startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses by tag"})
+		middleware.RespondWithInternalError(c, "Failed to fetch expenses by tag", err)
 		return
 	}
 
