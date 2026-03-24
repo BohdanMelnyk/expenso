@@ -572,3 +572,84 @@ func (r *ExpenseRepositoryImpl) FindByAmountAndDateRange(amount float64, startDa
 
 	return expenses, nil
 }
+
+func (r *ExpenseRepositoryImpl) FindByTagAndDateRange(tagID entities.TagID, startDate, endDate *time.Time) ([]*entities.Expense, error) {
+	baseQuery := `
+		SELECT e.id, e.amount, e.date, e.type, e.category, e.comment, e.vendor_id, e.payment_method::text, e.added_by, e.created_at, e.updated_at,
+		       v.id, v.name, v.type, v.created_at, v.updated_at
+		FROM expenses e
+		LEFT JOIN vendors v ON e.vendor_id = v.id
+		INNER JOIN expense_tags et ON e.id = et.expense_id
+		WHERE et.tag_id = $1
+	`
+
+	var query string
+	var args []interface{}
+	args = append(args, int(tagID))
+
+	// Build additional WHERE clauses based on provided date range
+	if startDate != nil && endDate != nil {
+		query = baseQuery + " AND e.date >= $2 AND e.date <= $3 ORDER BY e.amount DESC"
+		args = append(args, *startDate, *endDate)
+	} else if startDate != nil {
+		query = baseQuery + " AND e.date >= $2 ORDER BY e.amount DESC"
+		args = append(args, *startDate)
+	} else if endDate != nil {
+		query = baseQuery + " AND e.date <= $2 ORDER BY e.amount DESC"
+		args = append(args, *endDate)
+	} else {
+		// No date filter, just tag filter
+		query = baseQuery + " ORDER BY e.amount DESC"
+	}
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find expenses by tag and date range: %w", err)
+	}
+	defer rows.Close()
+
+	var expenses []*entities.Expense
+	for rows.Next() {
+		var dbo models.ExpenseDBO
+		var vID *int
+		var vName, vType *string
+		var vCreatedAt, vUpdatedAt *string
+
+		err := rows.Scan(
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Type, &dbo.Category, &dbo.Comment, &dbo.VendorID, &dbo.PaymentMethod, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan expense: %w", err)
+		}
+
+		// Convert DBO to domain entity
+		expense, err := dbo.ToDomainEntity()
+		if err != nil {
+			return nil, err
+		}
+
+		// Add vendor if present
+		if vID != nil && vName != nil && vType != nil {
+			vendorDBO := &models.VendorDBO{
+				ID:   *vID,
+				Name: *vName,
+				Type: *vType,
+			}
+			vendor := vendorDBO.ToDomainEntity()
+			expense.AssignVendor(vendor)
+		}
+
+		// Load tags for this expense
+		if r.tagRepo != nil {
+			tags, err := r.tagRepo.GetTagsByExpenseID(expense.ID())
+			if err == nil && len(tags) > 0 {
+				expense.SetTags(tags)
+			}
+		}
+
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
+}

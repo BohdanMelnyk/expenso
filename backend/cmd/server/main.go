@@ -175,6 +175,7 @@ func main() {
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
 	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
+	api.GET("/expenses/by-tag", expenseHandler.GetExpensesByTag)
 	api.GET("/expenses/check-duplicates", expenseHandler.CheckDuplicates)
 	api.GET("/expenses/averages", expenseHandler.GetAverageExpenses)
 

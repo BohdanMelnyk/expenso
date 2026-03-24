@@ -12,6 +12,7 @@ import Trends from './components/Trends';
 import CategoryStatistics from './components/CategoryStatistics';
 import VendorTypeStatistics from './components/VendorTypeStatistics';
 import VendorStatistics from './components/VendorStatistics';
+import TagStatistics from './components/TagStatistics';
 import CashFlow from './components/CashFlow';
 import BalanceDashboard from './components/BalanceDashboard';
 import ExpenseOverview from './components/ExpenseOverview';
@@ -207,6 +208,7 @@ function App() {
                 <Route path="/cash-flow" element={<CashFlow />} />
                 <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
                 <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
+                <Route path="/statistics/tag/:tagId" element={<TagStatistics />} />
                 <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
                 <Route path="/expenses/:id" element={<ExpenseOverview />} />
                 <Route path="/incomes/:id" element={<IncomeOverview />} />

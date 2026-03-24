@@ -213,6 +213,13 @@ export const expenseAPI = {
       };
     }>(`/expenses/averages${queryString ? `?${queryString}` : ''}`);
   },
+  getExpensesByTag: (tagId: number, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    params.append('tag_id', tagId.toString());
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    return apiClient.get<Expense[]>(`/expenses/by-tag?${params.toString()}`);
+  },
 };
 
 export const vendorAPI = {
