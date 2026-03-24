@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { expenseAPI, Expense, Tag, formatAmount, tagAPI } from '../api/client';
 import { usePeriod, Period } from '../contexts/PeriodContext';
 import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
+import { formatDateLocal } from '../utils/dateFormatter';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from './Toast';
 import SkeletonLoader from './SkeletonLoader';
@@ -50,8 +51,8 @@ const TagStatistics: React.FC = () => {
       setTag(tagResponse.data);
 
       // Fetch expenses for this tag
-      const startDateStr = periodStartDate.toISOString().split('T')[0];
-      const endDateStr = periodEndDate.toISOString().split('T')[0];
+      const startDateStr = formatDateLocal(periodStartDate);
+      const endDateStr = formatDateLocal(periodEndDate);
       const expensesResponse = await expenseAPI.getExpensesByTag(tagNum, startDateStr, endDateStr);
       setExpenses(expensesResponse.data);
     } catch (err) {
