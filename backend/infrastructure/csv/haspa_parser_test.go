@@ -563,3 +563,78 @@ func TestHaspaCreditParser_ParseFile_ActualDataFromCSV(t *testing.T) {
 		}
 	}
 }
+
+// TestHaspaCreditParser_SkipsSettlementRows tests that settlement/summary rows are filtered out
+func TestHaspaCreditParser_SkipsSettlementRows(t *testing.T) {
+	parser := NewHaspaCreditParser()
+
+	// CSV with real transactions mixed with settlement rows
+	csvData := `Umsatz getätigt von;Belegdatum;Buchungsdatum;Originalbetrag;Originalwährung;Umrechnungskurs;Buchungsbetrag;Buchungswährung;Transaktionsbeschreibung;Transaktionsbeschreibung Zusatz;Buchungsreferenz
+5232________4999;03.02.26;04.02.26;0,00;;1,00;-16,00;EUR;AMAZON;EU.LONDON;001
+5232________4999;03.02.26;04.02.26;0,00;;1,00;-20,00;EUR;REWE;HAMBURG;002
+5232________4999;31.01.26;01.02.26;0,00;;1,00;0,00;EUR;ABSCHLUSS;Quarterly Settlement;003
+5232________4999;31.01.26;01.02.26;0,00;;1,00;-9,95;EUR;ENTGELTABSCHLUSS;Fee Settlement;004
+5232________4999;02.02.26;02.02.26;0,00;;1,00;-45,50;EUR;NETFLIX;STREAMING;005`
+
+	reader := strings.NewReader(csvData)
+	transactions, err := parser.ParseFile(reader)
+
+	if err != nil {
+		t.Fatalf("ParseFile() error = %v", err)
+	}
+
+	// Should have 3 real transactions (AMAZON, REWE, NETFLIX), not the 2 settlement rows
+	if len(transactions) != 3 {
+		t.Fatalf("ParseFile() returned %d transactions, want 3 (settlement rows should be filtered)", len(transactions))
+	}
+
+	// Verify the settlement rows were skipped and we only have real transactions
+	expectedDesc := []string{"AMAZON", "REWE", "NETFLIX"}
+	for i, tx := range transactions {
+		if tx.TransactionDesc() != expectedDesc[i] {
+			t.Errorf("Transaction %d: description = %q, want %q", i, tx.TransactionDesc(), expectedDesc[i])
+		}
+	}
+}
+
+// TestHaspaDebitParser_SkipsSettlementRows tests that settlement/summary rows are filtered out
+func TestHaspaDebitParser_SkipsSettlementRows(t *testing.T) {
+	parser := NewHaspaDebitParser()
+
+	// CSV with real transactions mixed with settlement rows (like the user's actual file)
+	csvData := `"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Glaeubiger ID";"Mandatsreferenz";"Kundenreferenz (End-to-End)";"Sammlerreferenz";"Lastschrift Ursprungsbetrag";"Auslagenersatz Ruecklastschrift";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"BIC (SWIFT-Code)";"Betrag";"Waehrung";"Info"
+"DE86200505501315424505";"02.04.26";"02.04.26";"FOLGELASTSCHRIFT";"Amazon Payment";"DE82ZZZ00000787976";"4141001";"";"";"";"";"AMAZON EU S.A R.L.";"DE40200505501268130364";"HASPDEHHXXX";"-53,53";"EUR";"Umsatz gebucht"
+"DE86200505501315424505";"02.04.26";"02.04.26";"FOLGELASTSCHRIFT";"PayPal Payment";"LU96ZZZ0000000000000000058";"47PJ2255WAYSE";"1049311578833";"";"";"";"PayPal (Europe) S.a r.l.";"DE88500700100175526303";"DEUTDEFFXXX";"-24,00";"EUR";"Umsatz gebucht"
+"DE86200505501315424505";"31.03.26";"01.04.26";"ABSCHLUSS";"Quarterly Settlement";"";"";"";"";"";"";"";"";"";"";"0,00";"EUR";"Umsatz gebucht"
+"DE86200505501315424505";"31.03.26";"01.04.26";"ENTGELTABSCHLUSS";"Fee Settlement";"";"";"";"";"";"";"";"";"";"-9,95";"EUR";"Umsatz gebucht"
+"DE86200505501315424505";"01.04.26";"01.04.26";"ONLINE-UEBERWEISUNG";"Rent Payment";"";"";"";"";"";"";"Landlord GmbH";"DE87200505501238189789";"HASPDEHHXXX";"-1176,80";"EUR";"Umsatz gebucht"`
+
+	reader := strings.NewReader(csvData)
+	transactions, err := parser.ParseFile(reader)
+
+	if err != nil {
+		t.Fatalf("ParseFile() error = %v", err)
+	}
+
+	// Should have 3 real transactions, not the 2 settlement rows
+	if len(transactions) != 3 {
+		t.Fatalf("ParseFile() returned %d transactions, want 3 (settlement rows should be filtered)", len(transactions))
+	}
+
+	// Verify the settlement rows were skipped
+	expectedDesc := []string{"FOLGELASTSCHRIFT", "FOLGELASTSCHRIFT", "ONLINE-UEBERWEISUNG"}
+	for i, tx := range transactions {
+		if tx.TransactionDesc() != expectedDesc[i] {
+			t.Errorf("Transaction %d: description = %q, want %q", i, tx.TransactionDesc(), expectedDesc[i])
+		}
+	}
+
+	// Verify amounts (skip settlement rows which would have 0 or -9.95)
+	// Note: HaspaDebitParser stores absolute amounts (positive values)
+	expectedAmounts := []float64{53.53, 24.00, 1176.80}
+	for i, tx := range transactions {
+		if tx.BookingAmount() != expectedAmounts[i] {
+			t.Errorf("Transaction %d: amount = %v, want %v", i, tx.BookingAmount(), expectedAmounts[i])
+		}
+	}
+}

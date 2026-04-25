@@ -38,6 +38,13 @@ const (
 // expectedHeaderCount is the minimum number of expected columns
 const expectedHeaderCount = 11
 
+// skippedCreditTransactionTypes contains transaction types that should be skipped
+// (e.g., settlement summaries, fee settlements) as they are not real transactions
+var skippedCreditTransactionTypes = map[string]bool{
+	"ABSCHLUSS":        true, // Quarterly account settlement
+	"ENTGELTABSCHLUSS": true, // Fee settlement
+}
+
 // ParseFile reads and parses an entire Haspa CSV file
 func (p *HaspaCreditParser) ParseFile(reader io.Reader) ([]*entities.BankTransaction, error) {
 	// Wrap reader with bufio to handle BOM
@@ -172,6 +179,12 @@ func (p *HaspaCreditParser) parseRow(record []string, rowNum int) (*entities.Ban
 	// Trim all fields
 	for i := range record {
 		record[i] = strings.TrimSpace(record[i])
+	}
+
+	// Skip settlement/summary rows (these are not real transactions)
+	txType := strings.ToUpper(record[haspaTransactionDesc])
+	if skippedCreditTransactionTypes[txType] {
+		return nil, nil // Return nil to skip this row silently
 	}
 
 	// Parse dates (DD.MM.YY format)
@@ -317,6 +330,13 @@ const (
 // expectedDebitHeaderCount is the minimum number of expected columns
 const expectedDebitHeaderCount = 17
 
+// skippedDebitTransactionTypes contains transaction types that should be skipped
+// (e.g., settlement summaries, fee settlements) as they are not real transactions
+var skippedDebitTransactionTypes = map[string]bool{
+	"ABSCHLUSS":        true, // Quarterly account settlement
+	"ENTGELTABSCHLUSS": true, // Fee settlement
+}
+
 // ParseFile reads and parses an entire Haspa Debit CSV file
 func (p *HaspaDebitParser) ParseFile(reader io.Reader) ([]*entities.BankTransaction, error) {
 	// Wrap reader with bufio to handle BOM
@@ -431,6 +451,12 @@ func (p *HaspaDebitParser) parseRow(record []string, rowNum int) (*entities.Bank
 	// Trim all fields
 	for i := range record {
 		record[i] = strings.TrimSpace(record[i])
+	}
+
+	// Skip settlement/summary rows (these are not real transactions)
+	txType := strings.ToUpper(record[haspaDebitTransactionText])
+	if skippedDebitTransactionTypes[txType] {
+		return nil, nil // Return nil to skip this row silently
 	}
 
 	// Parse dates (DD.MM.YY format) - use Buchungstag as document date
