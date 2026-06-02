@@ -31,6 +31,7 @@ import (
 	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/income"
+	"expenso-backend/usecases/interactors/snapshot"
 	"expenso-backend/usecases/interactors/tag"
 	"expenso-backend/usecases/interactors/vendors"
 
@@ -100,6 +101,7 @@ func main() {
 	incomeRepo := repositories.NewIncomeRepository(db, tagRepo)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
+	snapshotRepo := repositories.NewSnapshotRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
@@ -116,6 +118,7 @@ func main() {
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
+	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
@@ -124,6 +127,7 @@ func main() {
 	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
 	tagHandler := handlers.NewTagHandler(tagInteractor)
 	bankImportHandler := handlers.NewBankImportHandler(expenseInteractor)
+	snapshotHandler := handlers.NewSnapshotHandler(snapshotInteractor)
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
@@ -219,6 +223,10 @@ func main() {
 	api.GET("/expenses/:id/tags", tagHandler.GetTagsByExpense)
 	api.POST("/expenses/:id/tags/:tag_id", tagHandler.AddTagToExpense)
 	api.DELETE("/expenses/:id/tags/:tag_id", tagHandler.RemoveTagFromExpense)
+
+	// Snapshot routes
+	api.GET("/snapshots", snapshotHandler.GetSnapshots)
+	api.POST("/snapshots", snapshotHandler.CreateSnapshot)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
