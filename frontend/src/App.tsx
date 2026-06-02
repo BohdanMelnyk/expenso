@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Calculator, Lightbulb } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Lightbulb, Layers } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PeriodProvider } from './contexts/PeriodContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -18,10 +18,10 @@ import BalanceDashboard from './components/BalanceDashboard';
 import ExpenseOverview from './components/ExpenseOverview';
 import IncomeOverview from './components/IncomeOverview';
 import EditExpense from './components/EditExpense';
-import AverageExpenses from './components/AverageExpenses';
 import Insights from './components/Insights/Insights';
 import { BankImportScreen } from './components/BankImportScreen';
 import { BankTransactionReview } from './components/BankTransactionReview';
+import Snapshots from './components/Snapshots';
 
 function Navigation() {
   const location = useLocation();
@@ -66,7 +66,7 @@ function Navigation() {
     { to: '/insights', icon: Lightbulb, label: 'Insights', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
     { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false },
-    { to: '/averages', icon: Calculator, label: 'Averages', end: false, special: false }
+    { to: '/snapshots', icon: Layers, label: 'Snapshots', end: false, special: false },
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -201,11 +201,11 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trends" element={<Trends />} />
                 <Route path="/insights" element={<Insights />} />
-                <Route path="/averages" element={<AverageExpenses />} />
                 <Route path="/add" element={<AddExpense />} />
                 <Route path="/expense/:id/edit" element={<EditExpense />} />
                 <Route path="/balance" element={<BalanceDashboard />} />
                 <Route path="/cash-flow" element={<CashFlow />} />
+                <Route path="/snapshots" element={<Snapshots />} />
                 <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
                 <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
                 <Route path="/statistics/tag/:tagId" element={<TagStatistics />} />
