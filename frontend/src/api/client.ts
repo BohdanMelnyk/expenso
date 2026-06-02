@@ -286,6 +286,46 @@ export const bankImportAPI = {
     apiClient.post('/expenses/import/bank/confirm', request),
 };
 
+export interface Snapshot {
+  id: number;
+  date: string;
+  total: number;
+  haspa: number;
+  n26_b: number;
+  n26_m: number;
+  cash: number;
+  uber_stocks: number;
+  scalable_capital: number;
+  mono_b: number;
+  mono_m: number;
+  paypal_b: number;
+  paypal_m: number;
+  backup_cash: number;
+  created_at: string;
+}
+
+export interface CreateSnapshotRequest {
+  date: string;
+  total: number;
+  haspa: number;
+  n26_b: number;
+  n26_m: number;
+  cash: number;
+  uber_stocks: number;
+  scalable_capital: number;
+  mono_b: number;
+  mono_m: number;
+  paypal_b: number;
+  paypal_m: number;
+  backup_cash: number;
+}
+
+export const fetchSnapshots = (): Promise<Snapshot[]> =>
+  apiClient.get<Snapshot[]>('/snapshots').then(r => r.data);
+
+export const createSnapshot = (data: CreateSnapshotRequest): Promise<Snapshot> =>
+  apiClient.post<Snapshot>('/snapshots', data).then(r => r.data);
+
 // Utility function for formatting currency
 export const formatAmount = (amount: number) => {
   return new Intl.NumberFormat('de-DE', {
