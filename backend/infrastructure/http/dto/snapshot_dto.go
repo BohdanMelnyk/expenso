@@ -8,7 +8,6 @@ import (
 
 type CreateSnapshotRequestDTO struct {
 	Date            string  `json:"date" validate:"required"`
-	Total           float64 `json:"total" validate:"required,gt=0"`
 	Haspa           float64 `json:"haspa"`
 	N26B            float64 `json:"n26_b"`
 	N26M            float64 `json:"n26_m"`

@@ -66,7 +66,6 @@ func (h *SnapshotHandler) CreateSnapshot(c *gin.Context) {
 
 	cmd := snapshot.CreateSnapshotCommand{
 		Date:            date,
-		Total:           req.Total,
 		Haspa:           req.Haspa,
 		N26B:            req.N26B,
 		N26M:            req.N26M,

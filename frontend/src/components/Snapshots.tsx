@@ -17,7 +17,6 @@ const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'total'>; lab
 
 const emptyForm = (): CreateSnapshotRequest => ({
   date: new Date().toISOString().split('T')[0],
-  total: 0,
   haspa: 0, n26_b: 0, n26_m: 0, cash: 0,
   uber_stocks: 0, scalable_capital: 0,
   mono_b: 0, mono_m: 0,
@@ -69,19 +68,6 @@ export default function Snapshots() {
               value={form.date}
               onChange={e => handleChange('date', e.target.value)}
               required
-              className="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Total</label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.total || ''}
-              onChange={e => handleChange('total', e.target.value)}
-              required
-              placeholder="0.00"
               className="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

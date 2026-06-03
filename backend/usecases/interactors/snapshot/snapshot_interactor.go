@@ -9,7 +9,6 @@ import (
 
 type CreateSnapshotCommand struct {
 	Date            time.Time
-	Total           float64
 	Haspa           float64
 	N26B            float64
 	N26M            float64
@@ -33,7 +32,7 @@ func NewSnapshotInteractor(snapshotRepo repositories.SnapshotRepository) *Snapsh
 
 func (i *SnapshotInteractor) CreateSnapshot(cmd CreateSnapshotCommand) (*entities.Snapshot, error) {
 	s, err := entities.NewSnapshot(
-		cmd.Date, cmd.Total,
+		cmd.Date,
 		cmd.Haspa, cmd.N26B, cmd.N26M, cmd.Cash,
 		cmd.UberStocks, cmd.ScalableCapital,
 		cmd.MonoB, cmd.MonoM,

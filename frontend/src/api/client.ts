@@ -306,7 +306,6 @@ export interface Snapshot {
 
 export interface CreateSnapshotRequest {
   date: string;
-  total: number;
   haspa: number;
   n26_b: number;
   n26_m: number;

@@ -27,14 +27,12 @@ type Snapshot struct {
 
 func NewSnapshot(
 	date time.Time,
-	total, haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash float64,
+	haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash float64,
 ) (*Snapshot, error) {
-	if total <= 0 {
-		return nil, errors.New("snapshot total must be greater than zero")
-	}
 	if date.After(time.Now()) {
 		return nil, errors.New("snapshot date cannot be in the future")
 	}
+	total := haspa + n26B + n26M + cash + uberStocks + scalableCapital + monoB + monoM + paypalB + paypalM + backupCash
 	return &Snapshot{
 		date:            date,
 		total:           total,

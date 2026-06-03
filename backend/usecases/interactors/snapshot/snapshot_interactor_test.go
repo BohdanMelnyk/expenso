@@ -29,7 +29,6 @@ func TestCreateSnapshot(t *testing.T) {
 
 	cmd := interactor.CreateSnapshotCommand{
 		Date:            time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
-		Total:           5000,
 		Haspa:           1000,
 		N26B:            500,
 		N26M:            300,
@@ -47,8 +46,9 @@ func TestCreateSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if s.Total() != 5000 {
-		t.Errorf("expected total 5000, got %v", s.Total())
+	expectedTotal := 1000.0 + 500 + 300 + 200 + 800 + 600 + 400 + 350 + 100 + 150 + 100
+	if s.Total() != expectedTotal {
+		t.Errorf("expected total %v, got %v", expectedTotal, s.Total())
 	}
 	if len(repo.saved) != 1 {
 		t.Errorf("expected 1 saved snapshot, got %d", len(repo.saved))
