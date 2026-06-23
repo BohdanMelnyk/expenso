@@ -26,6 +26,7 @@ type UpdateExpenseRequestDTO struct {
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	PaidByCard    *bool    `json:"paid_by_card,omitempty"` // Deprecated: kept for backward compatibility
 	AddedBy       *string  `json:"added_by,omitempty" validate:"omitempty,oneof=he she"`
+	TagIDs        *[]int   `json:"tag_ids"`
 }
 
 // Response DTOs with JSON annotations

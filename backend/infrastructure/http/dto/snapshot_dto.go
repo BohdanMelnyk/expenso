@@ -19,6 +19,7 @@ type CreateSnapshotRequestDTO struct {
 	PaypalB         float64 `json:"paypal_b"`
 	PaypalM         float64 `json:"paypal_m"`
 	BackupCash      float64 `json:"backup_cash"`
+	CareemRSUShares float64 `json:"careem_rsu_shares"`
 }
 
 type SnapshotResponseDTO struct {
@@ -36,6 +37,8 @@ type SnapshotResponseDTO struct {
 	PaypalB         float64   `json:"paypal_b"`
 	PaypalM         float64   `json:"paypal_m"`
 	BackupCash      float64   `json:"backup_cash"`
+	CareemRSUShares float64   `json:"careem_rsu_shares"`
+	CareemRSU       float64   `json:"careem_rsu"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
@@ -55,6 +58,8 @@ func ToSnapshotResponseDTO(s *entities.Snapshot) SnapshotResponseDTO {
 		PaypalB:         s.PaypalB(),
 		PaypalM:         s.PaypalM(),
 		BackupCash:      s.BackupCash(),
+		CareemRSUShares: s.CareemRSUShares(),
+		CareemRSU:       s.CareemRSU(),
 		CreatedAt:       s.CreatedAt(),
 	}
 }

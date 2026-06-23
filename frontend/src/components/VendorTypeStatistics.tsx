@@ -6,7 +6,22 @@ import { expenseAPI, Expense, formatAmount } from '../api/client';
 import { getErrorMessage } from '../utils/errorHandler';
 import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
 
-type TimeFrame = 'week' | 'month' | 'quarter' | 'year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'this_year' | 'custom';
+type TimeFrame =
+  | 'week'
+  | 'month'
+  | 'quarter'
+  | 'year'
+  | 'this_month'
+  | 'last_30_days'
+  | 'last_90_days'
+  | 'this_year'
+  | 'custom'
+  | 'current_month'
+  | 'last_month'
+  | 'last_3_months'
+  | 'last_6_months'
+  | 'current_year'
+  | 'all_time';
 type ViewType = 'daily' | 'weekly' | 'monthly';
 
 interface DayData {
@@ -29,8 +44,18 @@ const VendorTypeStatistics: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize from URL params or default to 'this_month'
-  const initialTimeFrame = (searchParams.get('period') as TimeFrame) || 'this_month';
+  // Initialize from URL params or default to 'this_month'.
+  // The Statistics page uses PeriodContext naming (current_month, last_month, …); map to local TimeFrame.
+  const periodAliasMap: Record<string, TimeFrame> = {
+    current_month: 'this_month',
+    last_month: 'month',
+    last_3_months: 'quarter',
+    current_year: 'this_year',
+  };
+  const rawPeriod = searchParams.get('period');
+  const initialTimeFrame: TimeFrame = rawPeriod
+    ? (periodAliasMap[rawPeriod] ?? (rawPeriod as TimeFrame))
+    : 'this_month';
   const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>(initialTimeFrame);
   const [selectedViewType, setSelectedViewType] = useState<ViewType>('daily');
   const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get('start') || '');
@@ -106,7 +131,31 @@ const VendorTypeStatistics: React.FC = () => {
         startDate.setDate(now.getDate() - 90);
         break;
       case 'this_year':
+      case 'current_year':
         startDate.setMonth(0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'current_month':
+        startDate.setDate(1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'last_month': {
+        startDate.setMonth(now.getMonth() - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        endDate = lastDayOfPrevMonth.toISOString().split('T')[0];
+        break;
+      }
+      case 'last_3_months':
+        startDate.setMonth(now.getMonth() - 3, 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'last_6_months':
+        startDate.setMonth(now.getMonth() - 6, 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'all_time':
+        startDate.setFullYear(1970, 0, 1);
         startDate.setHours(0, 0, 0, 0);
         break;
     }
@@ -224,9 +273,15 @@ const VendorTypeStatistics: React.FC = () => {
       case 'quarter': return 'Last 3 Months';
       case 'year': return 'Last Year';
       case 'this_month': return 'This Month';
+      case 'current_month': return 'This Month';
+      case 'last_month': return 'Last Month';
+      case 'last_3_months': return 'Last 3 Months';
+      case 'last_6_months': return 'Last 6 Months';
       case 'last_30_days': return 'Last 30 Days';
       case 'last_90_days': return 'Last 90 Days';
       case 'this_year': return 'This Year';
+      case 'current_year': return 'This Year';
+      case 'all_time': return 'All Time';
       case 'custom':
         if (customStartDate && customEndDate) {
           const start = new Date(customStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -286,7 +341,16 @@ const VendorTypeStatistics: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate(`/statistics?period=${selectedTimeFrame}`)}
+              onClick={() => {
+                const reverseAliasMap: Record<string, string> = {
+                  this_month: 'current_month',
+                  month: 'last_month',
+                  quarter: 'last_3_months',
+                  this_year: 'current_year',
+                };
+                const backPeriod = reverseAliasMap[selectedTimeFrame] ?? selectedTimeFrame;
+                navigate(`/statistics?period=${backPeriod}`);
+              }}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />

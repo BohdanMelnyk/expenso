@@ -42,11 +42,18 @@ Category Mapping Guidelines:
 
 German Merchant Name Examples:
 - REWE, EDEKA, LIDL, ALDI → Food Store
+- Mix Markt, MixMarkt, "Mix Markt 09" (and other Mix Markt branches) → Category: "Food Store", vendor_name: "MixMarkt", vendor_type: "food_store"
+- HamburgHochbahn, Hamburger Hochbahn, LogPay, HVV (Hamburg public transit) → Category: "Transportation", vendor_name: "HVV", vendor_type: "transport"
+- Bäderland, Baederland (Hamburg public swimming pools) → Category: "Health & Fitness", vendor_name: "Bäderland", vendor_type: "care"
 - Restaurants with city suffix (e.g., "RESTAURANT HAMBURG") → Dining
 - DM, Rossmann, Müller → Shopping
 - Shell, Aral, Esso, JET → Car fuel/gas
 - Deutsche Telekom, Vodafone → Bills & Utilities
 - Netflix, Spotify, Amazon Prime Video → Bills & Utilities
+- ARD, ZDF, DRadio, Rundfunk (German public broadcasting fee / Rundfunkbeitrag) → Category: "Living", vendor_name: "Rundfunkbeitrag", vendor_type: "living"
+- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Category: "Car", vendor_name: "Parking Spot", vendor_type: "car"
+- Abasto (any transaction containing "abasto") → Category: "Living", vendor_name: "Electricity", vendor_type: "living"
+- Willy Telekom (any transaction containing "willy telekom") → Category: "Living", vendor_name: "Internet", vendor_type: "living"
 
 Location Context:
 - German cities: Hamburg (HAMBURG), Berlin (BERLIN), Munich (MÜNCHEN), Frankfurt (FRANKFURT), etc.
@@ -71,4 +78,10 @@ Examples:
 - Merchant: "REWE", Location: "HAMBURG" → Category: "Food Store", vendor_type: "food_store", confidence_score: 0.95
 - Merchant: "RESTAURANT", Location: "BERLIN" → Category: "Dining", vendor_type: "dining", confidence_score: 0.85
 - Merchant: "Shell", Location: "FRANKFURT" → Category: "Car", vendor_type: "car", confidence_score: 0.90
+- Merchant: "ARD ZDF DRadio Beitragsservice", Location: "" → Category: "Living", vendor_name: "Rundfunkbeitrag", vendor_type: "living", confidence_score: 0.98
+- Merchant: "Behrendt Immobilien Verwaltung GmbH Co KG", Location: "" → Category: "Car", vendor_name: "Parking Spot", vendor_type: "car", confidence_score: 0.98
+- Merchant: "Mix Markt 09", Location: "" → Category: "Food Store", vendor_name: "MixMarkt", vendor_type: "food_store", confidence_score: 0.97
+- Merchant: "HamburgHochbahn LogPay", Location: "" → Category: "Transportation", vendor_name: "HVV", vendor_type: "transport", confidence_score: 0.97
+- Merchant: "Abasto GmbH", Location: "" → Category: "Living", vendor_name: "Electricity", vendor_type: "living", confidence_score: 0.99
+- Merchant: "Willy Telekom", Location: "" → Category: "Living", vendor_name: "Internet", vendor_type: "living", confidence_score: 0.99
 - Merchant: "UNKNOWN", Location: "" → Category: "Other", vendor_type: "else", confidence_score: 0.3

@@ -77,6 +77,7 @@ func (h *SnapshotHandler) CreateSnapshot(c *gin.Context) {
 		PaypalB:         req.PaypalB,
 		PaypalM:         req.PaypalM,
 		BackupCash:      req.BackupCash,
+		CareemRSUShares: req.CareemRSUShares,
 	}
 
 	s, err := h.snapshotInteractor.CreateSnapshot(cmd)

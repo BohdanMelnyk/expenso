@@ -165,6 +165,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
               id="comment"
               name="comment"
               rows={3}
+              maxLength={2000}
               value={formData.comment}
               onChange={handleInputChange}
               placeholder="What is this transaction for?"

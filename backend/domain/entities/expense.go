@@ -112,6 +112,10 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		return nil, errors.New("invalid expense type")
 	}
 
+	if len([]rune(strings.TrimSpace(comment))) > 2000 {
+		return nil, errors.New("comment cannot exceed 2000 characters")
+	}
+
 	now := time.Now()
 	return &Expense{
 		amount:        amount,

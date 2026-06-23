@@ -21,6 +21,7 @@ type SnapshotDBO struct {
 	PaypalB         float64   `db:"paypal_b"`
 	PaypalM         float64   `db:"paypal_m"`
 	BackupCash      float64   `db:"backup_cash"`
+	CareemRSUShares float64   `db:"careem_rsu_shares"`
 	CreatedAt       time.Time `db:"created_at"`
 }
 
@@ -33,6 +34,7 @@ func (dbo *SnapshotDBO) ToDomainEntity() *entities.Snapshot {
 		dbo.UberStocks, dbo.ScalableCapital,
 		dbo.MonoB, dbo.MonoM,
 		dbo.PaypalB, dbo.PaypalM, dbo.BackupCash,
+		dbo.CareemRSUShares,
 		dbo.CreatedAt,
 	)
 }

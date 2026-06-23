@@ -22,15 +22,20 @@ Extract the following fields and return ONLY valid JSON (no markdown, no code bl
 
 Category mapping guidelines:
 - Groceries, supermarket, market, shopping for food → "Food Store"
+- Mix Markt, MixMarkt, Mix Markt 09 (and any "Mix Markt" variant) → Category: "Food Store", vendor_name: "MixMarkt" (ID 19), vendor_type: "food_store"
 - Restaurant, cafe, coffee, eating out, lunch, dinner → "Dining"
 - Dining with friends, party, social dining → "Dining with Friends"
 - Stores, clothes, electronics, shopping, mall → "Shopping"
 - Taxi, train, bus, Uber, tram, metro, transport → "Transportation"
+- HamburgHochbahn, Hamburger Hochbahn, LogPay (Hamburg public transit / HVV) → Category: "Transportation", vendor_name: "HVV" (ID 44), vendor_type: "transport"
 - Gas, fuel, car maintenance, repair → "Car"
+- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Category: "Car", vendor_name: "Parking Spot" (ID 48), vendor_type: "car"
 - Rent, utilities, internet, phone → "Living"
+- ARD, ZDF, DRadio, Rundfunk, Rundfunkbeitrag (German public broadcasting fee) → Category: "Living", vendor_name: "Rundfunkbeitrag" (ID 28), vendor_type: "living"
 - Household items, cleaning, supplies → "Household"
 - Subscriptions, phone bills, insurance → "Bills & Utilities"
 - Gym, doctor, pharmacy, healthcare → "Health & Fitness"
+- Bäderland, Baederland (Hamburg public swimming pools) → Category: "Health & Fitness", vendor_name: "Bäderland", vendor_type: "care"
 - Vacation, travel, hotel, flight → "Travel"
 - Movies, games, hobbies → "Entertainment"
 
@@ -103,6 +108,7 @@ ID 56: Concert (else)
 ID 57: Penny (food_store)
 ID 58: Ikea (household)
 ID 59: Apotheke (care)
+ID 71: Bäderland (care)
 ID 60: Temu (shop)
 ID 61: Reginal Market (food_store)
 ID 62: Zalando (clothing)

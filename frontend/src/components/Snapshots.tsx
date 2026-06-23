@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchSnapshots, createSnapshot, Snapshot, CreateSnapshotRequest } from '../api/client';
 
-const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'total'>; label: string }[] = [
+const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'careem_rsu_shares'>; label: string }[] = [
   { key: 'haspa', label: 'Haspa' },
   { key: 'n26_b', label: 'N26 B' },
   { key: 'n26_m', label: 'N26 M' },
@@ -15,12 +15,17 @@ const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'total'>; lab
   { key: 'backup_cash', label: 'Backup Cash' },
 ];
 
+const CAREEM_RSU_PRICE_USD = 5.5;
+const CAREEM_RSU_USD_TO_EUR = 0.86;
+const careemRSUValue = (shares: number) => shares * CAREEM_RSU_PRICE_USD * CAREEM_RSU_USD_TO_EUR;
+
 const emptyForm = (): CreateSnapshotRequest => ({
   date: new Date().toISOString().split('T')[0],
   haspa: 0, n26_b: 0, n26_m: 0, cash: 0,
   uber_stocks: 0, scalable_capital: 0,
   mono_b: 0, mono_m: 0,
   paypal_b: 0, paypal_m: 0, backup_cash: 0,
+  careem_rsu_shares: 0,
 });
 
 export default function Snapshots() {
@@ -85,6 +90,24 @@ export default function Snapshots() {
               />
             </div>
           ))}
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Careem RSU (shares)</label>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={form.careem_rsu_shares || ''}
+              onChange={e => handleChange('careem_rsu_shares', e.target.value)}
+              placeholder="0"
+              className="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {form.careem_rsu_shares > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                ≈ €{careemRSUValue(form.careem_rsu_shares).toFixed(2)} ({form.careem_rsu_shares} × $5.50 × 0.86)
+              </span>
+            )}
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -108,12 +131,13 @@ export default function Snapshots() {
               {RESOURCES.map(({ key, label }) => (
                 <th key={key} className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">{label}</th>
               ))}
+              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">Careem RSU</th>
             </tr>
           </thead>
           <tbody>
             {snapshots.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-gray-400">No snapshots yet</td>
+                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">No snapshots yet</td>
               </tr>
             )}
             {snapshots.map(s => (
@@ -127,6 +151,9 @@ export default function Snapshots() {
                     {(s[key as keyof Snapshot] as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                 ))}
+                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap" title={`${s.careem_rsu_shares} shares`}>
+                  {s.careem_rsu.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </td>
               </tr>
             ))}
           </tbody>

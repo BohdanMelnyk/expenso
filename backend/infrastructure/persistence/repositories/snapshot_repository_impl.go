@@ -20,8 +20,8 @@ func NewSnapshotRepository(db *sql.DB) irepositories.SnapshotRepository {
 func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 	query := `
 		INSERT INTO snapshots
-			(date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			(date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 		RETURNING id
 	`
 	var id int
@@ -31,6 +31,7 @@ func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 		s.UberStocks(), s.ScalableCapital(),
 		s.MonoB(), s.MonoM(),
 		s.PaypalB(), s.PaypalM(), s.BackupCash(),
+		s.CareemRSUShares(),
 		s.CreatedAt(),
 	).Scan(&id)
 	if err != nil {
@@ -42,7 +43,7 @@ func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 
 func (r *SnapshotRepositoryImpl) FindAll() ([]*entities.Snapshot, error) {
 	query := `
-		SELECT id, date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, created_at
+		SELECT id, date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, created_at
 		FROM snapshots
 		ORDER BY date DESC, created_at DESC
 	`
@@ -61,6 +62,7 @@ func (r *SnapshotRepositoryImpl) FindAll() ([]*entities.Snapshot, error) {
 			&dbo.UberStocks, &dbo.ScalableCapital,
 			&dbo.MonoB, &dbo.MonoM,
 			&dbo.PaypalB, &dbo.PaypalM, &dbo.BackupCash,
+			&dbo.CareemRSUShares,
 			&dbo.CreatedAt,
 		)
 		if err != nil {

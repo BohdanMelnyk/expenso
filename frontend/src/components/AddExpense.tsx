@@ -63,7 +63,7 @@ const AddExpense: React.FC = () => {
     comment: {
       required: true,
       minLength: 3,
-      maxLength: 100,
+      maxLength: 2000,
     },
     amount: {
       required: true,
@@ -308,6 +308,7 @@ const AddExpense: React.FC = () => {
             placeholder="What is this transaction for?"
             required
             rows={3}
+            maxLength={2000}
           />
 
           <div>

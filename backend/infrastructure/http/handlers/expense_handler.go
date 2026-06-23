@@ -293,9 +293,13 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 		cmd.AddedBy = requestDTO.AddedBy
 	}
 
-	// Handle tag updates - note that the UpdateExpenseRequestDTO doesn't have TagIDs yet
-	// This would need to be added to the DTO if tag updates are needed
-	// For now, we skip tag updates in the update endpoint
+	if requestDTO.TagIDs != nil {
+		tagIDs := make([]entities.TagID, len(*requestDTO.TagIDs))
+		for i, tagID := range *requestDTO.TagIDs {
+			tagIDs[i] = entities.TagID(tagID)
+		}
+		cmd.TagIDs = &tagIDs
+	}
 
 	// Execute use case
 	exp, err := h.expenseInteractor.UpdateExpense(cmd)

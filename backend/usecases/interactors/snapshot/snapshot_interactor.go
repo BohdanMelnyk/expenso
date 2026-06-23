@@ -20,6 +20,7 @@ type CreateSnapshotCommand struct {
 	PaypalB         float64
 	PaypalM         float64
 	BackupCash      float64
+	CareemRSUShares float64
 }
 
 type SnapshotInteractor struct {
@@ -37,6 +38,7 @@ func (i *SnapshotInteractor) CreateSnapshot(cmd CreateSnapshotCommand) (*entitie
 		cmd.UberStocks, cmd.ScalableCapital,
 		cmd.MonoB, cmd.MonoM,
 		cmd.PaypalB, cmd.PaypalM, cmd.BackupCash,
+		cmd.CareemRSUShares,
 	)
 	if err != nil {
 		return nil, err

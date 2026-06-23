@@ -301,6 +301,8 @@ export interface Snapshot {
   paypal_b: number;
   paypal_m: number;
   backup_cash: number;
+  careem_rsu_shares: number;
+  careem_rsu: number;
   created_at: string;
 }
 
@@ -317,6 +319,7 @@ export interface CreateSnapshotRequest {
   paypal_b: number;
   paypal_m: number;
   backup_cash: number;
+  careem_rsu_shares: number;
 }
 
 export const fetchSnapshots = (): Promise<Snapshot[]> =>
