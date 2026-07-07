@@ -21,14 +21,16 @@ type CreateSnapshotCommand struct {
 	PaypalM         float64
 	BackupCash      float64
 	CareemRSUShares float64
+	ENBDAED         float64
 }
 
 type SnapshotInteractor struct {
 	snapshotRepo repositories.SnapshotRepository
+	aedToEUR     float64
 }
 
-func NewSnapshotInteractor(snapshotRepo repositories.SnapshotRepository) *SnapshotInteractor {
-	return &SnapshotInteractor{snapshotRepo: snapshotRepo}
+func NewSnapshotInteractor(snapshotRepo repositories.SnapshotRepository, aedToEUR float64) *SnapshotInteractor {
+	return &SnapshotInteractor{snapshotRepo: snapshotRepo, aedToEUR: aedToEUR}
 }
 
 func (i *SnapshotInteractor) CreateSnapshot(cmd CreateSnapshotCommand) (*entities.Snapshot, error) {
@@ -39,6 +41,7 @@ func (i *SnapshotInteractor) CreateSnapshot(cmd CreateSnapshotCommand) (*entitie
 		cmd.MonoB, cmd.MonoM,
 		cmd.PaypalB, cmd.PaypalM, cmd.BackupCash,
 		cmd.CareemRSUShares,
+		cmd.ENBDAED, i.aedToEUR,
 	)
 	if err != nil {
 		return nil, err

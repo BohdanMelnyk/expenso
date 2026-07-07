@@ -25,7 +25,7 @@ func (m *mockSnapshotRepo) FindAll() ([]*entities.Snapshot, error) {
 
 func TestCreateSnapshot(t *testing.T) {
 	repo := &mockSnapshotRepo{}
-	svc := interactor.NewSnapshotInteractor(repo)
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
 
 	cmd := interactor.CreateSnapshotCommand{
 		Date:            time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
@@ -57,9 +57,9 @@ func TestCreateSnapshot(t *testing.T) {
 
 func TestGetSnapshots(t *testing.T) {
 	date := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
-	existing := entities.ReconstructSnapshot(1, date, 4000, 800, 400, 300, 200, 700, 500, 300, 250, 100, 150, 100, time.Now())
+	existing := entities.ReconstructSnapshot(1, date, 4000, 800, 400, 300, 200, 700, 500, 300, 250, 100, 150, 100, 0, 0, 0, time.Now())
 	repo := &mockSnapshotRepo{findAll: []*entities.Snapshot{existing}}
-	svc := interactor.NewSnapshotInteractor(repo)
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
 
 	results, err := svc.GetSnapshots()
 	if err != nil {
@@ -67,5 +67,31 @@ func TestGetSnapshots(t *testing.T) {
 	}
 	if len(results) != 1 {
 		t.Errorf("expected 1 snapshot, got %d", len(results))
+	}
+}
+
+func TestCreateSnapshot_ConvertsENBDToEUR(t *testing.T) {
+	repo := &mockSnapshotRepo{}
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
+
+	cmd := interactor.CreateSnapshotCommand{
+		Date:    time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+		Haspa:   1000,
+		ENBDAED: 4000,
+	}
+
+	s, err := svc.CreateSnapshot(cmd)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if s.ENBDAED() != 4000 {
+		t.Errorf("expected ENBDAED 4000, got %v", s.ENBDAED())
+	}
+	if s.ENBDEUR() != 1000 {
+		t.Errorf("expected ENBDEUR 1000, got %v", s.ENBDEUR())
+	}
+	expectedTotal := 1000.0 + 1000.0
+	if s.Total() != expectedTotal {
+		t.Errorf("expected total %v, got %v", expectedTotal, s.Total())
 	}
 }

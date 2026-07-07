@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchSnapshots, createSnapshot, Snapshot, CreateSnapshotRequest } from '../api/client';
 
-const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'careem_rsu_shares'>; label: string }[] = [
+const RESOURCES: { key: keyof Omit<CreateSnapshotRequest, 'date' | 'careem_rsu_shares' | 'enbd_aed'>; label: string }[] = [
   { key: 'haspa', label: 'Haspa' },
   { key: 'n26_b', label: 'N26 B' },
   { key: 'n26_m', label: 'N26 M' },
@@ -19,6 +19,9 @@ const CAREEM_RSU_PRICE_USD = 5.5;
 const CAREEM_RSU_USD_TO_EUR = 0.86;
 const careemRSUValue = (shares: number) => shares * CAREEM_RSU_PRICE_USD * CAREEM_RSU_USD_TO_EUR;
 
+const AED_TO_EUR = 0.24;
+const enbdEURValue = (aed: number) => aed * AED_TO_EUR;
+
 const emptyForm = (): CreateSnapshotRequest => ({
   date: new Date().toISOString().split('T')[0],
   haspa: 0, n26_b: 0, n26_m: 0, cash: 0,
@@ -26,6 +29,7 @@ const emptyForm = (): CreateSnapshotRequest => ({
   mono_b: 0, mono_m: 0,
   paypal_b: 0, paypal_m: 0, backup_cash: 0,
   careem_rsu_shares: 0,
+  enbd_aed: 0,
 });
 
 export default function Snapshots() {
@@ -108,6 +112,23 @@ export default function Snapshots() {
               </span>
             )}
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">ENBD (AED)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={form.enbd_aed || ''}
+              onChange={e => handleChange('enbd_aed', e.target.value)}
+              placeholder="0.00"
+              className="border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {form.enbd_aed > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                ≈ €{enbdEURValue(form.enbd_aed).toFixed(2)} ({form.enbd_aed} AED × {AED_TO_EUR})
+              </span>
+            )}
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -132,12 +153,14 @@ export default function Snapshots() {
                 <th key={key} className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">{label}</th>
               ))}
               <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">Careem RSU</th>
+              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">ENBD (AED)</th>
+              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">ENBD (EUR)</th>
             </tr>
           </thead>
           <tbody>
             {snapshots.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-8 text-center text-gray-400">No snapshots yet</td>
+                <td colSpan={16} className="px-4 py-8 text-center text-gray-400">No snapshots yet</td>
               </tr>
             )}
             {snapshots.map(s => (
@@ -153,6 +176,12 @@ export default function Snapshots() {
                 ))}
                 <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap" title={`${s.careem_rsu_shares} shares`}>
                   {s.careem_rsu.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </td>
+                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {s.enbd_aed.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </td>
+                <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {s.enbd_eur.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </td>
               </tr>
             ))}

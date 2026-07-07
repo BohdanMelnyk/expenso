@@ -10,18 +10,19 @@ import (
 )
 
 type SnapshotRepositoryImpl struct {
-	db *sql.DB
+	db       *sql.DB
+	aedToEUR float64
 }
 
-func NewSnapshotRepository(db *sql.DB) irepositories.SnapshotRepository {
-	return &SnapshotRepositoryImpl{db: db}
+func NewSnapshotRepository(db *sql.DB, aedToEUR float64) irepositories.SnapshotRepository {
+	return &SnapshotRepositoryImpl{db: db, aedToEUR: aedToEUR}
 }
 
 func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 	query := `
 		INSERT INTO snapshots
-			(date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+			(date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, enbd_aed, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 		RETURNING id
 	`
 	var id int
@@ -32,6 +33,7 @@ func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 		s.MonoB(), s.MonoM(),
 		s.PaypalB(), s.PaypalM(), s.BackupCash(),
 		s.CareemRSUShares(),
+		s.ENBDAED(),
 		s.CreatedAt(),
 	).Scan(&id)
 	if err != nil {
@@ -43,7 +45,7 @@ func (r *SnapshotRepositoryImpl) Save(s *entities.Snapshot) error {
 
 func (r *SnapshotRepositoryImpl) FindAll() ([]*entities.Snapshot, error) {
 	query := `
-		SELECT id, date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, created_at
+		SELECT id, date, total, haspa, n26_b, n26_m, cash, uber_stocks, scalable_capital, mono_b, mono_m, paypal_b, paypal_m, backup_cash, careem_rsu_shares, enbd_aed, created_at
 		FROM snapshots
 		ORDER BY date DESC, created_at DESC
 	`
@@ -63,12 +65,13 @@ func (r *SnapshotRepositoryImpl) FindAll() ([]*entities.Snapshot, error) {
 			&dbo.MonoB, &dbo.MonoM,
 			&dbo.PaypalB, &dbo.PaypalM, &dbo.BackupCash,
 			&dbo.CareemRSUShares,
+			&dbo.ENBDAED,
 			&dbo.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan snapshot row: %w", err)
 		}
-		snapshots = append(snapshots, dbo.ToDomainEntity())
+		snapshots = append(snapshots, dbo.ToDomainEntity(r.aedToEUR))
 	}
 	return snapshots, nil
 }

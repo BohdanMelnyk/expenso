@@ -101,7 +101,7 @@ func main() {
 	incomeRepo := repositories.NewIncomeRepository(db, tagRepo)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
-	snapshotRepo := repositories.NewSnapshotRepository(db)
+	snapshotRepo := repositories.NewSnapshotRepository(db, cfg.ExchangeRates.AEDToEUR)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
@@ -118,7 +118,7 @@ func main() {
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
-	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo)
+	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo, cfg.ExchangeRates.AEDToEUR)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)

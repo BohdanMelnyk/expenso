@@ -26,18 +26,21 @@ type Snapshot struct {
 	paypalM         float64
 	backupCash      float64
 	careemRSUShares float64
+	enbdAED         float64
+	aedToEUR        float64
 	createdAt       time.Time
 }
 
 func NewSnapshot(
 	date time.Time,
-	haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash, careemRSUShares float64,
+	haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash, careemRSUShares, enbdAED, aedToEUR float64,
 ) (*Snapshot, error) {
 	if date.After(time.Now()) {
 		return nil, errors.New("snapshot date cannot be in the future")
 	}
 	careemRSU := careemRSUShares * careemRSUPriceUSD * careemRSUUSDToEUR
-	total := haspa + n26B + n26M + cash + uberStocks + scalableCapital + monoB + monoM + paypalB + paypalM + backupCash + careemRSU
+	enbdEUR := enbdAED * aedToEUR
+	total := haspa + n26B + n26M + cash + uberStocks + scalableCapital + monoB + monoM + paypalB + paypalM + backupCash + careemRSU + enbdEUR
 	return &Snapshot{
 		date:            date,
 		total:           total,
@@ -53,6 +56,8 @@ func NewSnapshot(
 		paypalM:         paypalM,
 		backupCash:      backupCash,
 		careemRSUShares: careemRSUShares,
+		enbdAED:         enbdAED,
+		aedToEUR:        aedToEUR,
 		createdAt:       time.Now(),
 	}, nil
 }
@@ -60,7 +65,7 @@ func NewSnapshot(
 func ReconstructSnapshot(
 	id SnapshotID,
 	date time.Time,
-	total, haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash, careemRSUShares float64,
+	total, haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash, careemRSUShares, enbdAED, aedToEUR float64,
 	createdAt time.Time,
 ) *Snapshot {
 	return &Snapshot{
@@ -79,25 +84,31 @@ func ReconstructSnapshot(
 		paypalM:         paypalM,
 		backupCash:      backupCash,
 		careemRSUShares: careemRSUShares,
+		enbdAED:         enbdAED,
+		aedToEUR:        aedToEUR,
 		createdAt:       createdAt,
 	}
 }
 
-func (s *Snapshot) SetID(id SnapshotID)        { s.id = id }
-func (s *Snapshot) ID() SnapshotID             { return s.id }
-func (s *Snapshot) Date() time.Time            { return s.date }
-func (s *Snapshot) Total() float64             { return s.total }
-func (s *Snapshot) Haspa() float64             { return s.haspa }
-func (s *Snapshot) N26B() float64              { return s.n26B }
-func (s *Snapshot) N26M() float64              { return s.n26M }
-func (s *Snapshot) Cash() float64              { return s.cash }
-func (s *Snapshot) UberStocks() float64        { return s.uberStocks }
-func (s *Snapshot) ScalableCapital() float64   { return s.scalableCapital }
-func (s *Snapshot) MonoB() float64             { return s.monoB }
-func (s *Snapshot) MonoM() float64             { return s.monoM }
-func (s *Snapshot) PaypalB() float64           { return s.paypalB }
-func (s *Snapshot) PaypalM() float64           { return s.paypalM }
-func (s *Snapshot) BackupCash() float64        { return s.backupCash }
-func (s *Snapshot) CareemRSUShares() float64  { return s.careemRSUShares }
-func (s *Snapshot) CareemRSU() float64        { return s.careemRSUShares * careemRSUPriceUSD * careemRSUUSDToEUR }
-func (s *Snapshot) CreatedAt() time.Time       { return s.createdAt }
+func (s *Snapshot) SetID(id SnapshotID)      { s.id = id }
+func (s *Snapshot) ID() SnapshotID           { return s.id }
+func (s *Snapshot) Date() time.Time          { return s.date }
+func (s *Snapshot) Total() float64           { return s.total }
+func (s *Snapshot) Haspa() float64           { return s.haspa }
+func (s *Snapshot) N26B() float64            { return s.n26B }
+func (s *Snapshot) N26M() float64            { return s.n26M }
+func (s *Snapshot) Cash() float64            { return s.cash }
+func (s *Snapshot) UberStocks() float64      { return s.uberStocks }
+func (s *Snapshot) ScalableCapital() float64 { return s.scalableCapital }
+func (s *Snapshot) MonoB() float64           { return s.monoB }
+func (s *Snapshot) MonoM() float64           { return s.monoM }
+func (s *Snapshot) PaypalB() float64         { return s.paypalB }
+func (s *Snapshot) PaypalM() float64         { return s.paypalM }
+func (s *Snapshot) BackupCash() float64      { return s.backupCash }
+func (s *Snapshot) CareemRSUShares() float64 { return s.careemRSUShares }
+func (s *Snapshot) CareemRSU() float64 {
+	return s.careemRSUShares * careemRSUPriceUSD * careemRSUUSDToEUR
+}
+func (s *Snapshot) ENBDAED() float64     { return s.enbdAED }
+func (s *Snapshot) ENBDEUR() float64     { return s.enbdAED * s.aedToEUR }
+func (s *Snapshot) CreatedAt() time.Time { return s.createdAt }

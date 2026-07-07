@@ -32,12 +32,18 @@ type LLMConfig struct {
 	MaxTokens int    `yaml:"max_tokens"`
 }
 
+// ExchangeRatesConfig holds currency conversion rates
+type ExchangeRatesConfig struct {
+	AEDToEUR float64 `yaml:"aed_to_eur"`
+}
+
 // Config holds all application configuration
 type Config struct {
-	Environment string         `yaml:"environment"`
-	Server      ServerConfig   `yaml:"server"`
-	Database    DatabaseConfig `yaml:"database"`
-	LLM         LLMConfig      `yaml:"llm"`
+	Environment   string              `yaml:"environment"`
+	Server        ServerConfig        `yaml:"server"`
+	Database      DatabaseConfig      `yaml:"database"`
+	LLM           LLMConfig           `yaml:"llm"`
+	ExchangeRates ExchangeRatesConfig `yaml:"exchange_rates"`
 }
 
 // GetDatabaseURL constructs database URL from config

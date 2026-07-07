@@ -68,19 +68,23 @@ const Dashboard: React.FC = () => {
     setSearchQuery(query);
     setSearchFilters(filters);
 
-    // Update URL params
-    const newParams = new URLSearchParams();
-    if (query) newParams.set('q', query);
-    if (filters.category) newParams.set('category', filters.category);
-    if (filters.vendor) newParams.set('vendor', filters.vendor);
-    if (filters.minAmount) newParams.set('minAmount', filters.minAmount.toString());
-    if (filters.maxAmount) newParams.set('maxAmount', filters.maxAmount.toString());
-    if (filters.dateFrom) newParams.set('dateFrom', filters.dateFrom);
-    if (filters.dateTo) newParams.set('dateTo', filters.dateTo);
-    if (filters.paymentMethod && filters.paymentMethod !== 'all') newParams.set('paymentMethod', filters.paymentMethod);
-    if (filters.tags && filters.tags.length > 0) newParams.set('tags', filters.tags.join(','));
-
-    setSearchParams(newParams);
+    // Update URL params, preserving unrelated params (e.g. "period") that
+    // other parts of the app keep in the same query string.
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      ['q', 'category', 'vendor', 'minAmount', 'maxAmount', 'dateFrom', 'dateTo', 'paymentMethod', 'tags']
+        .forEach((key) => newParams.delete(key));
+      if (query) newParams.set('q', query);
+      if (filters.category) newParams.set('category', filters.category);
+      if (filters.vendor) newParams.set('vendor', filters.vendor);
+      if (filters.minAmount) newParams.set('minAmount', filters.minAmount.toString());
+      if (filters.maxAmount) newParams.set('maxAmount', filters.maxAmount.toString());
+      if (filters.dateFrom) newParams.set('dateFrom', filters.dateFrom);
+      if (filters.dateTo) newParams.set('dateTo', filters.dateTo);
+      if (filters.paymentMethod && filters.paymentMethod !== 'all') newParams.set('paymentMethod', filters.paymentMethod);
+      if (filters.tags && filters.tags.length > 0) newParams.set('tags', filters.tags.join(','));
+      return newParams;
+    });
 
     let filtered = [...expenses];
 
@@ -390,7 +394,7 @@ const Dashboard: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px]">
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -428,8 +432,10 @@ const Dashboard: React.FC = () => {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleRowClick(expense.id)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.comment}
+                    <td className="px-6 py-4 text-sm text-gray-900 w-[300px]">
+                      <div className="w-[300px] overflow-x-auto whitespace-nowrap">
+                        {expense.comment}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatAmount(expense.amount)}

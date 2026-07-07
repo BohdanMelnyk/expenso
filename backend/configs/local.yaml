@@ -16,3 +16,6 @@ llm:
   api_key: "${ANTHROPIC_API_KEY}"
   model: "claude-haiku-4-5-20251001"
   max_tokens: 1024
+
+exchange_rates:
+  aed_to_eur: 0.24
