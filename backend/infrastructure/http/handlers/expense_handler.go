@@ -293,9 +293,13 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 		cmd.AddedBy = requestDTO.AddedBy
 	}
 
-	// Handle tag updates - note that the UpdateExpenseRequestDTO doesn't have TagIDs yet
-	// This would need to be added to the DTO if tag updates are needed
-	// For now, we skip tag updates in the update endpoint
+	if requestDTO.TagIDs != nil {
+		tagIDs := make([]entities.TagID, len(*requestDTO.TagIDs))
+		for i, tagID := range *requestDTO.TagIDs {
+			tagIDs[i] = entities.TagID(tagID)
+		}
+		cmd.TagIDs = &tagIDs
+	}
 
 	// Execute use case
 	exp, err := h.expenseInteractor.UpdateExpense(cmd)
@@ -380,6 +384,8 @@ func (h *ExpenseHandler) ParseExpense(c *gin.Context) {
 		Currency:          parsed.Currency,
 		Category:          parsed.Category,
 		VendorName:        parsed.VendorName,
+		VendorType:        parsed.VendorType,
+		VendorTypeID:      parsed.VendorTypeID,
 		Date:              parsed.Date,
 		PaymentMethod:     parsed.PaymentMethod,
 		AddedBy:           parsed.AddedBy,
@@ -1042,6 +1048,77 @@ func (h *ExpenseHandler) GetExpensesByCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+// GetExpensesByTag godoc
+// @Summary Get expenses by tag
+// @Description Get expenses filtered by tag and optional date range, sorted by amount (highest first)
+// @Tags expenses
+// @Accept json
+// @Produce json
+// @Param tag_id query int true "Tag ID to filter by"
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {array} dto.ExpenseResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /expenses/by-tag [get]
+func (h *ExpenseHandler) GetExpensesByTag(c *gin.Context) {
+	// Parse required tag_id parameter
+	tagIDStr := c.Query("tag_id")
+	if tagIDStr == "" {
+		middleware.RespondWithBadRequest(c, "tag_id parameter is required", nil)
+		return
+	}
+
+	tagID, err := strconv.Atoi(tagIDStr)
+	if err != nil {
+		middleware.RespondWithBadRequest(c, "tag_id must be a valid integer", err)
+		return
+	}
+
+	// Parse optional date range parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	var startDate, endDate *time.Time
+
+	// Parse start date if provided
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			middleware.RespondWithBadRequest(c, "Invalid start_date format. Use YYYY-MM-DD", err)
+			return
+		}
+		startDate = &parsed
+	}
+
+	// Parse end date if provided
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			middleware.RespondWithBadRequest(c, "Invalid end_date format. Use YYYY-MM-DD", err)
+			return
+		}
+		// Add 1 day to end date to include the entire end date in the range
+		parsed = parsed.AddDate(0, 0, 1)
+		endDate = &parsed
+	}
+
+	// Execute use case
+	expenses, err := h.expenseInteractor.GetExpensesByTagAndDateRange(entities.TagID(tagID), startDate, endDate)
+	if err != nil {
+		middleware.RespondWithInternalError(c, "Failed to fetch expenses by tag", err)
+		return
+	}
+
+	// Convert domain entities to DTOs
+	responseDTO := make([]dto.ExpenseResponseDTO, len(expenses))
+	for i, exp := range expenses {
+		responseDTO[i] = h.expenseToDTO(exp)
+	}
+
+	c.JSON(http.StatusOK, responseDTO)
+}
+
 // GetEarnings godoc
 // @Summary Get earnings (salary entries)
 // @Description Get salary entries (earnings) for a date range
@@ -1262,11 +1339,13 @@ func (h *ExpenseHandler) calculateAverages(expenses []*entities.Expense, startDa
 		}
 	}
 
-	// Override with provided dates if available
-	if startDate != nil {
+	// Narrow the range to the requested bounds, but never widen it beyond the
+	// actual expense dates (e.g. "all_time" sends 1970-01-01, which would
+	// otherwise inflate the month count far past the real data span).
+	if startDate != nil && startDate.After(minDate) {
 		minDate = *startDate
 	}
-	if endDate != nil {
+	if endDate != nil && endDate.Before(maxDate) {
 		maxDate = *endDate
 	}
 

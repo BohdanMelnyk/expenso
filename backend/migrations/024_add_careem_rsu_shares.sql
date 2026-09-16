@@ -1,0 +1,1 @@
+ALTER TABLE snapshots ADD COLUMN careem_rsu_shares NUMERIC(12,4) NOT NULL DEFAULT 0;

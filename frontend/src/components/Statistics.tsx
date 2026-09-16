@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download, Share2 } from 'lucide-react';
-import { expenseAPI, Expense, formatAmount } from '../api/client';
+import { expenseAPI, Expense, formatAmount, Tag } from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { usePeriod, Period } from '../contexts/PeriodContext';
 import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
@@ -190,11 +190,39 @@ const Statistics: React.FC = () => {
     }
   };
 
+  // Get tag statistics
+  const getTagStatistics = () => {
+    const filteredExpenses = getFilteredExpenses();
+    const tagData: { [key: number]: { tag: Tag; amount: number; count: number } } = {};
+
+    filteredExpenses.forEach(expense => {
+      if (expense.tags && expense.tags.length > 0) {
+        expense.tags.forEach(tag => {
+          const tagId = tag.id;
+          if (!tagData[tagId]) {
+            tagData[tagId] = {
+              tag: tag,
+              amount: 0,
+              count: 0
+            };
+          }
+          tagData[tagId].amount += expense.amount;
+          tagData[tagId].count += 1;
+        });
+      }
+    });
+
+    return Object.values(tagData)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 12); // Show top 12 tags
+  };
+
   const pieColors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
   const pieData = getExpensesByVendorType();
   const monthlyData = getMonthlyExpenses();
   const topVendors = getTopVendors();
   const vendorTypeStats = getVendorTypeStatistics();
+  const tagStats = getTagStatistics();
   const filteredExpenses = getFilteredExpenses();
   const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   
@@ -416,6 +444,11 @@ const Statistics: React.FC = () => {
   // Handle vendor type click
   const handleVendorTypeClick = (vendorType: string) => {
     navigate(`/statistics/vendor-type/${vendorType}?period=${period}`);
+  };
+
+  // Handle tag click
+  const handleTagClick = (tagId: number) => {
+    navigate(`/statistics/tag/${tagId}?period=${period}`);
   };
 
   if (loading) {
@@ -707,6 +740,45 @@ const Statistics: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Tags Breakdown */}
+      {tagStats.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Expenses by Tag
+              <span className="text-sm text-gray-500 ml-2">(Click a tag to view details)</span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tagStats.map((tagItem) => (
+              <button
+                key={tagItem.tag.id}
+                onClick={() => handleTagClick(tagItem.tag.id)}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+                style={{
+                  borderLeftColor: tagItem.tag.color,
+                  borderLeftWidth: '4px'
+                }}
+              >
+                <div className="flex items-center flex-1">
+                  <div
+                    className="w-3 h-3 rounded-full mr-3"
+                    style={{ backgroundColor: tagItem.tag.color }}
+                  ></div>
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-gray-900">{tagItem.tag.name}</p>
+                    <p className="text-xs text-gray-500">{tagItem.count} expenses</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg text-gray-900">{formatAmount(tagItem.amount)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Top Vendors Table */}
       <div className="bg-white shadow rounded-lg">

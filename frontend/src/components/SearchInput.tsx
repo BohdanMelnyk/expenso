@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Filter } from 'lucide-react';
+import { Tag } from '../api/client';
 
 interface SearchInputProps {
   onSearch: (query: string, filters: SearchFilters) => void;
   placeholder?: string;
   className?: string;
   showFilters?: boolean;
+  availableTags?: Tag[];
+  initialQuery?: string;
+  initialFilters?: SearchFilters;
 }
 
 export interface SearchFilters {
@@ -16,19 +20,23 @@ export interface SearchFilters {
   dateFrom?: string;
   dateTo?: string;
   paymentMethod?: 'card' | 'cash' | 'all';
+  tags?: number[];
 }
 
 const SearchInput: React.FC<SearchInputProps> = ({
   onSearch,
   placeholder = "Search expenses...",
   className = "",
-  showFilters = true
+  showFilters = true,
+  availableTags = [],
+  initialQuery = '',
+  initialFilters
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [filters, setFilters] = useState<SearchFilters>({
-    paymentMethod: 'all'
-  });
+  const [filters, setFilters] = useState<SearchFilters>(
+    initialFilters || { paymentMethod: 'all' }
+  );
 
   // Debounced search
   useEffect(() => {
@@ -52,9 +60,11 @@ const SearchInput: React.FC<SearchInputProps> = ({
     }));
   };
 
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) => 
-    key !== 'paymentMethod' && value !== undefined && value !== ''
-  ) || filters.paymentMethod !== 'all';
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (key === 'paymentMethod') return value !== 'all';
+    if (key === 'tags') return Array.isArray(value) && value.length > 0;
+    return value !== undefined && value !== '';
+  });
 
   return (
     <div className={`relative ${className}`}>
@@ -194,6 +204,42 @@ const SearchInput: React.FC<SearchInputProps> = ({
                 />
               </div>
             </div>
+
+            {/* Tags Filter */}
+            {availableTags.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      onClick={() => {
+                        const selectedTags = filters.tags || [];
+                        if (selectedTags.includes(tag.id)) {
+                          handleFilterChange('tags', selectedTags.filter(id => id !== tag.id));
+                        } else {
+                          handleFilterChange('tags', [...selectedTags, tag.id]);
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                        (filters.tags || []).includes(tag.id)
+                          ? 'text-white border-2'
+                          : 'text-gray-800 border-2'
+                      }`}
+                      style={
+                        (filters.tags || []).includes(tag.id)
+                          ? { backgroundColor: tag.color, borderColor: tag.color }
+                          : { backgroundColor: tag.color + '99', borderColor: tag.color }
+                      }
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Clear Filters Button */}
             {hasActiveFilters && (

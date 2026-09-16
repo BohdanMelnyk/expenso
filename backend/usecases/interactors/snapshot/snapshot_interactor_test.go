@@ -1,0 +1,97 @@
+package snapshot_test
+
+import (
+	"testing"
+	"time"
+
+	"expenso-backend/domain/entities"
+	interactor "expenso-backend/usecases/interactors/snapshot"
+)
+
+type mockSnapshotRepo struct {
+	saved   []*entities.Snapshot
+	findAll []*entities.Snapshot
+}
+
+func (m *mockSnapshotRepo) Save(s *entities.Snapshot) error {
+	s.SetID(entities.SnapshotID(len(m.saved) + 1))
+	m.saved = append(m.saved, s)
+	return nil
+}
+
+func (m *mockSnapshotRepo) FindAll() ([]*entities.Snapshot, error) {
+	return m.findAll, nil
+}
+
+func TestCreateSnapshot(t *testing.T) {
+	repo := &mockSnapshotRepo{}
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
+
+	cmd := interactor.CreateSnapshotCommand{
+		Date:            time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+		Haspa:           1000,
+		N26B:            500,
+		N26M:            300,
+		Cash:            200,
+		UberStocks:      800,
+		ScalableCapital: 600,
+		MonoB:           400,
+		MonoM:           350,
+		PaypalB:         100,
+		PaypalM:         150,
+		BackupCash:      100,
+	}
+
+	s, err := svc.CreateSnapshot(cmd)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedTotal := 1000.0 + 500 + 300 + 200 + 800 + 600 + 400 + 350 + 100 + 150 + 100
+	if s.Total() != expectedTotal {
+		t.Errorf("expected total %v, got %v", expectedTotal, s.Total())
+	}
+	if len(repo.saved) != 1 {
+		t.Errorf("expected 1 saved snapshot, got %d", len(repo.saved))
+	}
+}
+
+func TestGetSnapshots(t *testing.T) {
+	date := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	existing := entities.ReconstructSnapshot(1, date, 4000, 800, 400, 300, 200, 700, 500, 300, 250, 100, 150, 100, 0, 0, 0, time.Now())
+	repo := &mockSnapshotRepo{findAll: []*entities.Snapshot{existing}}
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
+
+	results, err := svc.GetSnapshots()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("expected 1 snapshot, got %d", len(results))
+	}
+}
+
+func TestCreateSnapshot_ConvertsENBDToEUR(t *testing.T) {
+	repo := &mockSnapshotRepo{}
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
+
+	cmd := interactor.CreateSnapshotCommand{
+		Date:    time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+		Haspa:   1000,
+		ENBDAED: 4000,
+	}
+
+	s, err := svc.CreateSnapshot(cmd)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if s.ENBDAED() != 4000 {
+		t.Errorf("expected ENBDAED 4000, got %v", s.ENBDAED())
+	}
+	if s.ENBDEUR() != 1000 {
+		t.Errorf("expected ENBDEUR 1000, got %v", s.ENBDEUR())
+	}
+	expectedTotal := 1000.0 + 1000.0
+	if s.Total() != expectedTotal {
+		t.Errorf("expected total %v, got %v", expectedTotal, s.Total())
+	}
+}

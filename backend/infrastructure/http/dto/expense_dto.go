@@ -26,6 +26,7 @@ type UpdateExpenseRequestDTO struct {
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	PaidByCard    *bool    `json:"paid_by_card,omitempty"` // Deprecated: kept for backward compatibility
 	AddedBy       *string  `json:"added_by,omitempty" validate:"omitempty,oneof=he she"`
+	TagIDs        *[]int   `json:"tag_ids"`
 }
 
 // Response DTOs with JSON annotations
@@ -105,6 +106,8 @@ type ParsedExpenseResponseDTO struct {
 	Currency          string  `json:"currency"`
 	Category          string  `json:"category"`
 	VendorName        string  `json:"vendor_name,omitempty"`
+	VendorType        string  `json:"vendor_type,omitempty"`
+	VendorTypeID      *int    `json:"vendor_type_id,omitempty"`
 	Date              string  `json:"date"`
 	PaymentMethod     string  `json:"payment_method"`
 	AddedBy           string  `json:"added_by"`

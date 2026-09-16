@@ -213,6 +213,13 @@ export const expenseAPI = {
       };
     }>(`/expenses/averages${queryString ? `?${queryString}` : ''}`);
   },
+  getExpensesByTag: (tagId: number, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    params.append('tag_id', tagId.toString());
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    return apiClient.get<Expense[]>(`/expenses/by-tag?${params.toString()}`);
+  },
 };
 
 export const vendorAPI = {
@@ -262,6 +269,67 @@ export const incomeAPI = {
     return apiClient.get<IncomeSummary>(`/incomes/summary${queryString ? `?${queryString}` : ''}`);
   },
 };
+
+// Bank Import API
+export const bankImportAPI = {
+  uploadBankCSV: (file: File, format: string = 'haspa_credit') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('format', format);
+    return apiClient.post('/expenses/import/bank/preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  confirmBankTransaction: (request: any) =>
+    apiClient.post('/expenses/import/bank/confirm', request),
+};
+
+export interface Snapshot {
+  id: number;
+  date: string;
+  total: number;
+  haspa: number;
+  n26_b: number;
+  n26_m: number;
+  cash: number;
+  uber_stocks: number;
+  scalable_capital: number;
+  mono_b: number;
+  mono_m: number;
+  paypal_b: number;
+  paypal_m: number;
+  backup_cash: number;
+  careem_rsu_shares: number;
+  careem_rsu: number;
+  enbd_aed: number;
+  enbd_eur: number;
+  created_at: string;
+}
+
+export interface CreateSnapshotRequest {
+  date: string;
+  haspa: number;
+  n26_b: number;
+  n26_m: number;
+  cash: number;
+  uber_stocks: number;
+  scalable_capital: number;
+  mono_b: number;
+  mono_m: number;
+  paypal_b: number;
+  paypal_m: number;
+  backup_cash: number;
+  careem_rsu_shares: number;
+  enbd_aed: number;
+}
+
+export const fetchSnapshots = (): Promise<Snapshot[]> =>
+  apiClient.get<Snapshot[]>('/snapshots').then(r => r.data);
+
+export const createSnapshot = (data: CreateSnapshotRequest): Promise<Snapshot> =>
+  apiClient.post<Snapshot>('/snapshots', data).then(r => r.data);
 
 // Utility function for formatting currency
 export const formatAmount = (amount: number) => {

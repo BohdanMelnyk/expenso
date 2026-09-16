@@ -16,4 +16,5 @@ type ExpenseRepository interface {
 	FindByCategoryAndDateRange(category entities.Category, startDate, endDate *time.Time) ([]*entities.Expense, error)
 	FindByVendor(vendorID entities.VendorID) ([]*entities.Expense, error)
 	FindByAmountAndDateRange(amount float64, startDate, endDate time.Time) ([]*entities.Expense, error)
+	FindByTagAndDateRange(tagID entities.TagID, startDate, endDate *time.Time) ([]*entities.Expense, error)
 }

@@ -13,6 +13,7 @@ interface FormFieldProps {
   disabled?: boolean;
   options?: { value: string; label: string }[];
   rows?: number;
+  maxLength?: number;
   className?: string;
   showValidation?: boolean;
 }
@@ -29,6 +30,7 @@ const FormField: React.FC<FormFieldProps> = ({
   disabled = false,
   options = [],
   rows = 3,
+  maxLength,
   className = '',
   showValidation = true
 }) => {
@@ -86,6 +88,7 @@ const FormField: React.FC<FormFieldProps> = ({
             placeholder={placeholder}
             disabled={disabled}
             rows={rows}
+            maxLength={maxLength}
             className={baseInputClasses}
           />
         );

@@ -8,6 +8,32 @@ import VendorSelector from './VendorSelector';
 import CategorySelector from './CategorySelector';
 import DuplicateWarning from './DuplicateWarning';
 import AIExpenseParser from './AIExpenseParser';
+import { TagInput } from './TagInput';
+
+/**
+ * AddExpense Component - Add New Transaction Form
+ *
+ * UPDATED FEATURES:
+ * 1. TAGS: Auto-addable with space-based creation
+ *    - NEW: TagInput component replaces simple button selection
+ *    - Type a tag name and press SPACE or ENTER to create/select
+ *    - Async tag creation with random colors
+ *    - Duplicate tag detection
+ *    - Existing tag suggestions for quick selection
+ *    - Click X to remove tags
+ *    - Positioned at the end of the form (after Date field)
+ *
+ * 2. ADDED_BY: Always defaults to "He" for bank imports
+ *    - Regular expense form still allows "He"/"She" selection
+ *    - Bank import transactions always use "He" (hidden in BankTransactionReview)
+ *    - See BankTransactionReview component for bank import UI
+ *
+ * 3. DATE FIELD: Supports future dates for pre-booked transactions
+ *    - Users can add transactions with future dates
+ *    - Perfect for pre-booked items like flights, hotels, events
+ *    - Past dates limited to 1 year ago
+ *    - Future dates have no limit
+ */
 
 const AddExpense: React.FC = () => {
   const navigate = useNavigate();
@@ -37,7 +63,7 @@ const AddExpense: React.FC = () => {
     comment: {
       required: true,
       minLength: 3,
-      maxLength: 100,
+      maxLength: 2000,
     },
     amount: {
       required: true,
@@ -64,13 +90,11 @@ const AddExpense: React.FC = () => {
       custom: (value) => {
         if (!value) return 'Date is required';
         const selectedDate = new Date(value);
-        const today = new Date();
         const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(today.getFullYear() - 1);
-        
-        if (selectedDate > today) {
-          return 'Date cannot be in the future';
-        }
+        oneYearAgo.setFullYear(new Date().getFullYear() - 1);
+
+        // FEATURE: Allow future dates for pre-booked transactions (e.g., flight tickets)
+        // Only restrict past dates to within 1 year
         if (selectedDate < oneYearAgo) {
           return 'Date cannot be more than a year ago';
         }
@@ -248,7 +272,16 @@ const AddExpense: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Transaction</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Add New Transaction</h2>
+          <button
+            type="button"
+            onClick={() => navigate('/import/bank')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+          >
+            Import Bank Statement
+          </button>
+        </div>
 
         {error && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -275,6 +308,7 @@ const AddExpense: React.FC = () => {
             placeholder="What is this transaction for?"
             required
             rows={3}
+            maxLength={2000}
           />
 
           <div>
@@ -354,38 +388,6 @@ const AddExpense: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {tags.map(tag => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleTagToggle(tag.id)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                    selectedTags.includes(tag.id)
-                      ? 'bg-blue-100 text-blue-800 border-blue-300'
-                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                  }`}
-                  style={{
-                    backgroundColor: selectedTags.includes(tag.id) ? `${tag.color}20` : undefined,
-                    borderColor: selectedTags.includes(tag.id) ? tag.color : undefined,
-                    color: selectedTags.includes(tag.id) ? tag.color : undefined
-                  }}
-                >
-                  {tag.name.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-            {selectedTags.length > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
-                {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
-
-          <div>
             <label htmlFor="vendor_id" className="block text-sm font-medium text-gray-700 mb-2">
               Vendor *
             </label>
@@ -398,6 +400,7 @@ const AddExpense: React.FC = () => {
             />
           </div>
 
+          {/* FEATURE: Date field supports future dates for pre-booked items (flights, hotels, etc) */}
           <FormField
             label="Date"
             name="date"
@@ -407,36 +410,20 @@ const AddExpense: React.FC = () => {
             error={errors.date}
             required
           />
+          <p className="text-xs text-gray-500 -mt-4">
+            📅 You can add transactions with past (within 1 year) or future dates
+          </p>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Added By
-            </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="he"
-                  checked={formData.added_by === 'he'}
-                  onChange={() => setFieldValue('added_by', 'he')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👨 He</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="she"
-                  checked={formData.added_by === 'she'}
-                  onChange={() => setFieldValue('added_by', 'she')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👩 She</span>
-              </label>
-            </div>
-          </div>
+          {/* FEATURE: New TagInput component with space-based auto-addition - moved to end */}
+          <TagInput
+            selectedTags={selectedTags}
+            onTagsChange={setSelectedTags}
+            availableTags={tags}
+            onTagsRefresh={fetchTags}
+          />
+
+          {/* FEATURE: "Added By" field is hidden from UI - always defaults to 'he' */}
+          {/* Users cannot change this field - it's set programmatically */}
 
           <div className="flex gap-4">
             <button

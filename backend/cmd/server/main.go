@@ -31,6 +31,7 @@ import (
 	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/income"
+	"expenso-backend/usecases/interactors/snapshot"
 	"expenso-backend/usecases/interactors/tag"
 	"expenso-backend/usecases/interactors/vendors"
 
@@ -100,6 +101,7 @@ func main() {
 	incomeRepo := repositories.NewIncomeRepository(db, tagRepo)
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
+	snapshotRepo := repositories.NewSnapshotRepository(db, cfg.ExchangeRates.AEDToEUR)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
@@ -108,10 +110,15 @@ func main() {
 	expenseParser := expense.NewExpenseParser(anthropicClient, vendorRepo)
 	expenseInteractor.SetExpenseParser(expenseParser)
 
+	// Setup bank transaction mapper for LLM-powered bank import
+	bankTransactionMapper := expense.NewBankTransactionMapper(anthropicClient, vendorRepo, expenseParser)
+	expenseInteractor.SetBankTransactionMapper(bankTransactionMapper)
+
 	incomeInteractor := income.NewIncomeInteractor(incomeRepo, vendorRepo, tagRepo)
 	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
+	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo, cfg.ExchangeRates.AEDToEUR)
 
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
@@ -119,6 +126,8 @@ func main() {
 	vendorHandler := handlers.NewVendorHandler(vendorInteractor)
 	categoryHandler := handlers.NewCategoryHandler(categoryInteractor)
 	tagHandler := handlers.NewTagHandler(tagInteractor)
+	bankImportHandler := handlers.NewBankImportHandler(expenseInteractor)
+	snapshotHandler := handlers.NewSnapshotHandler(snapshotInteractor)
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
@@ -155,20 +164,29 @@ func main() {
 	api.GET("/expenses", expenseHandler.GetExpenses)
 	api.POST("/expenses", expenseHandler.CreateExpense)
 	api.POST("/expenses/parse", expenseHandler.ParseExpense)
-	api.GET("/expenses/:id", expenseHandler.GetExpense)
-	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
-	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+
+	// Specific expense routes MUST come BEFORE parameterized routes
 	api.GET("/expenses/export/csv", expenseHandler.ExportExpensesCSV)
 	api.POST("/expenses/import/csv/preview", expenseHandler.ImportExpensesCSVPreview)
 	api.POST("/expenses/import/csv/confirm", expenseHandler.ImportExpensesCSVConfirm)
 
-	// Balance and earnings routes
+	// Bank statement import routes
+	api.POST("/expenses/import/bank/preview", bankImportHandler.UploadBankCSV)
+	api.POST("/expenses/import/bank/confirm", bankImportHandler.CreateExpenseFromBank)
+
+	// Balance and earnings routes (specific)
 	api.GET("/expenses/balance", expenseHandler.GetBalanceSummary)
 	api.GET("/expenses/actual", expenseHandler.GetActualExpenses)
 	api.GET("/expenses/earnings", expenseHandler.GetEarnings)
 	api.GET("/expenses/by-category", expenseHandler.GetExpensesByCategory)
+	api.GET("/expenses/by-tag", expenseHandler.GetExpensesByTag)
 	api.GET("/expenses/check-duplicates", expenseHandler.CheckDuplicates)
 	api.GET("/expenses/averages", expenseHandler.GetAverageExpenses)
+
+	// Parameterized routes MUST come LAST
+	api.GET("/expenses/:id", expenseHandler.GetExpense)
+	api.PUT("/expenses/:id", expenseHandler.UpdateExpense)
+	api.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
 
 	// Income routes
 	api.GET("/incomes", incomeHandler.GetIncomes)
@@ -205,6 +223,10 @@ func main() {
 	api.GET("/expenses/:id/tags", tagHandler.GetTagsByExpense)
 	api.POST("/expenses/:id/tags/:tag_id", tagHandler.AddTagToExpense)
 	api.DELETE("/expenses/:id/tags/:tag_id", tagHandler.RemoveTagFromExpense)
+
+	// Snapshot routes
+	api.GET("/snapshots", snapshotHandler.GetSnapshots)
+	api.POST("/snapshots", snapshotHandler.CreateSnapshot)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

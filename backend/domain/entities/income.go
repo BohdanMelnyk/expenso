@@ -33,10 +33,6 @@ func NewIncome(amount valueobjects.Money, date time.Time, source string, comment
 		return nil, errors.New("income amount cannot be negative")
 	}
 
-	if date.After(time.Now()) {
-		return nil, errors.New("income date cannot be in the future")
-	}
-
 	// Check if date is too far in the past (business rule)
 	if date.Before(time.Now().AddDate(-10, 0, 0)) {
 		return nil, errors.New("income date cannot be more than 10 years ago")
@@ -127,9 +123,6 @@ func (i *Income) UpdateAmount(amount valueobjects.Money) error {
 }
 
 func (i *Income) UpdateDate(date time.Time) error {
-	if date.After(time.Now()) {
-		return errors.New("income date cannot be in the future")
-	}
 	if date.Before(time.Now().AddDate(-10, 0, 0)) {
 		return errors.New("income date cannot be more than 10 years ago")
 	}

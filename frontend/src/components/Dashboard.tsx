@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Trash2, Edit, Download, Upload, FileText } from 'lucide-react';
-import { expenseAPI, Expense, formatAmount } from '../api/client';
+import { expenseAPI, tagAPI, Expense, Tag, formatAmount } from '../api/client';
 import { usePeriod } from '../contexts/PeriodContext';
 import { usePeriodDateRange } from '../hooks/usePeriodDateRange';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -19,14 +19,32 @@ const Dashboard: React.FC = () => {
   const { period } = usePeriod();
   const { startDate, endDate } = usePeriodDateRange(period);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({ paymentMethod: 'all' });
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
+
+  // Initialize search state from URL params
+  const initialSearchQuery = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>(() => {
+    const filters: SearchFilters = { paymentMethod: 'all' };
+    if (searchParams.has('category')) filters.category = searchParams.get('category') || undefined;
+    if (searchParams.has('vendor')) filters.vendor = searchParams.get('vendor') || undefined;
+    if (searchParams.has('minAmount')) filters.minAmount = Number(searchParams.get('minAmount')) || undefined;
+    if (searchParams.has('maxAmount')) filters.maxAmount = Number(searchParams.get('maxAmount')) || undefined;
+    if (searchParams.has('dateFrom')) filters.dateFrom = searchParams.get('dateFrom') || undefined;
+    if (searchParams.has('dateTo')) filters.dateTo = searchParams.get('dateTo') || undefined;
+    if (searchParams.has('paymentMethod')) filters.paymentMethod = (searchParams.get('paymentMethod') as 'card' | 'cash' | 'all') || 'all';
+    if (searchParams.has('tags')) {
+      const tagsStr = searchParams.get('tags');
+      filters.tags = tagsStr ? tagsStr.split(',').map(Number).filter(Boolean) : undefined;
+    }
+    return filters;
+  });
   
   const fetchExpenses = useCallback(async () => {
     try {
@@ -49,6 +67,24 @@ const Dashboard: React.FC = () => {
   const handleSearch = useCallback((query: string, filters: SearchFilters) => {
     setSearchQuery(query);
     setSearchFilters(filters);
+
+    // Update URL params, preserving unrelated params (e.g. "period") that
+    // other parts of the app keep in the same query string.
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      ['q', 'category', 'vendor', 'minAmount', 'maxAmount', 'dateFrom', 'dateTo', 'paymentMethod', 'tags']
+        .forEach((key) => newParams.delete(key));
+      if (query) newParams.set('q', query);
+      if (filters.category) newParams.set('category', filters.category);
+      if (filters.vendor) newParams.set('vendor', filters.vendor);
+      if (filters.minAmount) newParams.set('minAmount', filters.minAmount.toString());
+      if (filters.maxAmount) newParams.set('maxAmount', filters.maxAmount.toString());
+      if (filters.dateFrom) newParams.set('dateFrom', filters.dateFrom);
+      if (filters.dateTo) newParams.set('dateTo', filters.dateTo);
+      if (filters.paymentMethod && filters.paymentMethod !== 'all') newParams.set('paymentMethod', filters.paymentMethod);
+      if (filters.tags && filters.tags.length > 0) newParams.set('tags', filters.tags.join(','));
+      return newParams;
+    });
 
     let filtered = [...expenses];
 
@@ -105,13 +141,34 @@ const Dashboard: React.FC = () => {
       filtered = filtered.filter(expense => expense.date <= filters.dateTo!);
     }
 
+    // Filter by tags — show expenses that have ANY of the selected tags
+    if (filters.tags && filters.tags.length > 0) {
+      filtered = filtered.filter(expense =>
+        expense.tags?.some(tag => filters.tags!.includes(tag.id))
+      );
+    }
+
     setFilteredExpenses(filtered);
-  }, [expenses]);
+  }, [expenses, setSearchParams]);
 
   // Update filtered expenses when main expenses change
   useEffect(() => {
     handleSearch(searchQuery, searchFilters);
   }, [expenses, handleSearch, searchQuery, searchFilters]);
+
+  // Fetch tags on mount
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await tagAPI.getTags();
+        setAllTags(response.data);
+      } catch (err: any) {
+        console.error('Error fetching tags:', err);
+      }
+    };
+
+    fetchTags();
+  }, []);
 
   useEffect(() => {
     fetchExpenses();
@@ -325,6 +382,9 @@ const Dashboard: React.FC = () => {
                 placeholder="Search expenses..."
                 className="w-full"
                 showFilters={true}
+                availableTags={allTags}
+                initialQuery={searchQuery}
+                initialFilters={searchFilters}
               />
             </div>
           </div>
@@ -334,7 +394,7 @@ const Dashboard: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[300px]">
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -372,8 +432,10 @@ const Dashboard: React.FC = () => {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleRowClick(expense.id)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.comment}
+                    <td className="px-6 py-4 text-sm text-gray-900 w-[300px]">
+                      <div className="w-[300px] overflow-x-auto whitespace-nowrap">
+                        {expense.comment}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatAmount(expense.amount)}
