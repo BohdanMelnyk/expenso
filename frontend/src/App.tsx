@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Lightbulb, Layers } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Lightbulb, Layers, Divide } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { PeriodProvider } from './contexts/PeriodContext';
+import { PeriodProvider, usePeriod } from './contexts/PeriodContext';
 import ThemeToggle from './components/ThemeToggle';
 import PeriodSelector from './components/PeriodSelector';
 import Dashboard from './components/Dashboard';
@@ -22,10 +22,19 @@ import Insights from './components/Insights/Insights';
 import { BankImportScreen } from './components/BankImportScreen';
 import { BankTransactionReview } from './components/BankTransactionReview';
 import Snapshots from './components/Snapshots';
+import AverageExpenses from './components/AverageExpenses';
 
 function Navigation() {
   const location = useLocation();
+  const { period } = usePeriod();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Carry the active period along on every tab switch so it survives
+  // navigation instead of resetting (query-param state on the destination
+  // route wins over PeriodContext's own reactive URL sync, which lags behind
+  // by a render when a route change and a period change land in the same
+  // batch).
+  const withPeriod = (path: string) => `${path}?globalPeriod=${period}`;
   
   const getNavLinkClass = ({ isActive }: { isActive: boolean }) => {
     const baseClass = "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors";
@@ -64,6 +73,7 @@ function Navigation() {
     { to: '/add', icon: PlusCircle, label: 'Add', end: false, special: false },
     { to: '/trends', icon: TrendingUp, label: 'Trends', end: false, special: false },
     { to: '/insights', icon: Lightbulb, label: 'Insights', end: false, special: false },
+    { to: '/averages', icon: Divide, label: 'Averages', end: false, special: false },
     { to: '/balance', icon: Wallet, label: 'Balance', end: false, special: true },
     { to: '/cash-flow', icon: TrendingDown, label: 'Cash Flow', end: false, special: false },
     { to: '/snapshots', icon: Layers, label: 'Snapshots', end: false, special: false },
@@ -104,7 +114,7 @@ function Navigation() {
               {navigationItems.map(({ to, icon: Icon, label, end, special }) => (
                 <NavLink
                   key={to}
-                  to={to}
+                  to={withPeriod(to)}
                   className={special ? getSpecialNavLinkClass(to) : getNavLinkClass}
                   end={end}
                 >
@@ -127,7 +137,7 @@ function Navigation() {
               return (
                 <div key={to} className="flex-1 flex justify-center -mt-4">
                   <NavLink
-                    to={to}
+                    to={withPeriod(to)}
                     className={({ isActive }) => {
                       const baseClass = "flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-200";
                       if (isActive) {
@@ -146,7 +156,7 @@ function Navigation() {
             return (
               <NavLink
                 key={to}
-                to={to}
+                to={withPeriod(to)}
                 className={({ isActive }) => {
                   let isOnRelatedPage = false;
                   if (special) {
@@ -201,6 +211,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trends" element={<Trends />} />
                 <Route path="/insights" element={<Insights />} />
+                <Route path="/averages" element={<AverageExpenses />} />
                 <Route path="/add" element={<AddExpense />} />
                 <Route path="/expense/:id/edit" element={<EditExpense />} />
                 <Route path="/balance" element={<BalanceDashboard />} />

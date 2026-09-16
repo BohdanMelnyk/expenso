@@ -1339,11 +1339,13 @@ func (h *ExpenseHandler) calculateAverages(expenses []*entities.Expense, startDa
 		}
 	}
 
-	// Override with provided dates if available
-	if startDate != nil {
+	// Narrow the range to the requested bounds, but never widen it beyond the
+	// actual expense dates (e.g. "all_time" sends 1970-01-01, which would
+	// otherwise inflate the month count far past the real data span).
+	if startDate != nil && startDate.After(minDate) {
 		minDate = *startDate
 	}
-	if endDate != nil {
+	if endDate != nil && endDate.Before(maxDate) {
 		maxDate = *endDate
 	}
 

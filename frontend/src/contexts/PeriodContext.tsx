@@ -22,25 +22,47 @@ interface PeriodProviderProps {
   children: React.ReactNode;
 }
 
+// Namespaced (not just "period") because a few drill-down pages
+// (CategoryStatistics, VendorStatistics, VendorTypeStatistics) already own an
+// unrelated "period" query param with a different set of values; sharing the
+// key would let this global picker clobber those pages' local filter.
+const PERIOD_PARAM = 'globalPeriod';
+const DEFAULT_PERIOD: Period = 'current_month';
+
 export const PeriodProvider: React.FC<PeriodProviderProps> = ({ children }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [period, setPeriodState] = useState<Period>('current_month');
+  const initialParam = searchParams.get(PERIOD_PARAM);
+  const [period, setPeriodState] = useState<Period>(
+    initialParam && isValidPeriod(initialParam) ? initialParam : DEFAULT_PERIOD
+  );
 
-  // Initialize period from URL params or default
+  // The period is shared, URL-driven state: every route should carry it in
+  // its query string so it survives tab switches, refreshes, and shared
+  // links. If the URL already has a valid value, adopt it; otherwise (e.g.
+  // right after navigating to a route that doesn't carry the param yet)
+  // write the current period back in rather than resetting to the default.
   useEffect(() => {
-    const paramPeriod = searchParams.get('period') as Period | null;
+    const paramPeriod = searchParams.get(PERIOD_PARAM);
     if (paramPeriod && isValidPeriod(paramPeriod)) {
-      setPeriodState(paramPeriod);
+      if (paramPeriod !== period) {
+        setPeriodState(paramPeriod);
+      }
     } else {
-      setPeriodState('current_month');
+      setSearchParams(
+        (prev) => {
+          prev.set(PERIOD_PARAM, period);
+          return prev;
+        },
+        { replace: true }
+      );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const setPeriod = (newPeriod: Period) => {
     setPeriodState(newPeriod);
-    // Update URL params
     setSearchParams((prev) => {
-      prev.set('period', newPeriod);
+      prev.set(PERIOD_PARAM, newPeriod);
       return prev;
     });
   };
