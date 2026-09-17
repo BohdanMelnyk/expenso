@@ -75,3 +75,34 @@ func (r *UserRepositoryImpl) FindByID(id entities.UserID) (*entities.User, error
 	}
 	return dbo.ToDomainEntity(), nil
 }
+
+func (r *UserRepositoryImpl) FindAll() ([]*entities.User, error) {
+	query := `
+		SELECT id, username, password_hash, totp_secret_encrypted, created_at
+		FROM users
+		ORDER BY id
+	`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*entities.User
+	for rows.Next() {
+		var dbo models.UserDBO
+		err := rows.Scan(
+			&dbo.ID, &dbo.Username, &dbo.PasswordHash, &dbo.TOTPSecretEncrypted, &dbo.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, dbo.ToDomainEntity())
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
+
+	return users, nil
+}

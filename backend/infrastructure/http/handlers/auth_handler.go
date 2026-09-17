@@ -124,3 +124,28 @@ func (h *AuthHandler) Me(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.MeResponseDTO{ID: int(user.ID()), Username: user.Username()})
 }
+
+// ListUsers godoc
+// @Summary Get all users (for directory lookup)
+// @Tags users
+// @Produce json
+// @Success 200 {array} dto.UserDTO
+// @Failure 401 {object} map[string]string
+// @Router /users [get]
+func (h *AuthHandler) ListUsers(c *gin.Context) {
+	users, err := h.userRepo.FindAll()
+	if err != nil {
+		middleware.RespondWithInternalError(c, "failed to fetch users", err)
+		return
+	}
+
+	userDTOs := make([]dto.UserDTO, len(users))
+	for i, user := range users {
+		userDTOs[i] = dto.UserDTO{
+			ID:       int(user.ID()),
+			Username: user.Username(),
+		}
+	}
+
+	c.JSON(http.StatusOK, userDTOs)
+}

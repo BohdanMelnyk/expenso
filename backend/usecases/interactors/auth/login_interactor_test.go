@@ -32,6 +32,14 @@ func (m *mockUserRepo) FindByID(id entities.UserID) (*entities.User, error) {
 	return nil, entities.ErrUserNotFound
 }
 
+func (m *mockUserRepo) FindAll() ([]*entities.User, error) {
+	users := make([]*entities.User, 0, len(m.usersByUsername))
+	for _, u := range m.usersByUsername {
+		users = append(users, u)
+	}
+	return users, nil
+}
+
 type mockSessionRepo struct {
 	saved []*entities.Session
 }

@@ -10,13 +10,6 @@ import { TagInput } from './TagInput';
 /**
  * BankTransactionReview Component - Bank Statement Import Review Interface
  *
- * FEATURE: "Added by" field is always set to "He" and hidden from UI
- * - The "Added by" field has been removed from the bank import UI
- * - All bank-imported expenses default to "He" for consistency
- * - This is a deliberate UX decision to simplify the import workflow
- * - The field is still stored in the database but not exposed in bank imports
- * - Users adding expenses manually can still choose "He" or "She" in the regular Add form
- *
  * WORKFLOW:
  * 1. Upload bank CSV file from BankImportScreen
  * 2. Review each transaction one at a time
@@ -68,13 +61,6 @@ export const BankTransactionReview: React.FC = () => {
     }
   };
 
-  /**
-   * FEATURE: "Added by" defaults to "He" for all bank imports
-   * - Field is hidden from UI (not shown to users)
-   * - Always defaults to 'he' for consistency
-   * - Users cannot change this during bank import
-   * - Regular expense additions still allow 'he'/'she' selection
-   */
   const initializeEditedExpense = (transaction: BankTransaction) => {
     setEditedExpense({
       amount: transaction.parsed_expense.amount,
@@ -84,7 +70,6 @@ export const BankTransactionReview: React.FC = () => {
       comment: transaction.parsed_expense.description,
       vendor_id: transaction.parsed_expense.matched_vendor_id,
       payment_method: transaction.parsed_expense.payment_method,
-      added_by: 'he', // FEATURE: Always defaults to "he" - hidden from UI
       tag_ids: [],
     });
     setSelectedTags([]);
@@ -151,8 +136,6 @@ export const BankTransactionReview: React.FC = () => {
         transaction_data: currentTransaction,
         expense_data: {
           ...editedExpense,
-          // FEATURE: Enforce "he" for bank imports (hidden from UI, always set to "he")
-          added_by: 'he',
           tag_ids: selectedTags,
         },
       };

@@ -43,7 +43,6 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
     category: expense.category,
     type: expense.type,
     payment_method: expense.payment_method,
-    added_by: expense.added_by,
   });
 
   useEffect(() => {
@@ -58,7 +57,6 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
         category: expense.category,
         type: expense.type,
         payment_method: expense.payment_method,
-        added_by: expense.added_by,
       });
       // Initialize selected tags with existing expense tags
       setSelectedTags(expense.tags?.map(tag => tag.id) || []);
@@ -281,36 +279,6 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Added By
-            </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="he"
-                  checked={formData.added_by === 'he'}
-                  onChange={() => setFormData(prev => ({ ...prev, added_by: 'he' }))}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👨 He</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="she"
-                  checked={formData.added_by === 'she'}
-                  onChange={() => setFormData(prev => ({ ...prev, added_by: 'she' }))}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">👩 She</span>
-              </label>
-            </div>
           </div>
 
           <div className="flex gap-4">

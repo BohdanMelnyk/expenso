@@ -38,6 +38,13 @@ func (r *fakeUserRepo) FindByID(id entities.UserID) (*entities.User, error) {
 	}
 	return u, nil
 }
+func (r *fakeUserRepo) FindAll() ([]*entities.User, error) {
+	users := make([]*entities.User, 0, len(r.usersByID))
+	for _, user := range r.usersByID {
+		users = append(users, user)
+	}
+	return users, nil
+}
 
 type fakeSessionRepo struct {
 	byHash map[string]*entities.Session
@@ -183,5 +190,51 @@ func TestMe_ReturnsCurrentUser_WhenAuthenticated(t *testing.T) {
 	json.Unmarshal(rec.Body.Bytes(), &meResp)
 	if meResp.Username != "alice" {
 		t.Errorf("expected username 'alice', got %q", meResp.Username)
+	}
+}
+
+func TestListUsers_ReturnsAllUsers_WhenAuthenticated(t *testing.T) {
+	user1 := entities.ReconstructUser(entities.UserID(1), "alice", "hashed:secret", "encrypted", time.Now())
+	user2 := entities.ReconstructUser(entities.UserID(2), "bob", "hashed:secret", "encrypted", time.Now())
+	userRepo := &fakeUserRepo{
+		usersByUsername: map[string]*entities.User{"alice": user1, "bob": user2},
+		usersByID:       map[entities.UserID]*entities.User{1: user1, 2: user2},
+	}
+	sessionRepo := &fakeSessionRepo{byHash: map[string]*entities.Session{}}
+
+	gin.SetMode(gin.TestMode)
+	tokenGen := &fakeTokenGenerator{}
+	loginInteractor := authinteractor.NewLoginInteractor(userRepo, sessionRepo, fakePasswordHasher{}, fakeTOTPService{validCode: "123456"}, tokenGen)
+	logoutInteractor := authinteractor.NewLogoutInteractor(sessionRepo, tokenGen)
+	rateLimiter := middleware.NewLoginRateLimiter()
+	authHandler := handlers.NewAuthHandler(loginInteractor, logoutInteractor, userRepo, rateLimiter)
+
+	router := gin.New()
+	router.POST("/api/v1/auth/login", authHandler.Login)
+	protected := router.Group("/api/v1")
+	protected.Use(middleware.RequireAuth(sessionRepo, tokenGen, time.Now))
+	protected.GET("/users", authHandler.ListUsers)
+
+	body, _ := json.Marshal(dto.LoginRequestDTO{Username: "alice", Password: "secret", TOTPCode: "123456"})
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginRec := httptest.NewRecorder()
+	router.ServeHTTP(loginRec, loginReq)
+
+	var loginResp dto.LoginResponseDTO
+	json.Unmarshal(loginRec.Body.Bytes(), &loginResp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
+	req.Header.Set("Authorization", "Bearer "+loginResp.Token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var users []dto.UserDTO
+	json.Unmarshal(rec.Body.Bytes(), &users)
+	if len(users) != 2 {
+		t.Errorf("expected 2 users, got %d", len(users))
 	}
 }

@@ -193,6 +193,7 @@ func main() {
 
 	api.GET("/auth/me", authHandler.Me)
 	api.POST("/auth/logout", authHandler.Logout)
+	api.GET("/users", authHandler.ListUsers)
 
 	// Expense routes
 	api.GET("/expenses", expenseHandler.GetExpenses)

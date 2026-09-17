@@ -8,7 +8,6 @@ export interface ParsedExpense {
   vendor_type_id?: number;
   date: string;
   payment_method: string;
-  added_by: string;
   description: string;
   confidence_score: number;
   matched_vendor_id?: number;
@@ -53,7 +52,6 @@ export interface CreateExpenseRequest {
   comment: string;
   vendor_id?: number;
   payment_method?: string;
-  added_by?: string;
   tag_ids?: number[];
 }
 

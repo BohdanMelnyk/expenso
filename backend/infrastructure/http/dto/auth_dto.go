@@ -18,3 +18,8 @@ type MeResponseDTO struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 }
+
+type UserDTO struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+}

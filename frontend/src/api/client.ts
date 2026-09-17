@@ -9,6 +9,33 @@ export const apiClient = axios.create({
   },
 });
 
+// Request interceptor: attach Authorization header
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('expenso_auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor: handle 401 by clearing token and reloading.
+// Excludes /auth/login itself: a failed login attempt is a normal 401 the
+// LoginPage handles inline, not an expired-session signal.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isLoginRequest = error.config?.url === '/auth/login';
+    if (error.response?.status === 401 && !isLoginRequest) {
+      localStorage.removeItem('expenso_auth_token');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Types matching your backend
 export interface Expense {
   id: number;
@@ -21,7 +48,7 @@ export interface Expense {
   category: string;
   payment_method: string;
   paid_by_card?: boolean; // Deprecated: kept for backward compatibility
-  added_by: 'he' | 'she';
+  user_id: number;
   tags?: Tag[];
   created_at: string;
   updated_at: string;
@@ -62,7 +89,6 @@ export interface CreateExpenseRequest {
   type: string;
   payment_method?: string;
   paid_by_card?: boolean; // Deprecated: kept for backward compatibility
-  added_by?: 'he' | 'she';
   tag_ids?: number[];
 }
 
@@ -95,7 +121,6 @@ export interface ParsedExpenseResponse {
   vendor_name?: string;
   date: string;
   payment_method: string;
-  added_by: 'he' | 'she';
   description: string;
   confidence_score: number;
   matched_vendor_id?: number;
@@ -110,7 +135,7 @@ export interface Income {
   comment: string;
   vendor_id?: number;
   vendor?: Vendor;
-  added_by: 'he' | 'she';
+  user_id: number;
   tags?: Tag[];
   created_at: string;
   updated_at: string;
@@ -122,7 +147,6 @@ export interface CreateIncomeRequest {
   source: string;
   comment: string;
   vendor_id?: number;
-  added_by?: 'he' | 'she';
   tag_ids?: number[];
 }
 
@@ -330,6 +354,17 @@ export const fetchSnapshots = (): Promise<Snapshot[]> =>
 
 export const createSnapshot = (data: CreateSnapshotRequest): Promise<Snapshot> =>
   apiClient.post<Snapshot>('/snapshots', data).then(r => r.data);
+
+export const authAPI = {
+  login: (credentials: { username: string; password: string; totp_code: string }) =>
+    apiClient.post<{ token: string; expires_at: string }>('/auth/login', credentials),
+  logout: () => apiClient.post('/auth/logout'),
+  me: () => apiClient.get<{ id: number; username: string }>('/auth/me'),
+};
+
+export const userAPI = {
+  list: () => apiClient.get<Array<{ id: number; username: string }>>('/users'),
+};
 
 // Utility function for formatting currency
 export const formatAmount = (amount: number) => {

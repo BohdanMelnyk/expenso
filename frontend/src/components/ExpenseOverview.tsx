@@ -14,12 +14,14 @@ import {
   Edit
 } from 'lucide-react';
 import { expenseAPI, Expense, formatAmount } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../utils/errorHandler';
 import { getPaymentMethodLabel, isCardPayment } from '../utils/paymentMethod';
 
 const ExpenseOverview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { users } = useAuth();
   const [expense, setExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,11 @@ const ExpenseOverview: React.FC = () => {
       fetchExpense();
     }
   }, [id]);
+
+  const getUsernameFromId = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user?.username || 'Unknown';
+  };
 
   const fetchExpense = async () => {
     try {
@@ -242,10 +249,7 @@ const ExpenseOverview: React.FC = () => {
               <User className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Added By</p>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">{expense.added_by === 'he' ? '👨' : '👩'}</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100 capitalize">{expense.added_by}</p>
-                </div>
+                <p className="font-medium text-gray-900 dark:text-gray-100">{getUsernameFromId(expense.user_id)}</p>
               </div>
             </div>
 
