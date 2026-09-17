@@ -18,6 +18,120 @@
     "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Authenticates and returns a bearer session token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Log in with username, password, and TOTP code",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Log out the current session",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get the current authenticated user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MeResponseDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/categories": {
             "get": {
                 "description": "Get a list of all categories",
@@ -598,6 +712,71 @@
                 }
             }
         },
+        "/expenses/by-tag": {
+            "get": {
+                "description": "Get expenses filtered by tag and optional date range, sorted by amount (highest first)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expenses"
+                ],
+                "summary": "Get expenses by tag",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tag ID to filter by",
+                        "name": "tag_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.ExpenseResponseDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/expenses/check-duplicates": {
             "get": {
                 "description": "Check for existing expenses with the same amount within a date range",
@@ -724,7 +903,7 @@
         },
         "/expenses/export/csv": {
             "get": {
-                "description": "Export expenses filtered by card payment and \"he\" as CSV with vendor type columns",
+                "description": "Export the current user's card-payment expenses as CSV with vendor type columns",
                 "consumes": [
                     "application/json"
                 ],
@@ -754,6 +933,115 @@
                         "description": "CSV file",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/expenses/import/bank/confirm": {
+            "post": {
+                "description": "Confirm and create an expense from a reviewed bank transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank_import"
+                ],
+                "summary": "Create expense from bank transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction and expense data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateExpenseFromBankRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExpenseResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/expenses/import/bank/preview": {
+            "post": {
+                "description": "Upload a bank statement CSV file, parse transactions, and return preview with LLM suggestions",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bank_import"
+                ],
+                "summary": "Upload and preview bank CSV file",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV format (e.g., 'haspa_credit')",
+                        "name": "format",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.BankImportPreviewResponse"
                         }
                     },
                     "400": {
@@ -861,6 +1149,58 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.CSVImportPreviewDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/expenses/parse": {
+            "post": {
+                "description": "Parse natural language text into structured expense data using LLM",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expenses"
+                ],
+                "summary": "Parse natural language expense input",
+                "parameters": [
+                    {
+                        "description": "Natural language expense text",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ParseExpenseRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ParsedExpenseResponseDTO"
                         }
                     },
                     "400": {
@@ -1581,6 +1921,88 @@
                 }
             }
         },
+        "/snapshots": {
+            "get": {
+                "description": "Returns all money snapshots ordered by date descending",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Get all snapshots",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.SnapshotResponseDTO"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Records a point-in-time snapshot of money across all resources",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Create a new snapshot",
+                "parameters": [
+                    {
+                        "description": "Snapshot data",
+                        "name": "snapshot",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateSnapshotRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SnapshotResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tags": {
             "get": {
                 "description": "Retrieve all available tags",
@@ -2110,6 +2532,64 @@
         }
     },
     "definitions": {
+        "dto.BankImportPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.BankTransactionDTO"
+                    }
+                }
+            }
+        },
+        "dto.BankTransactionDTO": {
+            "type": "object",
+            "properties": {
+                "booking_amount": {
+                    "type": "number"
+                },
+                "booking_currency": {
+                    "type": "string"
+                },
+                "booking_reference": {
+                    "type": "string"
+                },
+                "confidence_score": {
+                    "type": "number"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "merchant": {
+                    "type": "string"
+                },
+                "original_amount": {
+                    "type": "number"
+                },
+                "original_currency": {
+                    "type": "string"
+                },
+                "parsed_expense": {
+                    "$ref": "#/definitions/dto.ParsedExpenseResponseDTO"
+                },
+                "raw_data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "transaction_date": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CSVImportConfirmRequestDTO": {
             "type": "object",
             "properties": {
@@ -2217,6 +2697,21 @@
                 }
             }
         },
+        "dto.CreateExpenseFromBankRequest": {
+            "type": "object",
+            "required": [
+                "expense_data",
+                "transaction_data"
+            ],
+            "properties": {
+                "expense_data": {
+                    "$ref": "#/definitions/dto.CreateExpenseRequestDTO"
+                },
+                "transaction_data": {
+                    "$ref": "#/definitions/dto.BankTransactionDTO"
+                }
+            }
+        },
         "dto.CreateExpenseRequestDTO": {
             "type": "object",
             "required": [
@@ -2226,14 +2721,6 @@
                 "type"
             ],
             "properties": {
-                "added_by": {
-                    "description": "Optional, defaults to \"he\" if not provided",
-                    "type": "string",
-                    "enum": [
-                        "he",
-                        "she"
-                    ]
-                },
                 "amount": {
                     "type": "number"
                 },
@@ -2277,14 +2764,6 @@
                 "source"
             ],
             "properties": {
-                "added_by": {
-                    "description": "Optional, defaults to \"he\" if not provided",
-                    "type": "string",
-                    "enum": [
-                        "he",
-                        "she"
-                    ]
-                },
                 "amount": {
                     "type": "number"
                 },
@@ -2306,6 +2785,56 @@
                 },
                 "vendor_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.CreateSnapshotRequestDTO": {
+            "type": "object",
+            "required": [
+                "date"
+            ],
+            "properties": {
+                "backup_cash": {
+                    "type": "number"
+                },
+                "careem_rsu_shares": {
+                    "type": "number"
+                },
+                "cash": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "enbd_aed": {
+                    "type": "number"
+                },
+                "haspa": {
+                    "type": "number"
+                },
+                "mono_b": {
+                    "type": "number"
+                },
+                "mono_m": {
+                    "type": "number"
+                },
+                "n26_b": {
+                    "type": "number"
+                },
+                "n26_m": {
+                    "type": "number"
+                },
+                "paypal_b": {
+                    "type": "number"
+                },
+                "paypal_m": {
+                    "type": "number"
+                },
+                "scalable_capital": {
+                    "type": "number"
+                },
+                "uber_stocks": {
+                    "type": "number"
                 }
             }
         },
@@ -2342,9 +2871,6 @@
         "dto.ExpenseResponseDTO": {
             "type": "object",
             "properties": {
-                "added_by": {
-                    "type": "string"
-                },
                 "amount": {
                     "type": "number"
                 },
@@ -2382,6 +2908,9 @@
                 "updated_at": {
                     "type": "string"
                 },
+                "user_id": {
+                    "type": "integer"
+                },
                 "vendor": {
                     "$ref": "#/definitions/dto.VendorResponseDTO"
                 }
@@ -2390,9 +2919,6 @@
         "dto.IncomeResponseDTO": {
             "type": "object",
             "properties": {
-                "added_by": {
-                    "type": "string"
-                },
                 "amount": {
                     "type": "number"
                 },
@@ -2420,6 +2946,9 @@
                 "updated_at": {
                     "type": "string"
                 },
+                "user_id": {
+                    "type": "integer"
+                },
                 "vendor": {
                     "$ref": "#/definitions/dto.VendorResponseDTO"
                 }
@@ -2433,6 +2962,60 @@
                 },
                 "total_income": {
                     "type": "number"
+                }
+            }
+        },
+        "dto.LoginRequestDTO": {
+            "type": "object",
+            "required": [
+                "password",
+                "totp_code",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "totp_code": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LoginResponseDTO": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MeResponseDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ParseExpenseRequestDTO": {
+            "type": "object",
+            "required": [
+                "text"
+            ],
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 5
                 }
             }
         },
@@ -2459,6 +3042,109 @@
                 },
                 "vendor_type": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ParsedExpenseResponseDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "confidence_score": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "matched_vendor_id": {
+                    "type": "integer"
+                },
+                "matched_vendor_name": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "vendor_name": {
+                    "type": "string"
+                },
+                "vendor_type": {
+                    "type": "string"
+                },
+                "vendor_type_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SnapshotResponseDTO": {
+            "type": "object",
+            "properties": {
+                "backup_cash": {
+                    "type": "number"
+                },
+                "careem_rsu": {
+                    "type": "number"
+                },
+                "careem_rsu_shares": {
+                    "type": "number"
+                },
+                "cash": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "enbd_aed": {
+                    "type": "number"
+                },
+                "enbd_eur": {
+                    "type": "number"
+                },
+                "haspa": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mono_b": {
+                    "type": "number"
+                },
+                "mono_m": {
+                    "type": "number"
+                },
+                "n26_b": {
+                    "type": "number"
+                },
+                "n26_m": {
+                    "type": "number"
+                },
+                "paypal_b": {
+                    "type": "number"
+                },
+                "paypal_m": {
+                    "type": "number"
+                },
+                "scalable_capital": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                },
+                "uber_stocks": {
+                    "type": "number"
                 }
             }
         },
@@ -2499,13 +3185,6 @@
         "dto.UpdateExpenseRequestDTO": {
             "type": "object",
             "properties": {
-                "added_by": {
-                    "type": "string",
-                    "enum": [
-                        "he",
-                        "she"
-                    ]
-                },
                 "amount": {
                     "type": "number"
                 },
@@ -2525,6 +3204,12 @@
                 "payment_method": {
                     "type": "string"
                 },
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "type": {
                     "type": "string"
                 },
@@ -2536,13 +3221,6 @@
         "dto.UpdateIncomeRequestDTO": {
             "type": "object",
             "properties": {
-                "added_by": {
-                    "type": "string",
-                    "enum": [
-                        "he",
-                        "she"
-                    ]
-                },
                 "amount": {
                     "type": "number"
                 },

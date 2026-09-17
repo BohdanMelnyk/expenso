@@ -25,7 +25,6 @@ type ParsedExpenseData struct {
 	VendorTypeID      *int    `json:"-"`           // ID of the vendor type category for UI dropdown (computed, not from LLM)
 	Date              string  `json:"date"`
 	PaymentMethod     string  `json:"payment_method"`
-	AddedBy           string  `json:"added_by"`
 	Description       string  `json:"description"`
 	ConfidenceScore   float64 `json:"confidence_score"`
 	MatchedVendorID   *int    `json:"-"` // Computed after LLM parsing
@@ -190,7 +189,6 @@ Extract the following fields and return ONLY valid JSON (no markdown, no code bl
   "vendor_type": <string, type of vendor for category mapping>,
   "date": <YYYY-MM-DD format, REQUIRED>,
   "payment_method": <one of: "credit_card", "debit_card", "cash", "paypal", "n26", "revolut", "wise", "monobank">,
-  "added_by": <"he" or "she", default "he">,
   "description": <brief description of the expense, max 100 chars>,
   "confidence_score": <0.0 to 1.0, your confidence in the extraction>
 }
@@ -227,10 +225,6 @@ Date parsing rules:
 - Parse specific dates like "January 15" or "15.01" (assume current year if not specified)
 - If no date specified, use today
 
-AddedBy rules:
-- If context suggests female (she, woman, girlfriend) → "she"
-- Otherwise default → "he"
-
 IMPORTANT:
 1. Return ONLY the JSON object, no other text
 2. All currency values should be positive numbers
@@ -263,16 +257,6 @@ func (p *ExpenseParser) validateParsedData(data *ParsedExpenseData) error {
 		}
 	} else {
 		data.Date = time.Now().Format("2006-01-02")
-	}
-
-	// Default added_by to "he" if not specified
-	if data.AddedBy == "" {
-		data.AddedBy = "he"
-	}
-
-	// Validate added_by values
-	if data.AddedBy != "he" && data.AddedBy != "she" {
-		data.AddedBy = "he"
 	}
 
 	return nil

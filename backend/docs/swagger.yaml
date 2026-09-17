@@ -1,5 +1,43 @@
 basePath: /api/v1
 definitions:
+  dto.BankImportPreviewResponse:
+    properties:
+      format:
+        type: string
+      total_count:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/dto.BankTransactionDTO'
+        type: array
+    type: object
+  dto.BankTransactionDTO:
+    properties:
+      booking_amount:
+        type: number
+      booking_currency:
+        type: string
+      booking_reference:
+        type: string
+      confidence_score:
+        type: number
+      location:
+        type: string
+      merchant:
+        type: string
+      original_amount:
+        type: number
+      original_currency:
+        type: string
+      parsed_expense:
+        $ref: '#/definitions/dto.ParsedExpenseResponseDTO'
+      raw_data:
+        additionalProperties:
+          type: string
+        type: object
+      transaction_date:
+        type: string
+    type: object
   dto.CSVImportConfirmRequestDTO:
     properties:
       expenses:
@@ -70,14 +108,18 @@ definitions:
     - color
     - name
     type: object
+  dto.CreateExpenseFromBankRequest:
+    properties:
+      expense_data:
+        $ref: '#/definitions/dto.CreateExpenseRequestDTO'
+      transaction_data:
+        $ref: '#/definitions/dto.BankTransactionDTO'
+    required:
+    - expense_data
+    - transaction_data
+    type: object
   dto.CreateExpenseRequestDTO:
     properties:
-      added_by:
-        description: Optional, defaults to "he" if not provided
-        enum:
-        - he
-        - she
-        type: string
       amount:
         type: number
       category:
@@ -109,12 +151,6 @@ definitions:
     type: object
   dto.CreateIncomeRequestDTO:
     properties:
-      added_by:
-        description: Optional, defaults to "he" if not provided
-        enum:
-        - he
-        - she
-        type: string
       amount:
         type: number
       comment:
@@ -134,6 +170,39 @@ definitions:
     - amount
     - date
     - source
+    type: object
+  dto.CreateSnapshotRequestDTO:
+    properties:
+      backup_cash:
+        type: number
+      careem_rsu_shares:
+        type: number
+      cash:
+        type: number
+      date:
+        type: string
+      enbd_aed:
+        type: number
+      haspa:
+        type: number
+      mono_b:
+        type: number
+      mono_m:
+        type: number
+      n26_b:
+        type: number
+      n26_m:
+        type: number
+      paypal_b:
+        type: number
+      paypal_m:
+        type: number
+      scalable_capital:
+        type: number
+      uber_stocks:
+        type: number
+    required:
+    - date
     type: object
   dto.CreateTagRequestDTO:
     properties:
@@ -157,8 +226,6 @@ definitions:
     type: object
   dto.ExpenseResponseDTO:
     properties:
-      added_by:
-        type: string
       amount:
         type: number
       category:
@@ -184,13 +251,13 @@ definitions:
         type: string
       updated_at:
         type: string
+      user_id:
+        type: integer
       vendor:
         $ref: '#/definitions/dto.VendorResponseDTO'
     type: object
   dto.IncomeResponseDTO:
     properties:
-      added_by:
-        type: string
       amount:
         type: number
       comment:
@@ -209,6 +276,8 @@ definitions:
         type: array
       updated_at:
         type: string
+      user_id:
+        type: integer
       vendor:
         $ref: '#/definitions/dto.VendorResponseDTO'
     type: object
@@ -218,6 +287,42 @@ definitions:
         type: integer
       total_income:
         type: number
+    type: object
+  dto.LoginRequestDTO:
+    properties:
+      password:
+        type: string
+      totp_code:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - totp_code
+    - username
+    type: object
+  dto.LoginResponseDTO:
+    properties:
+      expires_at:
+        type: string
+      token:
+        type: string
+    type: object
+  dto.MeResponseDTO:
+    properties:
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+  dto.ParseExpenseRequestDTO:
+    properties:
+      text:
+        maxLength: 500
+        minLength: 5
+        type: string
+    required:
+    - text
     type: object
   dto.ParsedExpenseDTO:
     properties:
@@ -235,6 +340,74 @@ definitions:
         type: array
       vendor_type:
         type: string
+    type: object
+  dto.ParsedExpenseResponseDTO:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      confidence_score:
+        type: number
+      currency:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      matched_vendor_id:
+        type: integer
+      matched_vendor_name:
+        type: string
+      payment_method:
+        type: string
+      vendor_name:
+        type: string
+      vendor_type:
+        type: string
+      vendor_type_id:
+        type: integer
+    type: object
+  dto.SnapshotResponseDTO:
+    properties:
+      backup_cash:
+        type: number
+      careem_rsu:
+        type: number
+      careem_rsu_shares:
+        type: number
+      cash:
+        type: number
+      created_at:
+        type: string
+      date:
+        type: string
+      enbd_aed:
+        type: number
+      enbd_eur:
+        type: number
+      haspa:
+        type: number
+      id:
+        type: integer
+      mono_b:
+        type: number
+      mono_m:
+        type: number
+      n26_b:
+        type: number
+      n26_m:
+        type: number
+      paypal_b:
+        type: number
+      paypal_m:
+        type: number
+      scalable_capital:
+        type: number
+      total:
+        type: number
+      uber_stocks:
+        type: number
     type: object
   dto.TagResponseDTO:
     properties:
@@ -260,11 +433,6 @@ definitions:
     type: object
   dto.UpdateExpenseRequestDTO:
     properties:
-      added_by:
-        enum:
-        - he
-        - she
-        type: string
       amount:
         type: number
       category:
@@ -278,6 +446,10 @@ definitions:
         type: boolean
       payment_method:
         type: string
+      tag_ids:
+        items:
+          type: integer
+        type: array
       type:
         type: string
       vendor_id:
@@ -285,11 +457,6 @@ definitions:
     type: object
   dto.UpdateIncomeRequestDTO:
     properties:
-      added_by:
-        enum:
-        - he
-        - she
-        type: string
       amount:
         type: number
       comment:
@@ -348,6 +515,80 @@ info:
   title: Expenso API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates and returns a bearer session token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LoginResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in with username, password, and TOTP code
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log out the current session
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MeResponseDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get the current authenticated user
+      tags:
+      - auth
   /categories:
     get:
       consumes:
@@ -937,6 +1178,50 @@ paths:
       summary: Get expenses by category
       tags:
       - expenses
+  /expenses/by-tag:
+    get:
+      consumes:
+      - application/json
+      description: Get expenses filtered by tag and optional date range, sorted by
+        amount (highest first)
+      parameters:
+      - description: Tag ID to filter by
+        in: query
+        name: tag_id
+        required: true
+        type: integer
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.ExpenseResponseDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get expenses by tag
+      tags:
+      - expenses
   /expenses/check-duplicates:
     get:
       consumes:
@@ -1024,7 +1309,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Export expenses filtered by card payment and "he" as CSV with vendor
+      description: Export the current user's card-payment expenses as CSV with vendor
         type columns
       parameters:
       - description: Start date (YYYY-MM-DD)
@@ -1057,6 +1342,79 @@ paths:
       summary: Export expenses as CSV
       tags:
       - expenses
+  /expenses/import/bank/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirm and create an expense from a reviewed bank transaction
+      parameters:
+      - description: Transaction and expense data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateExpenseFromBankRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create expense from bank transaction
+      tags:
+      - bank_import
+  /expenses/import/bank/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a bank statement CSV file, parse transactions, and return
+        preview with LLM suggestions
+      parameters:
+      - description: CSV file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: CSV format (e.g., 'haspa_credit')
+        in: formData
+        name: format
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.BankImportPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload and preview bank CSV file
+      tags:
+      - bank_import
   /expenses/import/csv/confirm:
     post:
       consumes:
@@ -1125,6 +1483,41 @@ paths:
               type: string
             type: object
       summary: Preview CSV import
+      tags:
+      - expenses
+  /expenses/parse:
+    post:
+      consumes:
+      - application/json
+      description: Parse natural language text into structured expense data using
+        LLM
+      parameters:
+      - description: Natural language expense text
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ParseExpenseRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ParsedExpenseResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Parse natural language expense input
       tags:
       - expenses
   /incomes:
@@ -1388,6 +1781,60 @@ paths:
       summary: Get income summary
       tags:
       - incomes
+  /snapshots:
+    get:
+      description: Returns all money snapshots ordered by date descending
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.SnapshotResponseDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all snapshots
+      tags:
+      - snapshots
+    post:
+      consumes:
+      - application/json
+      description: Records a point-in-time snapshot of money across all resources
+      parameters:
+      - description: Snapshot data
+        in: body
+        name: snapshot
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSnapshotRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.SnapshotResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new snapshot
+      tags:
+      - snapshots
   /tags:
     get:
       description: Retrieve all available tags
