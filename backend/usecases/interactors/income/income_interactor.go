@@ -14,7 +14,7 @@ type CreateIncomeCommand struct {
 	Source   string
 	Comment  string
 	VendorID *entities.VendorID
-	AddedBy  *string          // Optional, defaults to "he" if nil
+	UserID   entities.UserID
 	TagIDs   []entities.TagID // Optional list of tag IDs to assign
 }
 
@@ -25,7 +25,7 @@ type CreateIncomeFromCSVCommand struct {
 	Source    string
 	Comment   string
 	VendorID  *entities.VendorID
-	AddedBy   *string          // Optional, defaults to "he" if nil
+	UserID    entities.UserID
 	TagIDs    []entities.TagID // Optional list of tag IDs to assign
 	CreatedAt time.Time        // Custom created date
 	UpdatedAt time.Time        // Custom updated date
@@ -38,7 +38,6 @@ type UpdateIncomeCommand struct {
 	Source   *string
 	Comment  *string
 	VendorID *entities.VendorID
-	AddedBy  *string
 	TagIDs   *[]entities.TagID // Optional list of tag IDs to assign (nil means no change, empty slice means clear tags)
 }
 
@@ -64,17 +63,9 @@ func (i *IncomeInteractor) CreateIncome(cmd CreateIncomeCommand) (*entities.Inco
 	}
 
 	// Create new income entity
-	income, err := entities.NewIncome(money, cmd.Date, cmd.Source, cmd.Comment)
+	income, err := entities.NewIncome(money, cmd.Date, cmd.Source, cmd.Comment, cmd.UserID)
 	if err != nil {
 		return nil, err
-	}
-
-	// Set addedBy if provided, otherwise use default
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := income.UpdateAddedBy(addedBy); err != nil {
-			return nil, err
-		}
 	}
 
 	// Assign vendor if provided
@@ -125,21 +116,13 @@ func (i *IncomeInteractor) CreateIncomeFromCSV(cmd CreateIncomeFromCSVCommand) (
 	}
 
 	// Create new income entity
-	income, err := entities.NewIncome(money, cmd.Date, cmd.Source, cmd.Comment)
+	income, err := entities.NewIncome(money, cmd.Date, cmd.Source, cmd.Comment, cmd.UserID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set custom timestamps for CSV imports
 	income.SetTimestamps(cmd.CreatedAt, cmd.UpdatedAt)
-
-	// Set addedBy if provided, otherwise use default
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := income.UpdateAddedBy(addedBy); err != nil {
-			return nil, err
-		}
-	}
 
 	// Assign vendor if provided
 	if cmd.VendorID != nil {
@@ -235,13 +218,6 @@ func (i *IncomeInteractor) UpdateIncome(cmd UpdateIncomeCommand) (*entities.Inco
 
 	if cmd.Comment != nil {
 		income.UpdateComment(*cmd.Comment)
-	}
-
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := income.UpdateAddedBy(addedBy); err != nil {
-			return nil, err
-		}
 	}
 
 	// Update vendor if provided

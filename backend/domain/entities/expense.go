@@ -19,21 +19,6 @@ func (et ExpenseType) IsValid() bool {
 	return et == ExpenseTypeIncome || et == ExpenseTypeExpense
 }
 
-type AddedBy string
-
-const (
-	AddedByHe  AddedBy = "he"
-	AddedByShe AddedBy = "she"
-)
-
-func (ab AddedBy) IsValid() bool {
-	return ab == AddedByHe || ab == AddedByShe
-}
-
-func (ab AddedBy) String() string {
-	return string(ab)
-}
-
 type PaymentMethod string
 
 const (

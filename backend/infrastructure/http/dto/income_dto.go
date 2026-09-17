@@ -13,8 +13,7 @@ type CreateIncomeRequestDTO struct {
 	Source   string  `json:"source" validate:"required"`
 	Comment  string  `json:"comment"`
 	VendorID *int    `json:"vendor_id,omitempty"`
-	AddedBy  *string `json:"added_by,omitempty" validate:"omitempty,oneof=he she"` // Optional, defaults to "he" if not provided
-	TagIDs   *[]int  `json:"tag_ids,omitempty"`                                    // Optional list of tag IDs
+	TagIDs   *[]int  `json:"tag_ids,omitempty"` // Optional list of tag IDs
 }
 
 type UpdateIncomeRequestDTO struct {
@@ -23,7 +22,6 @@ type UpdateIncomeRequestDTO struct {
 	Source   *string  `json:"source,omitempty"`
 	Comment  *string  `json:"comment,omitempty"`
 	VendorID *int     `json:"vendor_id,omitempty"`
-	AddedBy  *string  `json:"added_by,omitempty" validate:"omitempty,oneof=he she"`
 	TagIDs   *[]int   `json:"tag_ids,omitempty"`
 }
 
@@ -35,7 +33,7 @@ type IncomeResponseDTO struct {
 	Source    string             `json:"source"`
 	Comment   string             `json:"comment"`
 	Vendor    *VendorResponseDTO `json:"vendor,omitempty"`
-	AddedBy   string             `json:"added_by"`
+	UserID    int                `json:"user_id"`
 	Tags      []TagResponseDTO   `json:"tags,omitempty"`
 	CreatedAt time.Time          `json:"created_at"`
 	UpdatedAt time.Time          `json:"updated_at"`
@@ -55,7 +53,7 @@ func ToIncomeResponseDTO(income *entities.Income) IncomeResponseDTO {
 		Date:      income.Date().Format("2006-01-02"),
 		Source:    income.Source(),
 		Comment:   income.Comment(),
-		AddedBy:   income.AddedBy().String(),
+		UserID:    int(income.UserID()),
 		CreatedAt: income.CreatedAt(),
 		UpdatedAt: income.UpdatedAt(),
 	}

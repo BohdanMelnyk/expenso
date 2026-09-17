@@ -17,13 +17,13 @@ type Income struct {
 	source    string
 	comment   string
 	vendor    *Vendor
-	addedBy   AddedBy
+	userID    UserID
 	tags      []*Tag
 	createdAt time.Time
 	updatedAt time.Time
 }
 
-func NewIncome(amount valueobjects.Money, date time.Time, source string, comment string) (*Income, error) {
+func NewIncome(amount valueobjects.Money, date time.Time, source string, comment string, userID UserID) (*Income, error) {
 	// Semantic validations - business rules
 	if amount.IsZero() {
 		return nil, errors.New("income amount must be greater than zero")
@@ -48,14 +48,14 @@ func NewIncome(amount valueobjects.Money, date time.Time, source string, comment
 		date:      date,
 		source:    strings.TrimSpace(source),
 		comment:   strings.TrimSpace(comment),
-		addedBy:   AddedByHe, // Default value is "he"
+		userID:    userID,
 		createdAt: now,
 		updatedAt: now,
 	}, nil
 }
 
 func ReconstructIncome(id IncomeID, amount valueobjects.Money, date time.Time, source string,
-	comment string, vendor *Vendor, addedBy AddedBy, tags []*Tag, createdAt, updatedAt time.Time) *Income {
+	comment string, vendor *Vendor, userID UserID, tags []*Tag, createdAt, updatedAt time.Time) *Income {
 	return &Income{
 		id:        id,
 		amount:    amount,
@@ -63,7 +63,7 @@ func ReconstructIncome(id IncomeID, amount valueobjects.Money, date time.Time, s
 		source:    source,
 		comment:   comment,
 		vendor:    vendor,
-		addedBy:   addedBy,
+		userID:    userID,
 		tags:      tags,
 		createdAt: createdAt,
 		updatedAt: updatedAt,
@@ -102,8 +102,8 @@ func (i *Income) UpdatedAt() time.Time {
 	return i.updatedAt
 }
 
-func (i *Income) AddedBy() AddedBy {
-	return i.addedBy
+func (i *Income) UserID() UserID {
+	return i.userID
 }
 
 func (i *Income) Tags() []*Tag {
@@ -144,15 +144,6 @@ func (i *Income) UpdateSource(source string) error {
 func (i *Income) UpdateComment(comment string) {
 	i.comment = strings.TrimSpace(comment)
 	i.updatedAt = time.Now()
-}
-
-func (i *Income) UpdateAddedBy(addedBy AddedBy) error {
-	if !addedBy.IsValid() {
-		return errors.New("invalid addedBy value, must be 'he' or 'she'")
-	}
-	i.addedBy = addedBy
-	i.updatedAt = time.Now()
-	return nil
 }
 
 func (i *Income) AssignVendor(vendor *Vendor) {
