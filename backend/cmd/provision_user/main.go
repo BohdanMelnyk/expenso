@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/skip2/go-qrcode"
 
 	_ "github.com/lib/pq"
@@ -18,6 +19,14 @@ import (
 )
 
 func main() {
+	// Load environment variables from .env file, same as cmd/server/main.go,
+	// so this CLI picks up AUTH_ENCRYPTION_KEY (and any other secrets) from
+	// backend/.env instead of silently using an empty/different key than the
+	// running server.
+	if err := godotenv.Load(); err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Could not load .env file, continuing with existing environment variables\n")
+	}
+
 	cfg, err := config.LoadConfigForEnvironment()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
@@ -83,4 +92,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println(qr.ToSmallString(false))
+	fmt.Println("If you can't scan the QR code, use this URL instead (or extract the 'secret' param manually):")
+	fmt.Println(otpauthURL)
 }

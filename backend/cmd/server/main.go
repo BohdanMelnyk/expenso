@@ -150,6 +150,14 @@ func main() {
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
 	router := gin.New()
 
+	// This deployment has no reverse proxy in front of it, so trust no proxies:
+	// Gin will use the real TCP peer address for c.ClientIP() instead of trusting
+	// attacker-supplied X-Forwarded-For/X-Real-IP headers (which would otherwise
+	// let an attacker bypass per-IP rate limiting by rotating the header value).
+	if err := router.SetTrustedProxies(nil); err != nil {
+		logger.Fatal("Failed to set trusted proxies", logger.Fields{"error": err.Error()})
+	}
+
 	// Add custom middleware in order
 	router.Use(middleware.ErrorRecovery()) // Recover from panics
 	router.Use(middleware.RequestLogger()) // Log all requests

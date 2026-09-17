@@ -65,7 +65,11 @@ func (l *LoginRateLimiter) prune(key string) {
 			kept = append(kept, t)
 		}
 	}
-	l.attempts[key] = kept
+	if len(kept) == 0 {
+		delete(l.attempts, key)
+	} else {
+		l.attempts[key] = kept
+	}
 }
 
 // RateLimitLogin blocks a request with 429 if the client IP has too many

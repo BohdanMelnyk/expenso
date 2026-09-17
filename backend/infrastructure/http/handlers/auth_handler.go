@@ -9,6 +9,7 @@ import (
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/http/dto"
 	"expenso-backend/infrastructure/http/middleware"
+	"expenso-backend/infrastructure/logger"
 	authinteractor "expenso-backend/usecases/interactors/auth"
 	"expenso-backend/usecases/interfaces/repositories"
 )
@@ -70,6 +71,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		h.rateLimiter.RecordFailure(ipKey)
 		h.rateLimiter.RecordFailure(userKey)
+		logger.Error("login failed", logger.Fields{"error": err.Error(), "username": requestDTO.Username})
 		middleware.RespondWithUnauthorized(c, "invalid credentials")
 		return
 	}
