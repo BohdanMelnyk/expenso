@@ -90,3 +90,6 @@ id_rsa*
 
 # Bank statement samples and sensitive documents
 docs/
+
+# Git worktrees used for isolated feature work
+.worktrees/
