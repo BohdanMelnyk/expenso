@@ -15,7 +15,6 @@ Extract the following fields and return ONLY valid JSON (no markdown, no code bl
   "vendor_type": <MUST be one of: "food_store", "dining", "dining_with_friends", "shop", "transport", "car", "living", "household", "subscriptions", "care", "tourism", "clothing", "eating_out", "salary", "shop", "else" - or empty if unsure>,
   "date": <YYYY-MM-DD format, REQUIRED>,
   "payment_method": <MUST be one of: "cash", "b_haspa_credit", "b_n26", "m_n26", "m_haspa_credit", "paypal", "debit", "m_monobank", "b_monobank">,
-  "added_by": <"he" or "she", default "he">,
   "description": <brief description of the expense, max 100 chars>,
   "confidence_score": <0.0 to 1.0, your confidence in the extraction>
 }
@@ -166,10 +165,6 @@ Date parsing rules:
 - "last week" → 7 days ago
 - Parse specific dates like "January 15" or "15.01" (assume current year if not specified)
 - If no date specified, use today
-
-AddedBy rules:
-- If context suggests female (she, woman, girlfriend) → "she"
-- Otherwise default → "he"
 
 IMPORTANT:
 1. Return ONLY the JSON object, no other text

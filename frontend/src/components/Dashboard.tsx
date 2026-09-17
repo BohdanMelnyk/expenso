@@ -332,7 +332,7 @@ const Dashboard: React.FC = () => {
               <button
                 onClick={handleExportCSV}
                 className="flex items-center space-x-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm"
-                title="Export expenses to CSV (Card payments by 'He' only)"
+                title="Export expenses to CSV"
               >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">Export CSV</span>

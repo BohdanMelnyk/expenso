@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Lightbulb, Layers, Divide } from 'lucide-react';
+import { PlusCircle, BarChart3, Home, TrendingDown, TrendingUp, Wallet, Lightbulb, Layers, Divide, Loader, LogOut } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PeriodProvider, usePeriod } from './contexts/PeriodContext';
 import ThemeToggle from './components/ThemeToggle';
 import PeriodSelector from './components/PeriodSelector';
+import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import AddExpense from './components/AddExpense';
 import Statistics from './components/Statistics';
@@ -27,6 +29,7 @@ import AverageExpenses from './components/AverageExpenses';
 function Navigation() {
   const location = useLocation();
   const { period } = usePeriod();
+  const { logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Carry the active period along on every tab switch so it survives
@@ -124,6 +127,13 @@ function Navigation() {
               ))}
               <PeriodSelector />
               <ThemeToggle />
+              <button
+                onClick={() => logout()}
+                title="Logout"
+                className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -190,46 +200,77 @@ function Navigation() {
       {/* Mobile header with logo and menu for accessibility */}
       <div className="md:hidden bg-white dark:bg-gray-900 shadow transition-colors h-14 flex items-center justify-between px-4">
         <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">Expenso</h1>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => logout()}
+            title="Logout"
+            className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </>
+  );
+}
+
+function AppGate() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex items-center justify-center">
+        <Loader className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <Router>
+      <PeriodProvider>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
+          <Navigation />
+
+          <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full md:pb-0 pb-32">
+            <Routes>
+              <Route path="/" element={<Statistics />} />
+              <Route path="/statistics" element={<Navigate to="/" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/trends" element={<Trends />} />
+              <Route path="/insights" element={<Insights />} />
+              <Route path="/averages" element={<AverageExpenses />} />
+              <Route path="/add" element={<AddExpense />} />
+              <Route path="/expense/:id/edit" element={<EditExpense />} />
+              <Route path="/balance" element={<BalanceDashboard />} />
+              <Route path="/cash-flow" element={<CashFlow />} />
+              <Route path="/snapshots" element={<Snapshots />} />
+              <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
+              <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
+              <Route path="/statistics/tag/:tagId" element={<TagStatistics />} />
+              <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
+              <Route path="/expenses/:id" element={<ExpenseOverview />} />
+              <Route path="/incomes/:id" element={<IncomeOverview />} />
+              <Route path="/import/bank" element={<BankImportScreen />} />
+              <Route path="/import/bank/review" element={<BankTransactionReview />} />
+            </Routes>
+          </main>
+        </div>
+      </PeriodProvider>
+    </Router>
   );
 }
 
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <PeriodProvider>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
-            <Navigation />
-
-            <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full md:pb-0 pb-32">
-              <Routes>
-                <Route path="/" element={<Statistics />} />
-                <Route path="/statistics" element={<Navigate to="/" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/trends" element={<Trends />} />
-                <Route path="/insights" element={<Insights />} />
-                <Route path="/averages" element={<AverageExpenses />} />
-                <Route path="/add" element={<AddExpense />} />
-                <Route path="/expense/:id/edit" element={<EditExpense />} />
-                <Route path="/balance" element={<BalanceDashboard />} />
-                <Route path="/cash-flow" element={<CashFlow />} />
-                <Route path="/snapshots" element={<Snapshots />} />
-                <Route path="/statistics/category/:category" element={<CategoryStatistics />} />
-                <Route path="/statistics/vendor-type/:vendorType" element={<VendorTypeStatistics />} />
-                <Route path="/statistics/tag/:tagId" element={<TagStatistics />} />
-                <Route path="/vendor/:vendorId" element={<VendorStatistics />} />
-                <Route path="/expenses/:id" element={<ExpenseOverview />} />
-                <Route path="/incomes/:id" element={<IncomeOverview />} />
-                <Route path="/import/bank" element={<BankImportScreen />} />
-                <Route path="/import/bank/review" element={<BankTransactionReview />} />
-              </Routes>
-            </main>
-          </div>
-        </PeriodProvider>
-      </Router>
+      <AuthProvider>
+        <AppGate />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

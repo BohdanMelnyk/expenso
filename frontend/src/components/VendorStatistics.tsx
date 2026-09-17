@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, Calendar, TrendingDown, DollarSign, Store, CreditCard, Banknote } from 'lucide-react';
 import { expenseAPI, incomeAPI, Expense, Income, formatAmount } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../utils/errorHandler';
 import { isCardPayment } from '../utils/paymentMethod';
 
@@ -23,12 +24,13 @@ interface TransactionData {
   type: 'expense' | 'income';
   payment_method?: string;
   paid_by_card?: boolean; // Deprecated: kept for backward compatibility
-  added_by?: 'he' | 'she';
+  user_id: number;
 }
 
 const VendorStatistics: React.FC = () => {
   const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
+  const { users } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -43,6 +45,11 @@ const VendorStatistics: React.FC = () => {
   const [customStartDate, setCustomStartDate] = useState<string>(searchParams.get('start') || '');
   const [customEndDate, setCustomEndDate] = useState<string>(searchParams.get('end') || '');
   const [showCustomRange, setShowCustomRange] = useState<boolean>(initialTimeFrame === 'custom');
+
+  const getUsernameFromId = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user?.username || 'Unknown';
+  };
 
   useEffect(() => {
     if (vendorId) {
@@ -149,7 +156,7 @@ const VendorStatistics: React.FC = () => {
         type: 'expense' as const,
         payment_method: exp.payment_method,
         paid_by_card: exp.paid_by_card,
-        added_by: exp.added_by
+        user_id: exp.user_id
       })),
       ...incomes.map(inc => ({
         id: inc.id,
@@ -157,7 +164,7 @@ const VendorStatistics: React.FC = () => {
         amount: inc.amount,
         comment: inc.comment,
         type: 'income' as const,
-        added_by: inc.added_by
+        user_id: inc.user_id
       }))
     ];
     
@@ -209,7 +216,7 @@ const VendorStatistics: React.FC = () => {
         type: 'expense' as const,
         payment_method: exp.payment_method,
         paid_by_card: exp.paid_by_card,
-        added_by: exp.added_by
+        user_id: exp.user_id
       })),
       ...incomes.map(inc => ({
         id: inc.id,
@@ -217,7 +224,7 @@ const VendorStatistics: React.FC = () => {
         amount: inc.amount,
         comment: inc.comment,
         type: 'income' as const,
-        added_by: inc.added_by
+        user_id: inc.user_id
       }))
     ];
 
@@ -613,9 +620,7 @@ const VendorStatistics: React.FC = () => {
                               {isCardPayment(transaction.payment_method || (transaction.paid_by_card ? 'card' : 'cash')) ? 'Card' : 'Cash'}
                             </span>
                           )}
-                          {transaction.added_by && (
-                            <span>{transaction.added_by === 'he' ? '👨' : '👩'} {transaction.added_by}</span>
-                          )}
+                          <span>{getUsernameFromId(transaction.user_id)}</span>
                         </div>
                       </div>
                     </div>

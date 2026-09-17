@@ -15,7 +15,7 @@ type IncomeDBO struct {
 	Source    string    `db:"source"`
 	Comment   string    `db:"comment"`
 	VendorID  *int      `db:"vendor_id"`
-	AddedBy   string    `db:"added_by"`
+	UserID    int       `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
@@ -27,7 +27,7 @@ func (dbo *IncomeDBO) FromDomainEntity(income *entities.Income) {
 	dbo.Date = income.Date()
 	dbo.Source = income.Source()
 	dbo.Comment = income.Comment()
-	dbo.AddedBy = income.AddedBy().String()
+	dbo.UserID = int(income.UserID())
 
 	if income.Vendor() != nil {
 		vendorID := int(income.Vendor().ID())
@@ -52,7 +52,7 @@ func (dbo *IncomeDBO) ToDomainEntity() (*entities.Income, error) {
 		dbo.Source,
 		dbo.Comment,
 		nil, // vendor will be set separately
-		entities.AddedBy(dbo.AddedBy),
+		entities.UserID(dbo.UserID),
 		[]*entities.Tag{}, // tags will be set separately
 		dbo.CreatedAt,
 		dbo.UpdatedAt,

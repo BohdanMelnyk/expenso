@@ -7,6 +7,7 @@ import (
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/http/dto"
+	"expenso-backend/infrastructure/http/middleware"
 	"expenso-backend/usecases/interactors/income"
 
 	"github.com/gin-gonic/gin"
@@ -111,13 +112,19 @@ func (h *IncomeHandler) CreateIncome(c *gin.Context) {
 		return
 	}
 
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
+
 	// Create command
 	cmd := income.CreateIncomeCommand{
 		Amount:  req.Amount,
 		Date:    date,
 		Source:  req.Source,
 		Comment: req.Comment,
-		AddedBy: req.AddedBy,
+		UserID:  userID,
 	}
 
 	// Set vendor ID if provided
@@ -212,7 +219,6 @@ func (h *IncomeHandler) UpdateIncome(c *gin.Context) {
 		Amount:  req.Amount,
 		Source:  req.Source,
 		Comment: req.Comment,
-		AddedBy: req.AddedBy,
 	}
 
 	// Parse date if provided

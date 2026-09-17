@@ -23,12 +23,7 @@ import { TagInput } from './TagInput';
  *    - Click X to remove tags
  *    - Positioned at the end of the form (after Date field)
  *
- * 2. ADDED_BY: Always defaults to "He" for bank imports
- *    - Regular expense form still allows "He"/"She" selection
- *    - Bank import transactions always use "He" (hidden in BankTransactionReview)
- *    - See BankTransactionReview component for bank import UI
- *
- * 3. DATE FIELD: Supports future dates for pre-booked transactions
+ * 2. DATE FIELD: Supports future dates for pre-booked transactions
  *    - Users can add transactions with future dates
  *    - Perfect for pre-booked items like flights, hotels, events
  *    - Past dates limited to 1 year ago
@@ -55,7 +50,6 @@ const AddExpense: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     category: '',
     type: 'expense',
-    added_by: 'he',
     payment_method: 'b_haspa_credit',
   };
 
@@ -184,7 +178,6 @@ const AddExpense: React.FC = () => {
       category: formData.category,
       type: formData.type,
       payment_method: formData.payment_method,
-      added_by: formData.added_by,
       tag_ids: selectedTags
     };
 
@@ -252,7 +245,6 @@ const AddExpense: React.FC = () => {
     setFieldValue('category', parsed.category);
     setFieldValue('date', parsed.date);
     setFieldValue('payment_method', parsed.payment_method || 'b_haspa_credit');
-    setFieldValue('added_by', parsed.added_by || 'he');
 
     // If vendor was matched, set it
     if (parsed.matched_vendor_id) {
@@ -421,9 +413,6 @@ const AddExpense: React.FC = () => {
             availableTags={tags}
             onTagsRefresh={fetchTags}
           />
-
-          {/* FEATURE: "Added By" field is hidden from UI - always defaults to 'he' */}
-          {/* Users cannot change this field - it's set programmatically */}
 
           <div className="flex gap-4">
             <button

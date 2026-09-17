@@ -25,7 +25,6 @@ const EditExpense: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     category: '',
     type: 'expense',
-    added_by: 'he',
     payment_method: 'b_haspa_credit',
   };
 
@@ -101,7 +100,6 @@ const EditExpense: React.FC = () => {
       setFieldValue('date', expenseData.date);
       setFieldValue('category', expenseData.category);
       setFieldValue('type', expenseData.type);
-      setFieldValue('added_by', expenseData.added_by);
       setFieldValue('payment_method', expenseData.payment_method);
 
       // Set tags if they exist
@@ -163,7 +161,6 @@ const EditExpense: React.FC = () => {
       category: formData.category,
       type: formData.type,
       payment_method: formData.payment_method,
-      added_by: formData.added_by,
       tag_ids: selectedTags
     };
 
@@ -379,36 +376,6 @@ const EditExpense: React.FC = () => {
             error={errors.date}
             required
           />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Added By
-            </label>
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="he"
-                  checked={formData.added_by === 'he'}
-                  onChange={() => setFieldValue('added_by', 'he')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700 dark:text-gray-300">👨 He</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="added_by"
-                  value="she"
-                  checked={formData.added_by === 'she'}
-                  onChange={() => setFieldValue('added_by', 'she')}
-                  className="mr-2 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-gray-700 dark:text-gray-300">👩 She</span>
-              </label>
-            </div>
-          </div>
 
           <div className="flex gap-4">
             <button

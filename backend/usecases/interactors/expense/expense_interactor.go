@@ -19,8 +19,8 @@ type CreateExpenseCommand struct {
 	Comment       string
 	VendorID      *entities.VendorID
 	PaymentMethod *entities.PaymentMethod // Optional, defaults to b_haspa_credit if nil
-	AddedBy       *string                 // Optional, defaults to "he" if nil
-	TagIDs        []entities.TagID        // Optional list of tag IDs to assign
+	UserID        entities.UserID
+	TagIDs        []entities.TagID // Optional list of tag IDs to assign
 }
 
 // CreateExpenseFromCSVCommand allows setting custom created/updated dates for CSV imports
@@ -32,10 +32,10 @@ type CreateExpenseFromCSVCommand struct {
 	Comment       string
 	VendorID      *entities.VendorID
 	PaymentMethod *entities.PaymentMethod // Optional, defaults to b_haspa_credit if nil
-	AddedBy       *string                 // Optional, defaults to "he" if nil
-	TagIDs        []entities.TagID        // Optional list of tag IDs to assign
-	CreatedAt     time.Time               // Custom created date
-	UpdatedAt     time.Time               // Custom updated date
+	UserID        entities.UserID
+	TagIDs        []entities.TagID // Optional list of tag IDs to assign
+	CreatedAt     time.Time        // Custom created date
+	UpdatedAt     time.Time        // Custom updated date
 }
 
 type UpdateExpenseCommand struct {
@@ -46,7 +46,6 @@ type UpdateExpenseCommand struct {
 	Comment       *string
 	VendorID      *entities.VendorID
 	PaymentMethod *entities.PaymentMethod
-	AddedBy       *string
 	TagIDs        *[]entities.TagID // Optional list of tag IDs to assign (nil means no change, empty slice means clear tags)
 }
 
@@ -104,7 +103,7 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 	}
 
 	// Create expense entity (with business rule validation)
-	expense, err := entities.NewExpense(money, cmd.Date, expenseType, category, cmd.Comment)
+	expense, err := entities.NewExpense(money, cmd.Date, expenseType, category, cmd.Comment, cmd.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,15 +115,6 @@ func (i *ExpenseInteractor) CreateExpense(cmd CreateExpenseCommand) (*entities.E
 		}
 	}
 	// If cmd.PaymentMethod is nil, the default value (b_haspa_credit) from NewExpense is used
-
-	// Handle AddedBy field - if not provided, defaults to "he"
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := expense.UpdateAddedBy(addedBy); err != nil {
-			return nil, err
-		}
-	}
-	// If cmd.AddedBy is nil, the default value ("he") from NewExpense is used
 
 	// Handle vendor assignment if provided
 	if cmd.VendorID != nil {
@@ -175,7 +165,7 @@ func (i *ExpenseInteractor) CreateExpenseFromCSV(cmd CreateExpenseFromCSVCommand
 	}
 
 	// Create expense entity (with business rule validation)
-	expense, err := entities.NewExpense(money, cmd.Date, expenseType, category, cmd.Comment)
+	expense, err := entities.NewExpense(money, cmd.Date, expenseType, category, cmd.Comment, cmd.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,14 +177,6 @@ func (i *ExpenseInteractor) CreateExpenseFromCSV(cmd CreateExpenseFromCSVCommand
 		}
 	}
 	// If cmd.PaymentMethod is nil, the default value (b_haspa_credit) from NewExpense is used
-
-	// Handle AddedBy field - if not provided, defaults to "he"
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := expense.UpdateAddedBy(addedBy); err != nil {
-			return nil, err
-		}
-	}
 
 	// Handle vendor assignment if provided
 	if cmd.VendorID != nil {
@@ -337,14 +319,6 @@ func (i *ExpenseInteractor) UpdateExpense(cmd UpdateExpenseCommand) (*entities.E
 	// Update payment method if provided
 	if cmd.PaymentMethod != nil {
 		if err := expense.UpdatePaymentMethod(*cmd.PaymentMethod); err != nil {
-			return nil, err
-		}
-	}
-
-	// Update addedBy if provided
-	if cmd.AddedBy != nil {
-		addedBy := entities.AddedBy(*cmd.AddedBy)
-		if err := expense.UpdateAddedBy(addedBy); err != nil {
 			return nil, err
 		}
 	}

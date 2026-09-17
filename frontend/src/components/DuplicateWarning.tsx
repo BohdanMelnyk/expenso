@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle, Calendar, CreditCard, User, ExternalLink } from 'lucide-react';
 import { Expense, formatAmount } from '../api/client';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DuplicateWarningProps {
   duplicates: Expense[];
@@ -23,6 +24,12 @@ const DuplicateWarning: React.FC<DuplicateWarningProps> = ({
   loading = false
 }) => {
   const navigate = useNavigate();
+  const { users } = useAuth();
+
+  const getUsernameFromId = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user?.username || 'Unknown';
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -109,7 +116,7 @@ const DuplicateWarning: React.FC<DuplicateWarningProps> = ({
                         </div>
                         <div className="flex items-center">
                           <User className="w-4 h-4 mr-1" />
-                          {expense.added_by === 'he' ? 'He' : 'She'}
+                          {getUsernameFromId(expense.user_id)}
                         </div>
                       </div>
                       {expense.vendor && (

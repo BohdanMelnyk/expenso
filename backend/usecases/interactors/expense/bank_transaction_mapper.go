@@ -223,7 +223,6 @@ IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no expl
   "vendor_type": <string, type of vendor for category mapping>,
   "date": <"%s" in YYYY-MM-DD format>,
   "payment_method": <for bank import, this is: "b_haspa_credit">,
-  "added_by": <"he" or "she", default "he">,
   "description": <brief description of the transaction, max 100 chars>,
   "confidence_score": <0.0 to 1.0, your confidence in the categorization>
 }
@@ -331,16 +330,6 @@ func (m *BankTransactionMapper) validateBankParsedData(data *ParsedExpenseData, 
 
 	if _, err := time.Parse("2006-01-02", data.Date); err != nil {
 		data.Date = transactionDateStr
-	}
-
-	// Default added_by to "he" if not specified
-	if data.AddedBy == "" {
-		data.AddedBy = "he"
-	}
-
-	// Validate added_by values
-	if data.AddedBy != "he" && data.AddedBy != "she" {
-		data.AddedBy = "he"
 	}
 
 	// Extract vendor name from transaction if LLM didn't provide it

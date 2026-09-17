@@ -24,7 +24,7 @@ func NewIncomeRepository(db *sql.DB, tagRepo *TagRepository) repositories.Income
 
 func (r *IncomeRepositoryImpl) Save(income *entities.Income) error {
 	query := `
-		INSERT INTO incomes (amount, date, source, comment, vendor_id, added_by, created_at, updated_at)
+		INSERT INTO incomes (amount, date, source, comment, vendor_id, user_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
 	`
@@ -43,7 +43,7 @@ func (r *IncomeRepositoryImpl) Save(income *entities.Income) error {
 		income.Source(),
 		income.Comment(),
 		vendorID,
-		income.AddedBy().String(),
+		int(income.UserID()),
 		income.CreatedAt(),
 		income.UpdatedAt(),
 	).Scan(&id)
@@ -58,7 +58,7 @@ func (r *IncomeRepositoryImpl) Save(income *entities.Income) error {
 
 func (r *IncomeRepositoryImpl) FindByID(id entities.IncomeID) (*entities.Income, error) {
 	query := `
-		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.added_by, i.created_at, i.updated_at,
+		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.user_id, i.created_at, i.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM incomes i
 		LEFT JOIN vendors v ON i.vendor_id = v.id
@@ -72,7 +72,7 @@ func (r *IncomeRepositoryImpl) FindByID(id entities.IncomeID) (*entities.Income,
 
 	row := r.db.QueryRow(query, int(id))
 	err := row.Scan(
-		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+		&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.UserID, &dbo.CreatedAt, &dbo.UpdatedAt,
 		&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 	)
 
@@ -105,7 +105,7 @@ func (r *IncomeRepositoryImpl) FindByID(id entities.IncomeID) (*entities.Income,
 
 func (r *IncomeRepositoryImpl) FindAll() ([]*entities.Income, error) {
 	query := `
-		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.added_by, i.created_at, i.updated_at,
+		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.user_id, i.created_at, i.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM incomes i
 		LEFT JOIN vendors v ON i.vendor_id = v.id
@@ -126,7 +126,7 @@ func (r *IncomeRepositoryImpl) FindAll() ([]*entities.Income, error) {
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.UserID, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -226,7 +226,7 @@ func (r *IncomeRepositoryImpl) Delete(id entities.IncomeID) error {
 
 func (r *IncomeRepositoryImpl) FindBySource(source string) ([]*entities.Income, error) {
 	query := `
-		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.added_by, i.created_at, i.updated_at,
+		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.user_id, i.created_at, i.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM incomes i
 		LEFT JOIN vendors v ON i.vendor_id = v.id
@@ -248,7 +248,7 @@ func (r *IncomeRepositoryImpl) FindBySource(source string) ([]*entities.Income, 
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.UserID, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -280,7 +280,7 @@ func (r *IncomeRepositoryImpl) FindBySource(source string) ([]*entities.Income, 
 
 func (r *IncomeRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*entities.Income, error) {
 	query := `
-		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.added_by, i.created_at, i.updated_at,
+		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.user_id, i.created_at, i.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM incomes i
 		LEFT JOIN vendors v ON i.vendor_id = v.id
@@ -302,7 +302,7 @@ func (r *IncomeRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*enti
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.UserID, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {
@@ -334,7 +334,7 @@ func (r *IncomeRepositoryImpl) FindByVendor(vendorID entities.VendorID) ([]*enti
 
 func (r *IncomeRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([]*entities.Income, error) {
 	baseQuery := `
-		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.added_by, i.created_at, i.updated_at,
+		SELECT i.id, i.amount, i.date, i.source, i.comment, i.vendor_id, i.user_id, i.created_at, i.updated_at,
 		       v.id, v.name, v.type, v.created_at, v.updated_at
 		FROM incomes i
 		LEFT JOIN vendors v ON i.vendor_id = v.id
@@ -372,7 +372,7 @@ func (r *IncomeRepositoryImpl) FindByDateRange(startDate, endDate *time.Time) ([
 		var vCreatedAt, vUpdatedAt *string
 
 		err := rows.Scan(
-			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.AddedBy, &dbo.CreatedAt, &dbo.UpdatedAt,
+			&dbo.ID, &dbo.Amount, &dbo.Date, &dbo.Source, &dbo.Comment, &dbo.VendorID, &dbo.UserID, &dbo.CreatedAt, &dbo.UpdatedAt,
 			&vID, &vName, &vType, &vCreatedAt, &vUpdatedAt,
 		)
 		if err != nil {

@@ -19,8 +19,10 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	_ "expenso-backend/docs"
+	"expenso-backend/infrastructure/auth"
 	"expenso-backend/infrastructure/config"
 	"expenso-backend/infrastructure/http/handlers"
 	"expenso-backend/infrastructure/http/middleware"
@@ -28,6 +30,7 @@ import (
 	"expenso-backend/infrastructure/logger"
 	"expenso-backend/infrastructure/migration"
 	"expenso-backend/infrastructure/persistence/repositories"
+	authinteractor "expenso-backend/usecases/interactors/auth"
 	"expenso-backend/usecases/interactors/category"
 	"expenso-backend/usecases/interactors/expense"
 	"expenso-backend/usecases/interactors/income"
@@ -102,6 +105,8 @@ func main() {
 	vendorRepo := repositories.NewVendorRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
 	snapshotRepo := repositories.NewSnapshotRepository(db, cfg.ExchangeRates.AEDToEUR)
+	userRepo := repositories.NewUserRepository(db)
+	sessionRepo := repositories.NewSessionRepository(db)
 
 	// Use case layer (interactors)
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
@@ -120,6 +125,17 @@ func main() {
 	tagInteractor := tag.NewTagInteractor(tagRepo)
 	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo, cfg.ExchangeRates.AEDToEUR)
 
+	passwordHasher := auth.NewBcryptPasswordHasher()
+	totpService, err := auth.NewTOTPService([]byte(cfg.Auth.EncryptionKey), cfg.Auth.TOTPIssuer)
+	if err != nil {
+		logger.Fatal("Failed to initialize TOTP service", logger.Fields{"error": err.Error()})
+	}
+	tokenGenerator := auth.NewRandomSessionTokenGenerator()
+
+	loginInteractor := authinteractor.NewLoginInteractor(userRepo, sessionRepo, passwordHasher, totpService, tokenGenerator)
+	logoutInteractor := authinteractor.NewLogoutInteractor(sessionRepo, tokenGenerator)
+	loginRateLimiter := middleware.NewLoginRateLimiter()
+
 	// Interface layer (HTTP handlers)
 	expenseHandler := handlers.NewExpenseHandler(expenseInteractor)
 	incomeHandler := handlers.NewIncomeHandler(incomeInteractor)
@@ -128,10 +144,19 @@ func main() {
 	tagHandler := handlers.NewTagHandler(tagInteractor)
 	bankImportHandler := handlers.NewBankImportHandler(expenseInteractor)
 	snapshotHandler := handlers.NewSnapshotHandler(snapshotInteractor)
+	authHandler := handlers.NewAuthHandler(loginInteractor, logoutInteractor, userRepo, loginRateLimiter)
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
 	router := gin.New()
+
+	// This deployment has no reverse proxy in front of it, so trust no proxies:
+	// Gin will use the real TCP peer address for c.ClientIP() instead of trusting
+	// attacker-supplied X-Forwarded-For/X-Real-IP headers (which would otherwise
+	// let an attacker bypass per-IP rate limiting by rotating the header value).
+	if err := router.SetTrustedProxies(nil); err != nil {
+		logger.Fatal("Failed to set trusted proxies", logger.Fields{"error": err.Error()})
+	}
 
 	// Add custom middleware in order
 	router.Use(middleware.ErrorRecovery()) // Recover from panics
@@ -159,6 +184,16 @@ func main() {
 
 	// API routes group
 	api := router.Group("/api/v1")
+
+	// Public: no session required yet.
+	api.POST("/auth/login", middleware.RateLimitLogin(loginRateLimiter), authHandler.Login)
+
+	// Everything registered on `api` from this point on requires a valid session.
+	api.Use(middleware.RequireAuth(sessionRepo, tokenGenerator, time.Now))
+
+	api.GET("/auth/me", authHandler.Me)
+	api.POST("/auth/logout", authHandler.Logout)
+	api.GET("/users", authHandler.ListUsers)
 
 	// Expense routes
 	api.GET("/expenses", expenseHandler.GetExpenses)

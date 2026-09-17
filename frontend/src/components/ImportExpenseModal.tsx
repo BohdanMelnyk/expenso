@@ -116,7 +116,6 @@ const ImportExpenseModal: React.FC<ImportExpenseModalProps> = ({
             category: parsedExpense.category,
             type: 'expense',
             paid_by_card: true,
-            added_by: 'he' as const,
           });
         });
       }

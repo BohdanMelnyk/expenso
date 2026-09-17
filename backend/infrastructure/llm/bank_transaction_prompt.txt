@@ -20,7 +20,6 @@ IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no expl
   "vendor_type": <string, type of vendor for category mapping>,
   "date": <{{.TransactionDate}} in YYYY-MM-DD format>,
   "payment_method": <for bank import, this is: "b_haspa_credit">,
-  "added_by": <"he" or "she", default "he">,
   "description": <brief description of the transaction, max 100 chars>,
   "confidence_score": <0.0 to 1.0, your confidence in the categorization>
 }

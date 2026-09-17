@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  DollarSign, 
-  Store, 
-  Tag, 
-  User, 
+import {
+  ArrowLeft,
+  Calendar,
+  DollarSign,
+  Store,
+  Tag,
+  User,
   MessageCircle,
   Clock,
   Edit
 } from 'lucide-react';
 import { incomeAPI, Income, formatAmount } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../utils/errorHandler';
 
 const IncomeOverview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { users } = useAuth();
   const [income, setIncome] = useState<Income | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,11 @@ const IncomeOverview: React.FC = () => {
       fetchIncome();
     }
   }, [id]);
+
+  const getUsernameFromId = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user?.username || 'Unknown';
+  };
 
   const fetchIncome = async () => {
     try {
@@ -219,10 +226,7 @@ const IncomeOverview: React.FC = () => {
               <User className="w-5 h-5 text-gray-500" />
               <div>
                 <p className="text-sm text-gray-500">Added By</p>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">{income.added_by === 'he' ? '👨' : '👩'}</span>
-                  <p className="font-medium text-gray-900 capitalize">{income.added_by}</p>
-                </div>
+                <p className="font-medium text-gray-900">{getUsernameFromId(income.user_id)}</p>
               </div>
             </div>
 

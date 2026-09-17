@@ -9,6 +9,7 @@ import (
 
 	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/http/dto"
+	"expenso-backend/infrastructure/http/middleware"
 	"expenso-backend/infrastructure/logger"
 	"expenso-backend/usecases/interactors/expense"
 )
@@ -109,7 +110,6 @@ func (h *BankImportHandler) UploadBankCSV(c *gin.Context) {
 				VendorTypeID:      parsed.VendorTypeID,
 				Date:              parsed.Date,
 				PaymentMethod:     parsed.PaymentMethod,
-				AddedBy:           parsed.AddedBy,
 				Description:       parsed.Description,
 				ConfidenceScore:   parsed.ConfidenceScore,
 				MatchedVendorID:   parsed.MatchedVendorID,
@@ -180,6 +180,12 @@ func (h *BankImportHandler) CreateExpenseFromBank(c *gin.Context) {
 		return
 	}
 
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
+
 	// Create command from request DTO
 	cmd := expense.CreateExpenseFromCSVCommand{
 		Amount:        request.ExpenseData.Amount,
@@ -188,7 +194,7 @@ func (h *BankImportHandler) CreateExpenseFromBank(c *gin.Context) {
 		Category:      request.ExpenseData.Category,
 		Comment:       request.ExpenseData.Comment,
 		PaymentMethod: nil, // Use default from expense entity
-		AddedBy:       request.ExpenseData.AddedBy,
+		UserID:        userID,
 		TagIDs:        convertIntSliceToTagIDs(request.ExpenseData.TagIDs),
 		CreatedAt:     transactionDate, // Use transaction date as created date
 		UpdatedAt:     time.Now(),      // Current time as updated date
@@ -250,7 +256,7 @@ func convertExpenseToDTO(exp *entities.Expense) dto.ExpenseResponseDTO {
 		Category:      string(exp.Category()),
 		Comment:       exp.Comment(),
 		PaymentMethod: string(exp.PaymentMethod()),
-		AddedBy:       string(exp.AddedBy()),
+		UserID:        int(exp.UserID()),
 		CreatedAt:     exp.CreatedAt(),
 		UpdatedAt:     exp.UpdatedAt(),
 	}

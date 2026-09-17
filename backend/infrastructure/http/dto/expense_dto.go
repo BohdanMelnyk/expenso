@@ -10,10 +10,9 @@ type CreateExpenseRequestDTO struct {
 	Category      string  `json:"category" validate:"required"`
 	Comment       string  `json:"comment"`
 	VendorID      *int    `json:"vendor_id,omitempty"`
-	PaymentMethod *string `json:"payment_method,omitempty"`                             // Optional, defaults to "b_haspa_credit" if not provided
-	PaidByCard    *bool   `json:"paid_by_card,omitempty"`                               // Deprecated: kept for backward compatibility
-	AddedBy       *string `json:"added_by,omitempty" validate:"omitempty,oneof=he she"` // Optional, defaults to "he" if not provided
-	TagIDs        []int   `json:"tag_ids,omitempty"`                                    // Optional list of tag IDs
+	PaymentMethod *string `json:"payment_method,omitempty"` // Optional, defaults to "b_haspa_credit" if not provided
+	PaidByCard    *bool   `json:"paid_by_card,omitempty"`   // Deprecated: kept for backward compatibility
+	TagIDs        []int   `json:"tag_ids,omitempty"`        // Optional list of tag IDs
 }
 
 type UpdateExpenseRequestDTO struct {
@@ -25,7 +24,6 @@ type UpdateExpenseRequestDTO struct {
 	VendorID      *int     `json:"vendor_id,omitempty"`
 	PaymentMethod *string  `json:"payment_method,omitempty"`
 	PaidByCard    *bool    `json:"paid_by_card,omitempty"` // Deprecated: kept for backward compatibility
-	AddedBy       *string  `json:"added_by,omitempty" validate:"omitempty,oneof=he she"`
 	TagIDs        *[]int   `json:"tag_ids"`
 }
 
@@ -40,7 +38,7 @@ type ExpenseResponseDTO struct {
 	Vendor        *VendorResponseDTO `json:"vendor,omitempty"`
 	PaymentMethod string             `json:"payment_method"`
 	PaidByCard    bool               `json:"paid_by_card"` // Deprecated: kept for backward compatibility
-	AddedBy       string             `json:"added_by"`
+	UserID        int                `json:"user_id"`
 	Tags          []TagResponseDTO   `json:"tags,omitempty"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
@@ -110,7 +108,6 @@ type ParsedExpenseResponseDTO struct {
 	VendorTypeID      *int    `json:"vendor_type_id,omitempty"`
 	Date              string  `json:"date"`
 	PaymentMethod     string  `json:"payment_method"`
-	AddedBy           string  `json:"added_by"`
 	Description       string  `json:"description"`
 	ConfidenceScore   float64 `json:"confidence_score"`
 	MatchedVendorID   *int    `json:"matched_vendor_id,omitempty"`
