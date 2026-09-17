@@ -180,7 +180,11 @@ func (h *BankImportHandler) CreateExpenseFromBank(c *gin.Context) {
 		return
 	}
 
-	userID, _ := middleware.UserIDFromContext(c)
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
 
 	// Create command from request DTO
 	cmd := expense.CreateExpenseFromCSVCommand{

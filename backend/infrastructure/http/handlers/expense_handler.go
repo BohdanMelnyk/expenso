@@ -173,7 +173,11 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	}
 	// If both are nil, the entity will use its default (b_haspa_credit)
 
-	userID, _ := middleware.UserIDFromContext(c)
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
 
 	// Convert DTO to use case command
 	cmd := expense.CreateExpenseCommand{
@@ -493,7 +497,11 @@ func (h *ExpenseHandler) ExportExpensesCSV(c *gin.Context) {
 	}
 
 	// Filter expenses: only the current user's own card payments
-	userID, _ := middleware.UserIDFromContext(c)
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
 	var filteredExpenses []*entities.Expense
 	for _, expense := range expenses {
 		if expense.PaidByCard() && expense.UserID() == userID {
@@ -743,7 +751,11 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 
 	var createdExpenses []dto.ExpenseResponseDTO
 
-	userID, _ := middleware.UserIDFromContext(c)
+	userID, ok := middleware.UserIDFromContext(c)
+	if !ok {
+		middleware.RespondWithUnauthorized(c, "not authenticated")
+		return
+	}
 
 	for _, expenseRequest := range requestDTO.Expenses {
 		// Set defaults for imported expenses
