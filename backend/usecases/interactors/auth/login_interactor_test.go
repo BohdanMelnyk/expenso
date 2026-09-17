@@ -49,8 +49,8 @@ func (m *mockSessionRepo) FindByTokenHash(tokenHash string) (*entities.Session, 
 	}
 	return nil, entities.ErrSessionNotFound
 }
-func (m *mockSessionRepo) Update(session *entities.Session) error      { return nil }
-func (m *mockSessionRepo) DeleteByTokenHash(tokenHash string) error    { return nil }
+func (m *mockSessionRepo) Update(session *entities.Session) error   { return nil }
+func (m *mockSessionRepo) DeleteByTokenHash(tokenHash string) error { return nil }
 
 type mockPasswordHasher struct{}
 
