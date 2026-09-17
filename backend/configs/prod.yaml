@@ -11,3 +11,7 @@ database:
   password: password
   database: expenso
   sslmode: require
+
+auth:
+  totp_issuer: "Expenso"
+  encryption_key: "" # set via AUTH_ENCRYPTION_KEY env var — must be exactly 32 bytes

@@ -19,3 +19,7 @@ llm:
 
 exchange_rates:
   aed_to_eur: 0.24
+
+auth:
+  totp_issuer: "Expenso"
+  encryption_key: "" # set via AUTH_ENCRYPTION_KEY env var — must be exactly 32 bytes

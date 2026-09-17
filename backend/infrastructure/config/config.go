@@ -37,6 +37,12 @@ type ExchangeRatesConfig struct {
 	AEDToEUR float64 `yaml:"aed_to_eur"`
 }
 
+// AuthConfig holds authentication configuration
+type AuthConfig struct {
+	EncryptionKey string `yaml:"encryption_key"`
+	TOTPIssuer    string `yaml:"totp_issuer"`
+}
+
 // Config holds all application configuration
 type Config struct {
 	Environment   string              `yaml:"environment"`
@@ -44,6 +50,7 @@ type Config struct {
 	Database      DatabaseConfig      `yaml:"database"`
 	LLM           LLMConfig           `yaml:"llm"`
 	ExchangeRates ExchangeRatesConfig `yaml:"exchange_rates"`
+	Auth          AuthConfig          `yaml:"auth"`
 }
 
 // GetDatabaseURL constructs database URL from config
@@ -113,6 +120,11 @@ func LoadConfigForEnvironment() (*Config, error) {
 	// Override LLM API key from environment variable if present
 	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
 		config.LLM.APIKey = apiKey
+	}
+
+	// Override auth encryption key from environment variable if present
+	if key := os.Getenv("AUTH_ENCRYPTION_KEY"); key != "" {
+		config.Auth.EncryptionKey = key
 	}
 
 	// Debug: Log what was loaded from YAML vs environment
