@@ -87,13 +87,13 @@ type Expense struct {
 	comment       string
 	vendor        *Vendor
 	paymentMethod PaymentMethod
-	addedBy       AddedBy
+	userID        UserID
 	tags          []*Tag
 	createdAt     time.Time
 	updatedAt     time.Time
 }
 
-func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseType, category Category, comment string) (*Expense, error) {
+func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseType, category Category, comment string, userID UserID) (*Expense, error) {
 	// Semantic validations - business rules
 	if amount.IsZero() {
 		return nil, errors.New("expense amount must be greater than zero")
@@ -124,14 +124,14 @@ func NewExpense(amount valueobjects.Money, date time.Time, expenseType ExpenseTy
 		category:      category,
 		comment:       strings.TrimSpace(comment),
 		paymentMethod: PaymentMethodBHaspaCredit, // Default value is B Haspa Credit
-		addedBy:       AddedByHe,                 // Default value is "he"
+		userID:        userID,
 		createdAt:     now,
 		updatedAt:     now,
 	}, nil
 }
 
 func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time, expenseType ExpenseType,
-	category Category, comment string, vendor *Vendor, paymentMethod PaymentMethod, addedBy AddedBy, tags []*Tag, createdAt, updatedAt time.Time) *Expense {
+	category Category, comment string, vendor *Vendor, paymentMethod PaymentMethod, userID UserID, tags []*Tag, createdAt, updatedAt time.Time) *Expense {
 	return &Expense{
 		id:            id,
 		amount:        amount,
@@ -141,7 +141,7 @@ func ReconstructExpense(id ExpenseID, amount valueobjects.Money, date time.Time,
 		comment:       comment,
 		vendor:        vendor,
 		paymentMethod: paymentMethod,
-		addedBy:       addedBy,
+		userID:        userID,
 		tags:          tags,
 		createdAt:     createdAt,
 		updatedAt:     updatedAt,
@@ -193,8 +193,8 @@ func (e *Expense) PaidByCard() bool {
 	return e.paymentMethod != PaymentMethodCash
 }
 
-func (e *Expense) AddedBy() AddedBy {
-	return e.addedBy
+func (e *Expense) UserID() UserID {
+	return e.userID
 }
 
 func (e *Expense) Tags() []*Tag {
@@ -250,15 +250,6 @@ func (e *Expense) UpdatePaidByCard(paidByCard bool) {
 		e.paymentMethod = PaymentMethodCash
 	}
 	e.updatedAt = time.Now()
-}
-
-func (e *Expense) UpdateAddedBy(addedBy AddedBy) error {
-	if !addedBy.IsValid() {
-		return errors.New("invalid addedBy value, must be 'he' or 'she'")
-	}
-	e.addedBy = addedBy
-	e.updatedAt = time.Now()
-	return nil
 }
 
 func (e *Expense) AssignVendor(vendor *Vendor) {

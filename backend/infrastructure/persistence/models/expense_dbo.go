@@ -17,7 +17,7 @@ type ExpenseDBO struct {
 	Comment       string    `db:"comment"`
 	VendorID      *int      `db:"vendor_id"`
 	PaymentMethod string    `db:"payment_method"`
-	AddedBy       string    `db:"added_by"`
+	UserID        int       `db:"user_id"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 }
@@ -31,7 +31,7 @@ func (dbo *ExpenseDBO) FromDomainEntity(expense *entities.Expense) {
 	dbo.Category = expense.Category().String()
 	dbo.Comment = expense.Comment()
 	dbo.PaymentMethod = string(expense.PaymentMethod())
-	dbo.AddedBy = expense.AddedBy().String()
+	dbo.UserID = int(expense.UserID())
 
 	if expense.Vendor() != nil {
 		vendorID := int(expense.Vendor().ID())
@@ -63,7 +63,7 @@ func (dbo *ExpenseDBO) ToDomainEntity() (*entities.Expense, error) {
 		dbo.Comment,
 		nil, // vendor will be set separately
 		entities.PaymentMethod(dbo.PaymentMethod),
-		entities.AddedBy(dbo.AddedBy),
+		entities.UserID(dbo.UserID),
 		[]*entities.Tag{}, // tags will be set separately
 		dbo.CreatedAt,
 		dbo.UpdatedAt,

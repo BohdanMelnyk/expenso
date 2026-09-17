@@ -173,6 +173,8 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 	}
 	// If both are nil, the entity will use its default (b_haspa_credit)
 
+	userID, _ := middleware.UserIDFromContext(c)
+
 	// Convert DTO to use case command
 	cmd := expense.CreateExpenseCommand{
 		Amount:        requestDTO.Amount,
@@ -181,7 +183,7 @@ func (h *ExpenseHandler) CreateExpense(c *gin.Context) {
 		Category:      requestDTO.Category,
 		Comment:       requestDTO.Comment,
 		PaymentMethod: paymentMethod,
-		AddedBy:       requestDTO.AddedBy, // Will be nil if not provided, defaults to "he"
+		UserID:        userID,
 	}
 
 	if requestDTO.VendorID != nil {
@@ -289,10 +291,6 @@ func (h *ExpenseHandler) UpdateExpense(c *gin.Context) {
 		}
 	}
 
-	if requestDTO.AddedBy != nil {
-		cmd.AddedBy = requestDTO.AddedBy
-	}
-
 	if requestDTO.TagIDs != nil {
 		tagIDs := make([]entities.TagID, len(*requestDTO.TagIDs))
 		for i, tagID := range *requestDTO.TagIDs {
@@ -388,7 +386,6 @@ func (h *ExpenseHandler) ParseExpense(c *gin.Context) {
 		VendorTypeID:      parsed.VendorTypeID,
 		Date:              parsed.Date,
 		PaymentMethod:     parsed.PaymentMethod,
-		AddedBy:           parsed.AddedBy,
 		Description:       parsed.Description,
 		ConfidenceScore:   parsed.ConfidenceScore,
 		MatchedVendorID:   parsed.MatchedVendorID,
@@ -409,7 +406,7 @@ func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponse
 		Comment:       exp.Comment(),
 		PaymentMethod: exp.PaymentMethod().String(),
 		PaidByCard:    exp.PaidByCard(), // Deprecated: kept for backward compatibility
-		AddedBy:       exp.AddedBy().String(),
+		UserID:        int(exp.UserID()),
 		CreatedAt:     exp.CreatedAt(),
 		UpdatedAt:     exp.UpdatedAt(),
 	}
@@ -443,7 +440,7 @@ func (h *ExpenseHandler) expenseToDTO(exp *entities.Expense) dto.ExpenseResponse
 
 // ExportExpensesCSV godoc
 // @Summary Export expenses as CSV
-// @Description Export expenses filtered by card payment and "he" as CSV with vendor type columns
+// @Description Export the current user's card-payment expenses as CSV with vendor type columns
 // @Tags expenses
 // @Accept json
 // @Produce text/csv
@@ -495,10 +492,11 @@ func (h *ExpenseHandler) ExportExpensesCSV(c *gin.Context) {
 		return
 	}
 
-	// Filter expenses: only card payments by "he"
+	// Filter expenses: only the current user's own card payments
+	userID, _ := middleware.UserIDFromContext(c)
 	var filteredExpenses []*entities.Expense
 	for _, expense := range expenses {
-		if expense.PaidByCard() && expense.AddedBy().String() == "he" {
+		if expense.PaidByCard() && expense.UserID() == userID {
 			filteredExpenses = append(filteredExpenses, expense)
 		}
 	}
@@ -745,6 +743,8 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 
 	var createdExpenses []dto.ExpenseResponseDTO
 
+	userID, _ := middleware.UserIDFromContext(c)
+
 	for _, expenseRequest := range requestDTO.Expenses {
 		// Set defaults for imported expenses
 		if expenseRequest.PaymentMethod == nil && expenseRequest.PaidByCard == nil {
@@ -762,10 +762,6 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 			}
 		}
 
-		if expenseRequest.AddedBy == nil {
-			addedBy := "he"
-			expenseRequest.AddedBy = &addedBy
-		}
 		if expenseRequest.Type == "" {
 			expenseRequest.Type = "expense"
 		}
@@ -800,7 +796,7 @@ func (h *ExpenseHandler) ImportExpensesCSVConfirm(c *gin.Context) {
 			Category:      expenseRequest.Category,
 			Comment:       expenseRequest.Comment,
 			PaymentMethod: paymentMethod,
-			AddedBy:       expenseRequest.AddedBy,
+			UserID:        userID,
 			CreatedAt:     expenseDateTime,
 			UpdatedAt:     expenseDateTime,
 		}
