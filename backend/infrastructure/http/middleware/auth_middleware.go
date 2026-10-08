@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -29,7 +30,11 @@ func RequireAuth(sessionRepo repositories.SessionRepository, tokenGenerator serv
 
 		session, err := sessionRepo.FindByTokenHash(tokenGenerator.Hash(rawToken))
 		if err != nil {
-			RespondWithUnauthorized(c, "invalid session")
+			if errors.Is(err, entities.ErrSessionNotFound) {
+				RespondWithUnauthorized(c, "invalid session")
+			} else {
+				RespondWithInternalError(c, "failed to look up session", err)
+			}
 			c.Abort()
 			return
 		}
