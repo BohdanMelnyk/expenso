@@ -21,14 +21,21 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401 by clearing token and reloading.
+// Response interceptor: on 401, retry the request once before treating the
+// session as dead, so a transient failure doesn't log the user out. A second
+// 401 clears the token and reloads.
 // Excludes /auth/login itself: a failed login attempt is a normal 401 the
 // LoginPage handles inline, not an expired-session signal.
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isLoginRequest = error.config?.url === '/auth/login';
+    const config = error.config;
+    const isLoginRequest = config?.url === '/auth/login';
     if (error.response?.status === 401 && !isLoginRequest) {
+      if (config && !config._authRetried) {
+        config._authRetried = true;
+        return apiClient.request(config);
+      }
       localStorage.removeItem('expenso_auth_token');
       window.location.reload();
     }

@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,10 +16,14 @@ import (
 type mockSessionRepo struct {
 	sessions map[string]*entities.Session
 	updated  []*entities.Session
+	findErr  error
 }
 
 func (m *mockSessionRepo) Save(session *entities.Session) error { return nil }
 func (m *mockSessionRepo) FindByTokenHash(tokenHash string) (*entities.Session, error) {
+	if m.findErr != nil {
+		return nil, m.findErr
+	}
 	s, ok := m.sessions[tokenHash]
 	if !ok {
 		return nil, entities.ErrSessionNotFound
@@ -104,5 +109,18 @@ func TestRequireAuth_ValidSession_SetsUserIDAndSlidesExpiry(t *testing.T) {
 	}
 	if len(repo.updated) != 1 {
 		t.Errorf("expected session to be touched/updated once, got %d", len(repo.updated))
+	}
+}
+
+func TestRequireAuth_LookupFailure_Returns500(t *testing.T) {
+	router := newTestRouter(&mockSessionRepo{findErr: errors.New("connection reset")}, time.Now)
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer some-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", rec.Code)
 	}
 }
