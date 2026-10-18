@@ -150,11 +150,11 @@ func main() {
 	gin.SetMode(gin.ReleaseMode) // Disable Gin's default logging
 	router := gin.New()
 
-	// This deployment has no reverse proxy in front of it, so trust no proxies:
-	// Gin will use the real TCP peer address for c.ClientIP() instead of trusting
-	// attacker-supplied X-Forwarded-For/X-Real-IP headers (which would otherwise
-	// let an attacker bypass per-IP rate limiting by rotating the header value).
-	if err := router.SetTrustedProxies(nil); err != nil {
+	// The only proxy in front of the server is `tailscale serve` on this machine,
+	// which connects from loopback. Trust loopback only, so c.ClientIP() never
+	// honours attacker-supplied X-Forwarded-For/X-Real-IP from any other peer
+	// (which would otherwise let them bypass per-IP rate limiting).
+	if err := router.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
 		logger.Fatal("Failed to set trusted proxies", logger.Fields{"error": err.Error()})
 	}
 
@@ -279,7 +279,7 @@ func main() {
 	})
 
 	logger.Info("Expenso server starting", logger.Fields{"address": serverAddr})
-	if err := router.Run(":" + fmt.Sprintf("%d", cfg.Server.Port)); err != nil {
+	if err := router.Run(serverAddr); err != nil {
 		logger.Fatal("Server failed to start", logger.Fields{"error": err.Error()})
 	}
 }
