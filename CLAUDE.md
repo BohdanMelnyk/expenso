@@ -38,6 +38,11 @@ cd backend && go run cmd/server/main.go         # http://localhost:8080
 cd frontend && npm install && npm start          # http://localhost:3000
 ```
 
+Always on: `scripts/install-agents.sh` builds `backend/bin/server` and installs two launchd agents that start at login and
+restart on exit: `com.bogy.expenso.server` (127.0.0.1:8080, shared with the phone by `tailscale serve`) and
+`com.bogy.expenso.web` (`npm start` on 127.0.0.1:3000). Logs in `~/Library/Logs/expenso-{server,web}.log`. Re-run it
+after a pull; `--remove` uninstalls. While the agents run, the ports are taken, so the start skill skips both servers.
+
 ## Common Commands
 
 ### Backend (`cd backend`)
