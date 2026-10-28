@@ -90,7 +90,7 @@ describe('saving', () => {
   });
 
   it('projects the year from the average month so far', () => {
-    expect(yearProjection([100, 200], new Date(2026, 1, 15))).toEqual({ soFar: 300, onTrack: 300 + 150 * 10 });
+    expect(yearProjection([100, 200], new Date(2026, 1, 15))).toEqual({ soFar: 300, onTrack: 100 + 100 * 11 });
   });
 
   it('works in January with a single month', () => {
@@ -115,5 +115,28 @@ describe('yearRows', () => {
   it('uses all twelve months for a finished year', () => {
     const rows = yearRows([exp(1200, '2024-06-01', 'Travel'), exp(600, '2025-03-01', 'Travel')], 2025, new Date(2026, 9, 28));
     expect(rows[0]).toMatchObject({ amount: 600, average: 1200 });
+  });
+});
+
+describe('review fixes', () => {
+  it('projects the year from complete months only', () => {
+    // Oct 3: Jan..Sep saved 1000 each, October so far −1500 (rent in, salary not yet).
+    const saved = [...Array(9).fill(1000), -1500];
+    expect(yearProjection(saved, new Date(2026, 9, 3))).toEqual({ soFar: 7500, onTrack: 9000 + 1000 * 3 });
+  });
+
+  it('in January falls back to the trailing months it is given', () => {
+    expect(yearProjection([-1500], new Date(2026, 0, 3), [1000, 1200, 800])).toEqual({ soFar: -1500, onTrack: 1000 * 12 });
+  });
+
+  it('compares a running month with the same days of earlier months', () => {
+    const items = [
+      exp(100, '2026-10-02', 'Food Store'),
+      ...[4, 5, 6, 7, 8, 9].flatMap((m) => [exp(60, `2026-0${m}-02`, 'Food Store'), exp(540, `2026-0${m}-20`, 'Food Store')]),
+    ];
+    const rows = categoryRows(items, oct, 5);
+    expect(rows[0].average).toBe(60);
+    expect(rows[0].change).toBeCloseTo(100 / 60 - 1, 6);
+    expect(categoryRows(items, oct)[0].average).toBe(600);
   });
 });

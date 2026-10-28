@@ -38,7 +38,8 @@ const OverviewPage: React.FC = () => {
   const [showAll, setShowAll] = React.useState(false);
 
   // Enough history for the six-month comparison, last year's pace and this year's savings.
-  const from = isYear ? new Date(year - 1, 0, 1) : new Date(Math.min(addMonths(month, -6).getTime(), new Date(year, 0, 1).getTime()));
+  // The twelve months before also feed the January projection.
+  const from = isYear ? new Date(year - 1, 0, 1) : new Date(Math.min(addMonths(month, -12).getTime(), new Date(year, 0, 1).getTime()));
   const to = year < now.getFullYear() ? new Date(year, 11, 1) : thisMonth;
   const { data, loading } = useLoad<Data>(async () => {
     const range = apiRange(from, to);
@@ -61,12 +62,16 @@ const OverviewPage: React.FC = () => {
   const spent = shownExpenses.reduce((s, e) => s + e.amount, 0);
   const earned = shownIncomes.reduce((s, i) => s + i.amount, 0);
   const saved = earned - spent;
-  const rows: CategoryRow[] = isYear ? yearRows(expenses, year, now) : categoryRows(expenses, month);
-  const usual = isYear ? rows.reduce((s, r) => s + r.average, 0) : Array.from(sixMonthAverages(expenses, month).values()).reduce((s, x) => s + x, 0);
+  // A month still running is compared with the same first days of earlier months.
+  const running = !isYear && sameMonth(month, thisMonth);
+  const upToDay = running ? now.getDate() : undefined;
+  const rows: CategoryRow[] = isYear ? yearRows(expenses, year, now) : categoryRows(expenses, month, upToDay);
+  const usual = isYear ? rows.reduce((s, r) => s + r.average, 0) : Array.from(sixMonthAverages(expenses, month, upToDay).values()).reduce((s, x) => s + x, 0);
   const vsUsual = spent - usual;
   const cards = isYear ? [] : insights(expenses, month);
   const savedBars = savedPerMonth(incomes, expenses, yearMonths);
-  const projection = yearProjection(savedBars, now);
+  const trailing = savedPerMonth(incomes, expenses, monthsBetween(addMonths(thisMonth, -12), addMonths(thisMonth, -1)));
+  const projection = yearProjection(savedBars, now, trailing);
   const { latest, previous } = latestTwo(data?.snapshots ?? []);
   const shownRows = showAll ? rows : rows.slice(0, 6);
   const maxRow = Math.max(1, ...rows.map((r) => Math.max(r.amount, r.average)));
@@ -89,7 +94,7 @@ const OverviewPage: React.FC = () => {
         <StatCard
           label="Spent"
           value={eurShort(spent)}
-          sub={usual > 0 ? <span className={vsUsual <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{eurShort(Math.abs(vsUsual))} {vsUsual <= 0 ? 'under' : 'over'} {isYear ? 'last year’s pace' : 'your 6-month average'}</span> : `${shownExpenses.length} expenses`}
+          sub={usual > 0 ? <span className={vsUsual <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{eurShort(Math.abs(vsUsual))} {vsUsual <= 0 ? 'under' : 'over'} {isYear ? 'last year’s pace' : running ? 'usual by this day' : 'your 6-month average'}</span> : `${shownExpenses.length} expenses`}
         />
         <StatCard label="Income" value={eurShort(earned)} sub={`${shownIncomes.length} ${shownIncomes.length === 1 ? 'entry' : 'entries'}`} />
         <StatCard label="Saved" value={signedEur(saved)} tone={saved >= 0 ? 'good' : 'bad'} sub={earned > 0 ? `${Math.round((saved / earned) * 100)}% of income` : 'no income yet'} />
@@ -102,7 +107,7 @@ const OverviewPage: React.FC = () => {
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
         <Card>
-          <CardTitle right={rows.some((r) => r.average > 0) ? (isYear ? '┃ = last year’s pace' : '┃ = your 6-month average') : undefined}>Where it went</CardTitle>
+          <CardTitle right={rows.some((r) => r.average > 0) ? (isYear ? '┃ = last year’s pace' : running ? '┃ = usual by this day' : '┃ = your 6-month average') : undefined}>Where it went</CardTitle>
           {rows.length === 0 && !loading && <Quiet>Nothing spent {isYear ? 'this year' : 'this month'} yet.</Quiet>}
           <div className="divide-y divide-gray-100 dark:divide-white/5">
             {shownRows.map((r) => {

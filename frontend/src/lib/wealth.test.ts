@@ -1,4 +1,5 @@
-import { grownThisYear, groups, inRange, latestTwo, projection, savedThisYear } from './wealth';
+import { grownThisYear, groups, inRange, latestTwo, projection, savedThisYear, snapshotFieldText } from './wealth';
+import { parseAmount } from './draft';
 import { exp, inc, snap } from './fixtures';
 
 describe('wealth', () => {
@@ -49,5 +50,14 @@ describe('wealth', () => {
     expect(inRange(all, '6M', now).map((s) => s.id)).toEqual([4, 1]);
     expect(inRange(all, '1Y', now).map((s) => s.id)).toEqual([2, 4, 1]);
     expect(inRange(all, 'All', now).map((s) => s.id)).toEqual([3, 2, 4, 1]);
+  });
+});
+
+describe('snapshot field text', () => {
+  it('formats numbers so they read back unchanged', () => {
+    for (const n of [123.125, 11838.38, 3931, 0.5, 1234, 1500.1234]) {
+      expect(parseAmount(snapshotFieldText(n))).toBeCloseTo(n, 6);
+    }
+    expect(snapshotFieldText(0)).toBe('0');
   });
 });

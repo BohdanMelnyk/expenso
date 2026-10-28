@@ -4,13 +4,13 @@ import { createSnapshot, updateSnapshot, type CreateSnapshotRequest, type Snapsh
 import { eur, signedEur } from '../../lib/format';
 import { toISODate } from '../../lib/months';
 import { parseAmount } from '../../lib/draft';
-import { SNAPSHOT_FIELDS, type GroupName } from '../../lib/wealth';
+import { SNAPSHOT_FIELDS, snapshotFieldText, type GroupName } from '../../lib/wealth';
 import { Button } from '../../ui/Card';
 
 type Values = Record<Exclude<keyof CreateSnapshotRequest, 'date'>, string>;
 
 const fromSnapshot = (s?: Snapshot): Values =>
-  Object.fromEntries(SNAPSHOT_FIELDS.map((f) => [f.key, s ? String(s[f.key] ?? 0).replace('.', ',') : ''])) as Values;
+  Object.fromEntries(SNAPSHOT_FIELDS.map((f) => [f.key, s ? snapshotFieldText(s[f.key] ?? 0) : ''])) as Values;
 
 /**
  * New snapshot (filled in with the latest one, so only what moved needs typing) or edit an existing one.

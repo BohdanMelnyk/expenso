@@ -121,3 +121,15 @@ export function inRange(snapshots: Snapshot[], range: '6M' | '1Y' | 'All', now: 
   const from = toISODate(cutoff);
   return sorted.filter((s) => s.date.slice(0, 10) >= from);
 }
+
+/**
+ * Text for a snapshot form field that reads back as the same number: up to four decimals,
+ * never exactly three (which parseAmount would take as a thousands separator).
+ */
+export function snapshotFieldText(n: number): string {
+  if (!n) return '0';
+  let text = String(Math.round(n * 10000) / 10000);
+  const decimals = text.split('.')[1] ?? '';
+  if (decimals.length === 3) text += '0';
+  return text.replace('.', ',');
+}

@@ -38,18 +38,22 @@ export function monthTotals(expenses: Expense[], months: Date[]): number[] {
 /** The six full months before `month`, oldest first. */
 export const previousSix = (month: Date) => monthsBetween(addMonths(month, -6), addMonths(month, -1));
 
-/** Average per month for each category over the six months before `month`; months without spending count as 0. */
-export function sixMonthAverages(expenses: Expense[], month: Date): Map<string, number> {
+/**
+ * Average per month for each category over the six months before `month`; months without spending count as 0.
+ * With `upToDay`, only the first days of each month count, to compare a month still running.
+ */
+export function sixMonthAverages(expenses: Expense[], month: Date, upToDay?: number): Map<string, number> {
   const window = previousSix(month);
-  const inWindow = expenses.filter((e) => window.some((m) => inMonth(e.date, m)));
+  const inWindow = expenses.filter((e) => window.some((m) => inMonth(e.date, m)) && (upToDay === undefined || parseISODate(e.date).getDate() <= upToDay));
   const averages = new Map<string, number>();
   totalsByCategory(inWindow).forEach((total, name) => averages.set(name, total / window.length));
   return averages;
 }
 
-export function categoryRows(expenses: Expense[], month: Date): CategoryRow[] {
+/** The shown month by category against the six months before; `upToDay` compares only the same first days. */
+export function categoryRows(expenses: Expense[], month: Date, upToDay?: number): CategoryRow[] {
   const current = totalsByCategory(expenses.filter((e) => inMonth(e.date, month)));
-  const averages = sixMonthAverages(expenses, month);
+  const averages = sixMonthAverages(expenses, month, upToDay);
   const total = sum(Array.from(current.values()));
   return Array.from(current, ([name, amount]) => {
     const average = averages.get(name) ?? 0;
@@ -138,12 +142,19 @@ export function savedPerMonth(incomes: Income[], expenses: Expense[], months: Da
   );
 }
 
-/** Saved so far this year, and where the year ends if the average month repeats. */
-export function yearProjection(savedSoFar: number[], now: Date): { soFar: number; onTrack: number } {
+/**
+ * Saved so far this year, and where the year ends: the complete months so far plus their average
+ * for every month left (the running month included). With no complete month yet (January),
+ * the average comes from `trailing` (e.g. the last 12 full months), else from the running month.
+ * `savedSoFar` holds January … the current month.
+ */
+export function yearProjection(savedSoFar: number[], now: Date, trailing: number[] = []): { soFar: number; onTrack: number } {
   const soFar = sum(savedSoFar);
-  if (savedSoFar.length === 0) return { soFar: 0, onTrack: 0 };
-  const remaining = 11 - now.getMonth();
-  return { soFar, onTrack: soFar + (soFar / savedSoFar.length) * remaining };
+  const complete = savedSoFar.slice(0, Math.min(now.getMonth(), savedSoFar.length));
+  const basis = complete.length ? complete : trailing.length ? trailing : savedSoFar;
+  if (basis.length === 0) return { soFar, onTrack: soFar };
+  const average = sum(basis) / basis.length;
+  return { soFar, onTrack: sum(complete) + average * (12 - complete.length) };
 }
 
 export function biggest(expenses: Expense[], n = 5): Expense[] {

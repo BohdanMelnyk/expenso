@@ -27,7 +27,7 @@ const DuplicateDialog: React.FC<{
       <div className="text-base font-bold text-gray-900 dark:text-white">
         ⚠ {pairs.length === 1 ? 'This looks like an expense you already have' : `${pairs.length} look like expenses you already have`}
       </div>
-      {totalAdded !== undefined && <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">The other {totalAdded} were added. Decide on these:</div>}
+      {!!totalAdded && <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">The other {totalAdded} were added. Decide on these:</div>}
       <div className="mt-3 flex flex-col gap-3">
         {pairs.map((p, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-center gap-3 rounded-xl border border-gray-200 p-3 dark:border-white/10">

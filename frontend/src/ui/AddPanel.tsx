@@ -37,6 +37,7 @@ const AddPanel: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [duplicates, setDuplicates] = useState<Expense[]>([]);
   const [decision, setDecision] = useState<Record<number, 'skip' | 'add'>>({});
   const [income, setIncome] = useState({ amount: '', source: 'Salary', note: '', date: today() });
@@ -51,6 +52,7 @@ const AddPanel: React.FC = () => {
     setParseMessage(null);
     setPendingText(null);
     setConfirmDelete(false);
+    setConfirmDiscard(false);
     setDuplicates([]);
     if (panel.mode === 'add') {
       setKind(panel.kind);
@@ -150,7 +152,9 @@ const AddPanel: React.FC = () => {
         return;
       }
     } catch {
-      // The check is a convenience; save anyway if it fails.
+      // Without the check we can't promise this isn't a duplicate.
+      fail("Couldn't check for duplicates. Try again in a moment.");
+      return;
     }
     createExpense();
   };
@@ -169,16 +173,24 @@ const AddPanel: React.FC = () => {
     call?.then(() => done('Deleted')).catch(() => fail("Couldn't delete it."));
   };
 
+  // Anything typed or changed since the panel opened.
+  const dirty = isEdit
+    ? panel.mode === 'editExpense'
+      ? draft.amount !== panel.expense.amount || draft.note !== panel.expense.comment || draft.category !== panel.expense.category || draft.date !== panel.expense.date.slice(0, 10) || draft.paymentMethod !== panel.expense.payment_method || draft.vendorId !== (panel.expense.vendor?.id ?? panel.expense.vendor_id)
+      : panel.mode === 'editIncome' && (income.amount !== String(panel.income.amount) || income.source !== panel.income.source || income.note !== panel.income.comment)
+    : draft.text.trim() !== '' || draft.edited.length > 0 || income.amount.trim() !== '';
+  const askClose = () => (dirty && !saving ? setConfirmDiscard(true) : close());
+
   const title = isEdit ? (kind === 'income' ? 'Edit income' : 'Edit expense') : 'New entry';
   const saveLabel = kind === 'income' ? (incomeAmount > 0 ? `Save ${eur(incomeAmount)} income` : 'Save') : saveTitle(draft, vendors);
   const vendorName = vendors.find((v) => v.id === draft.vendorId)?.name;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onMouseDown={(e) => e.target === e.currentTarget && close()} onKeyDown={(e) => e.key === 'Escape' && close()}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onMouseDown={(e) => e.target === e.currentTarget && askClose()} onKeyDown={(e) => e.key === 'Escape' && askClose()}>
       <div className="flex h-full w-full max-w-md flex-col gap-3 overflow-y-auto bg-white p-5 shadow-2xl dark:bg-zinc-900">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
-          <button onClick={close} className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10" title="Close (Esc)"><X className="h-5 w-5" /></button>
+          <button onClick={askClose} className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10" title="Close (Esc)"><X className="h-5 w-5" /></button>
         </div>
 
         {!isEdit && (
@@ -269,6 +281,12 @@ const AddPanel: React.FC = () => {
         )}
 
         <div className="flex-1" />
+        {confirmDiscard && (
+          <div className="flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-sm dark:bg-amber-500/10">
+            <span>Discard what you typed?</span>
+            <div className="flex gap-2"><Button variant="ghost" onClick={() => setConfirmDiscard(false)}>Keep editing</Button><Button variant="danger" onClick={close}>Discard</Button></div>
+          </div>
+        )}
         {error && <div className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</div>}
         {isEdit && (
           confirmDelete ? (

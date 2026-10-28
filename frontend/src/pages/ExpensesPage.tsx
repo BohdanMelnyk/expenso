@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Download, Search, Upload } from 'lucide-react';
 import { expenseAPI, incomeAPI, type CreateExpenseRequest, type Expense, type Income, type Vendor } from '../api/client';
@@ -15,17 +15,6 @@ import { useToaster } from '../ui/Toaster';
 const control = 'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800 dark:border-white/10 dark:bg-zinc-900 dark:text-gray-100';
 const cell = 'rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-blue-500 focus:outline-none dark:hover:border-white/15 dark:focus:bg-zinc-800';
 const day = (iso: string) => parseISODate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-
-const toRequest = (e: Expense, patch: Partial<CreateExpenseRequest> = {}): CreateExpenseRequest => ({
-  comment: e.comment,
-  amount: e.amount,
-  vendor_id: e.vendor?.id ?? e.vendor_id,
-  date: e.date.slice(0, 10),
-  category: e.category,
-  type: e.type || 'expense',
-  payment_method: e.payment_method,
-  ...patch,
-});
 
 /** The vendor to use when an expense moves to another category: that category's "Else", or its first vendor. */
 const vendorFor = (category: string, vendors: Vendor[]) => {
@@ -73,37 +62,80 @@ const ExpensesPage: React.FC = () => {
 
   const incomes = useMemo(() => [...(data?.incomes ?? [])].sort((a, b) => (a.date < b.date ? 1 : -1)), [data]);
 
-  const save = (e: Expense, patch: Partial<CreateExpenseRequest>, message: string) =>
-    expenseAPI
-      .updateExpense(e.id, toRequest(e, patch))
+  // Edits show at once, before the reload confirms them.
+  const [pending, setPending] = useState<Record<number, Partial<Expense>>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setPending({}), [data]);
+  const withPending = (e: Expense): Expense => ({ ...e, ...pending[e.id] });
+
+  const save = (e: Expense, patch: Partial<CreateExpenseRequest>, message: string) => {
+    const vendor = patch.vendor_id !== undefined ? vendors.find((v) => v.id === patch.vendor_id) : undefined;
+    setPending((p) => ({ ...p, [e.id]: { ...p[e.id], ...(patch.category ? { category: patch.category } : {}), ...(vendor ? { vendor_id: vendor.id, vendor } : {}) } }));
+    return expenseAPI
+      .patchExpense(e.id, patch)
       .then(() => {
         show(message);
         notifyChanged();
       })
-      .catch(() => show("Couldn't save the change", 'error'));
+      .catch(() => {
+        setPending((p) => {
+          const rest = { ...p };
+          delete rest[e.id];
+          return rest;
+        });
+        show("Couldn't save the change", 'error');
+      });
+  };
 
   const changeCategory = (e: Expense, category: string) => {
     const keep = vendors.find((v) => v.id === (e.vendor?.id ?? e.vendor_id) && v.category === category);
     const vendor = keep ?? vendorFor(category, vendors);
     if (!vendor) return show(`${category} has no vendors yet`, 'error');
-    save(e, { category, vendor_id: vendor.id }, `Moved to ${category}`);
+    save(e, { category, vendor_id: vendor.id }, keep ? `Moved to ${category}` : `Moved to ${category} · vendor ${vendor.name}`);
   };
 
+  /** Selected rows that are visible under the current search and filters. */
+  const selectedRows = () => expenses.filter((e) => selected.has(e.id));
+
   const bulkCategory = async (category: string) => {
-    const rows = expenses.filter((e) => selected.has(e.id));
-    for (const e of rows) {
+    if (busy) return;
+    setBusy(true);
+    let moved = 0;
+    let failed = 0;
+    for (const e of selectedRows()) {
       const vendor = vendors.find((v) => v.id === (e.vendor?.id ?? e.vendor_id) && v.category === category) ?? vendorFor(category, vendors);
-      if (vendor) await expenseAPI.updateExpense(e.id, toRequest(e, { category, vendor_id: vendor.id })).catch(() => {});
+      if (!vendor) {
+        failed++;
+        continue;
+      }
+      try {
+        await expenseAPI.patchExpense(e.id, { category, vendor_id: vendor.id });
+        moved++;
+      } catch {
+        failed++;
+      }
     }
-    show(`Moved ${rows.length} to ${category}`);
+    setBusy(false);
+    show(failed ? `Moved ${moved} to ${category} · ${failed} failed` : `Moved ${moved} to ${category}`, failed ? 'error' : 'success');
     setSelected(new Set());
     notifyChanged();
   };
 
   const bulkDelete = async () => {
-    const ids = Array.from(selected);
-    for (const id of ids) await expenseAPI.deleteExpense(id).catch(() => {});
-    show(`Deleted ${ids.length}`);
+    if (busy) return;
+    setBusy(true);
+    let deleted = 0;
+    let failed = 0;
+    for (const e of selectedRows()) {
+      try {
+        await expenseAPI.deleteExpense(e.id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    setBusy(false);
+    show(failed ? `Deleted ${deleted} · ${failed} failed` : `Deleted ${deleted}`, failed ? 'error' : 'success');
     setSelected(new Set());
     setConfirmBulkDelete(false);
     notifyChanged();
@@ -185,13 +217,13 @@ const ExpensesPage: React.FC = () => {
 
       {kind === 'expense' && selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-800">
-          <b>{selected.size} selected</b>
-          <select className="rounded-md bg-zinc-700 px-2 py-1 text-white" value="" onChange={(e) => e.target.value && bulkCategory(e.target.value)}>
+          <b>{selectedRows().length} selected</b>
+          <select disabled={busy} className="rounded-md bg-zinc-700 px-2 py-1 text-white" value="" onChange={(e) => e.target.value && bulkCategory(e.target.value)}>
             <option value="">Change category…</option>
             {sortedCategories.map((c) => <option key={c.id} value={c.name}>{c.icon} {c.name}</option>)}
           </select>
           {confirmBulkDelete ? (
-            <span className="flex items-center gap-2">Delete {selected.size} for good?<Button variant="danger" onClick={bulkDelete}>Delete</Button><Button variant="ghost" onClick={() => setConfirmBulkDelete(false)}>Keep</Button></span>
+            <span className="flex items-center gap-2">Delete {selectedRows().length} for good?<Button variant="danger" onClick={bulkDelete}>Delete</Button><Button variant="ghost" onClick={() => setConfirmBulkDelete(false)}>Keep</Button></span>
           ) : (
             <button className="text-red-300 hover:underline" onClick={() => setConfirmBulkDelete(true)}>Delete</button>
           )}
@@ -214,7 +246,7 @@ const ExpensesPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((e) => {
+              {expenses.map(withPending).map((e) => {
                 const vendorId = e.vendor?.id ?? e.vendor_id;
                 const options = vendors.filter((v) => v.category === e.category).sort((a, b) => a.name.localeCompare(b.name));
                 return (

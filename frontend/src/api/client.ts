@@ -175,6 +175,8 @@ export const expenseAPI = {
   createExpense: (expense: CreateExpenseRequest) => apiClient.post<Expense>('/expenses', expense),
   getExpense: (id: number) => apiClient.get<Expense>(`/expenses/${id}`),
   updateExpense: (id: number, expense: CreateExpenseRequest) => apiClient.put<Expense>(`/expenses/${id}`, expense),
+  /** Changes only the given fields; the backend leaves the rest as they are. */
+  patchExpense: (id: number, fields: Partial<CreateExpenseRequest>) => apiClient.put<Expense>(`/expenses/${id}`, fields),
   deleteExpense: (id: number) => apiClient.delete(`/expenses/${id}`),
   exportCSV: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();

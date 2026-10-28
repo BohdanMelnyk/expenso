@@ -31,7 +31,8 @@ const ImportPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [held, setHeld] = useState<{ row: ImportRow; existing: Expense }[]>([]);
   const [decision, setDecision] = useState<Record<number, 'skip' | 'add'>>({});
-  const [result, setResult] = useState({ added: 0, skipped: 0 });
+  const [result, setResult] = useState({ added: 0, skipped: 0, failed: 0 });
+  const [deciding, setDeciding] = useState(false);
   const [dragging, setDragging] = useState(false);
   /** Latest transaction date in the statement, for "covered up to". */
   const [coveredUntil, setCoveredUntil] = useState('');
@@ -45,6 +46,9 @@ const ImportPage: React.FC = () => {
     setReading(true);
     setError(null);
     setRows([]);
+    setHeld([]);
+    setDecision({});
+    setResult({ added: 0, skipped: 0, failed: 0 });
     try {
       const r = await bankImportAPI.uploadBankCSV(file);
       const txs = (r.data as BankImportPreview).transactions ?? [];
@@ -79,7 +83,10 @@ const ImportPage: React.FC = () => {
       try {
         found.set(row.index, (await expenseAPI.checkDuplicates(row.draft.amount, row.draft.date, 2)).data ?? []);
       } catch {
-        found.set(row.index, []);
+        // Without the check we can't promise no duplicates, so nothing is added.
+        setAdding(null);
+        setError("Couldn't check for duplicates, so nothing was added. Try again in a moment.");
+        return;
       }
     }
     const split = splitByDuplicates(rows, found);
@@ -91,16 +98,16 @@ const ImportPage: React.FC = () => {
         posted.add(row.index);
         added++;
       } catch {
-        // Counted below as not added; the row stays for another try.
+        // Not added; the row stays ticked for another try.
       }
       setAdding({ done: added, total: ticked.length });
     }
     setAdding(null);
     const failed = split.clear.length - added;
     if (failed > 0) setError(`${failed} couldn't be added. They're still ticked below.`);
-    // Only rows that were saved leave the table; failed ones stay ticked for another try.
+    // Only rows that were saved leave the table.
     setRows((rs) => rs.filter((r) => !posted.has(r.index)));
-    setResult({ added, skipped: 0 });
+    setResult({ added, skipped: 0, failed });
     if (split.held.length > 0) {
       setHeld(split.held);
       setDecision({});
@@ -110,18 +117,38 @@ const ImportPage: React.FC = () => {
   };
 
   const decide = async () => {
-    const toAdd = held.filter((_, i) => decision[i] === 'add');
+    if (deciding) return;
+    setDeciding(true);
+    const decided = held;
+    setHeld([]);
     let added = result.added;
-    for (const { row } of toAdd) {
+    let failed = result.failed;
+    const posted = new Set<number>();
+    const skipped = new Set<number>();
+    for (let i = 0; i < decided.length; i++) {
+      const { row } = decided[i];
+      if (decision[i] !== 'add') {
+        skipped.add(row.index);
+        continue;
+      }
       try {
         await post(row);
+        posted.add(row.index);
         added++;
       } catch {
-        setError("Some couldn't be added.");
+        failed++;
       }
     }
-    setHeld([]);
-    finish(added, held.length - toAdd.length);
+    setDeciding(false);
+    if (failed > 0) {
+      // Stay so the failed rows can be tried again; skipped and saved ones leave the table.
+      setRows((rs) => rs.filter((r) => !posted.has(r.index) && !skipped.has(r.index)));
+      setResult({ added, skipped: 0, failed: 0 });
+      setError(`Added ${added}. ${failed} couldn't be added and are still ticked below.`);
+      notifyChanged();
+      return;
+    }
+    finish(added, skipped.size);
   };
 
   return (
