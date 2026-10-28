@@ -64,7 +64,7 @@ const WealthPage: React.FC = () => {
   const listed = showAllSnapshots ? [...snapshots].sort((a, b) => (a.date < b.date ? 1 : -1)) : [latest, previous].filter((s): s is Snapshot => !!s);
 
   return (
-    <div className="mx-auto max-w-screen-2xl">
+    <div className="mx-auto max-w-[1920px]">
       <PageHeader title="Wealth">
         <div className="ml-auto flex items-center gap-2">
           <div className="flex rounded-lg bg-gray-200/70 p-0.5 text-xs font-semibold dark:bg-white/10">

@@ -5,12 +5,13 @@ import { bankImportAPI, expenseAPI, type Expense } from '../api/client';
 import type { BankImportPreview } from '../types/bankImport';
 import { useCatalog } from '../hooks/useCatalog';
 import { useAddPanel } from '../contexts/AddPanelContext';
-import { canSave, editDraft, parseAmount, toRequest, type Draft } from '../lib/draft';
+import { canSave, editDraft, toRequest, type Draft } from '../lib/draft';
 import { splitByDuplicates, toRows, type ImportRow } from '../lib/importRows';
 import { saveLastImport } from '../lib/lastImport';
 import { eur } from '../lib/format';
 import { monthKey, parseISODate } from '../lib/months';
 import { Button, Card, PageHeader, Quiet } from '../ui/Card';
+import AmountInput from '../ui/AmountInput';
 import DuplicateDialog from '../ui/DuplicateDialog';
 import { useToaster } from '../ui/Toaster';
 
@@ -124,7 +125,7 @@ const ImportPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-screen-2xl">
+    <div className="mx-auto max-w-[1920px]">
       <PageHeader title="Import statement">
         {fileName && <span className="text-sm text-gray-500 dark:text-gray-400">{fileName} · {rows.length} lines</span>}
         {rows.length > 0 && (
@@ -196,7 +197,7 @@ const ImportPage: React.FC = () => {
                     {r.incoming ? (
                       <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">+{eur(r.tx.booking_amount)}</span>
                     ) : (
-                      <input className={`${cell} w-24 text-right font-semibold tabular-nums`} defaultValue={String(r.draft.amount).replace('.', ',')} onBlur={(e) => update(r.index, { amount: parseAmount(e.target.value) ?? r.draft.amount })} />
+                      <AmountInput className={`${cell} w-24 text-right font-semibold tabular-nums`} value={r.draft.amount} onChange={(amount) => update(r.index, { amount })} />
                     )}
                   </td>
                 </tr>

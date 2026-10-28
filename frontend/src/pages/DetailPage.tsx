@@ -43,7 +43,7 @@ const DetailPage: React.FC = () => {
   const color = category?.color ?? '#0a84ff';
 
   return (
-    <div className="mx-auto max-w-screen-2xl">
+    <div className="mx-auto max-w-[1920px]">
       <Link to={`/?month=${monthKey(month)}`} className="text-sm text-blue-600 dark:text-blue-400">‹ Overview · {monthName(month)}</Link>
       <PageHeader title={<span className="flex items-center gap-3"><CategoryIcon category={category} size={36} />{title}</span>} />
 

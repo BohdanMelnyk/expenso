@@ -8,6 +8,7 @@ import { eur } from '../lib/format';
 import { toISODate } from '../lib/months';
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { Button } from './Card';
+import AmountInput from './AmountInput';
 import DuplicateDialog from './DuplicateDialog';
 import { useToaster } from './Toaster';
 
@@ -212,7 +213,7 @@ const AddPanel: React.FC = () => {
             )}
             <div className={`rounded-xl border border-gray-200 px-3 dark:border-white/10 ${pendingText !== null ? 'animate-pulse' : ''}`}>
               <Row label="Amount">
-                <input className={field} inputMode="decimal" value={draft.amount ? String(draft.amount).replace('.', ',') : ''} onChange={(e) => edit({ amount: parseAmount(e.target.value) ?? 0 })} placeholder="0,00" />
+                <AmountInput className={field} value={draft.amount} onChange={(amount) => edit({ amount })} />
               </Row>
               <Row label="Category">
                 <select className={field} value={draft.category ?? ''} onChange={(e) => edit({ category: e.target.value || undefined })}>

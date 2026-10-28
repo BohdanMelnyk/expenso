@@ -72,7 +72,7 @@ const OverviewPage: React.FC = () => {
   const maxRow = Math.max(1, ...rows.map((r) => Math.max(r.amount, r.average)));
 
   return (
-    <div className="mx-auto max-w-screen-2xl">
+    <div className="mx-auto max-w-[1920px]">
       <PageHeader title={isYear ? String(year) : monthName(month)}>
         <div className="flex items-center rounded-lg border border-gray-200 bg-white dark:border-white/10 dark:bg-zinc-900">
           <button className="p-1.5 text-blue-600 dark:text-blue-400" onClick={() => go(isYear ? new Date(year - 1, 0, 1) : addMonths(month, -1))} title="Earlier"><ChevronLeft className="h-4 w-4" /></button>
