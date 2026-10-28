@@ -363,6 +363,9 @@ export const fetchSnapshots = (): Promise<Snapshot[]> =>
 export const createSnapshot = (data: CreateSnapshotRequest): Promise<Snapshot> =>
   apiClient.post<Snapshot>('/snapshots', data).then(r => r.data);
 
+export const updateSnapshot = (id: number, data: CreateSnapshotRequest): Promise<Snapshot> =>
+  apiClient.put<Snapshot>(`/snapshots/${id}`, data).then(r => r.data);
+
 export const authAPI = {
   login: (credentials: { username: string; password: string; totp_code: string }) =>
     apiClient.post<{ token: string; expires_at: string }>('/auth/login', credentials),
