@@ -95,6 +95,7 @@ export function grownThisYear(snapshots: Snapshot[], now: Date): number | null {
   const sorted = byDateDesc(snapshots);
   if (sorted.length < 2) return null;
   const yearStart = `${now.getFullYear()}-01-01`;
+  if (sorted[0].date < yearStart) return 0; // no snapshot this year yet
   const base = sorted.find((s) => s.date < yearStart) ?? [...sorted].reverse().find((s) => s.date >= yearStart);
   if (!base || base.id === sorted[0].id) return null;
   return sorted[0].total - base.total;

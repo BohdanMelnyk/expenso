@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -17,7 +17,6 @@ import DetailPage from './pages/DetailPage';
 // Old pages and where their content lives now.
 const redirects: Array<[string, string]> = [
   ['/statistics', '/'],
-  ['/statistics/*', '/'],
   ['/trends', '/'],
   ['/insights', '/'],
   ['/averages', '/'],
@@ -32,6 +31,12 @@ const redirects: Array<[string, string]> = [
   ['/balance', '/wealth'],
   ['/snapshots', '/wealth'],
 ];
+
+/** /statistics/category/Food%20Store → /category/Food%20Store */
+const OldCategoryRedirect: React.FC = () => {
+  const { category } = useParams();
+  return <Navigate to={`/category/${encodeURIComponent(category ?? '')}`} replace />;
+};
 
 function AppGate() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -62,6 +67,8 @@ function AppGate() {
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/expenses/import" element={<ImportPage />} />
               <Route path="/wealth" element={<WealthPage />} />
+              <Route path="/statistics/category/:category" element={<OldCategoryRedirect />} />
+              <Route path="/statistics/*" element={<Navigate to="/" replace />} />
               {redirects.map(([from, to]) => (
                 <Route key={from} path={from} element={<Navigate to={to} replace />} />
               ))}

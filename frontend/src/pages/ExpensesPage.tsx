@@ -9,7 +9,7 @@ import { eur } from '../lib/format';
 import { addMonths, apiRange, monthKey, monthName, monthStart, parseISODate, parseMonthKey, sameMonth } from '../lib/months';
 import { readLastImport } from '../lib/lastImport';
 import { exportToPDF } from '../utils/pdfExport';
-import { Button, Card, CategoryIcon, PageHeader, Quiet } from '../ui/Card';
+import { Button, Card, LoadError, CategoryIcon, PageHeader, Quiet } from '../ui/Card';
 import { useToaster } from '../ui/Toaster';
 
 const control = 'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800 dark:border-white/10 dark:bg-zinc-900 dark:text-gray-100';
@@ -39,7 +39,7 @@ const ExpensesPage: React.FC = () => {
   const lastImport = readLastImport();
 
   const range = apiRange(month, month);
-  const { data, loading } = useLoad<{ expenses: Expense[]; incomes: Income[] }>(async () => {
+  const { data, loading, error, reload } = useLoad<{ expenses: Expense[]; incomes: Income[] }>(async () => {
     const [e, i] = await Promise.all([expenseAPI.getActualExpenses(range.start, range.end), incomeAPI.getIncomes(range.start, range.end)]);
     return { expenses: e.data ?? [], incomes: i.data ?? [] };
   }, monthKey(month));
@@ -202,6 +202,7 @@ const ExpensesPage: React.FC = () => {
           </div>
         )}
       </PageHeader>
+      {error && <LoadError onRetry={reload} />}
 
       {kind === 'expense' && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm dark:border-blue-500/20 dark:bg-blue-500/10">

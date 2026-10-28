@@ -8,7 +8,9 @@ import { savedPerMonth } from '../lib/spending';
 import { grownThisYear, groups, inRange, latestTwo, projection, savedThisYear } from '../lib/wealth';
 import { eur, eurShort, signedEur } from '../lib/format';
 import { addMonths, apiRange, monthsBetween, monthStart, parseISODate } from '../lib/months';
-import { Button, Card, CardTitle, PageHeader, Quiet, StatCard } from '../ui/Card';
+import { Button, Card, LoadError, CardTitle, PageHeader, Quiet, StatCard } from '../ui/Card';
+import { tooltipStyle } from '../ui/chartStyle';
+import { useTheme } from '../contexts/ThemeContext';
 import { useToaster } from '../ui/Toaster';
 import SnapshotPanel from './wealth/SnapshotPanel';
 
@@ -24,6 +26,7 @@ const day = (iso: string) => parseISODate(iso).toLocaleDateString('en-GB', { day
 /** Net worth over time, where it sits, how it grows, and snapshot entry. */
 const WealthPage: React.FC = () => {
   const now = new Date();
+  const { theme } = useTheme();
   const thisMonth = monthStart(now);
   const { notifyChanged } = useAddPanel();
   const { show } = useToaster();
@@ -34,7 +37,7 @@ const WealthPage: React.FC = () => {
 
   // This year for "saved", the last twelve full months for the saving pace.
   const from = new Date(Math.min(new Date(now.getFullYear(), 0, 1).getTime(), addMonths(thisMonth, -12).getTime()));
-  const { data, loading } = useLoad<Data>(async () => {
+  const { data, loading, error, reload } = useLoad<Data>(async () => {
     const r = apiRange(from, thisMonth);
     const [s, i, e] = await Promise.all([fetchSnapshots(), incomeAPI.getIncomes(r.start, r.end), expenseAPI.getActualExpenses(r.start, r.end)]);
     return { snapshots: s, incomes: i.data ?? [], expenses: e.data ?? [] };
@@ -75,8 +78,9 @@ const WealthPage: React.FC = () => {
           <Button onClick={() => setPanel({})} className="flex items-center gap-1.5"><Plus className="h-4 w-4" />New snapshot</Button>
         </div>
       </PageHeader>
+      {error && <LoadError onRetry={reload} />}
 
-      {!latest && !loading ? (
+      {!latest && !loading && !error ? (
         <Card><Quiet>No snapshots yet. Add one to start tracking your net worth.</Quiet></Card>
       ) : (
         <>
@@ -86,7 +90,7 @@ const WealthPage: React.FC = () => {
               value={latest ? eurShort(latest.total) : '—'}
               sub={latest && previous ? <span className={latest.total >= previous.total ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{latest.total >= previous.total ? '▲' : '▼'} {eurShort(Math.abs(latest.total - previous.total))} since {day(previous.date)}</span> : undefined}
             />
-            <StatCard label="Grown this year" value={grown === null ? '—' : signedEur(grown)} tone={grown === null ? undefined : grown >= 0 ? 'good' : 'bad'} sub={grown === null ? 'needs two snapshots' : `since ${now.getFullYear()} began`} />
+            <StatCard label="Grown this year" value={grown === null ? '—' : signedEur(grown)} tone={grown === null ? undefined : grown >= 0 ? 'good' : 'bad'} sub={grown === null ? 'needs two snapshots' : latest && latest.date < `${now.getFullYear()}-01-01` ? 'no snapshot this year yet' : `since ${now.getFullYear()} began`} />
             <StatCard
               label="Saved from income"
               value={signedEur(saved)}
@@ -104,7 +108,7 @@ const WealthPage: React.FC = () => {
             <Card>
               <CardTitle right="dashed = at this pace">Net worth over time</CardTitle>
               {points.length < 2 ? (
-                <Quiet>Only one snapshot in this range.</Quiet>
+                <Quiet>{points.length === 0 ? 'No snapshots in this range. Try 1Y or All.' : 'Only one snapshot in this range.'}</Quiet>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -114,7 +118,7 @@ const WealthPage: React.FC = () => {
                       </defs>
                       <XAxis dataKey="t" type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={(t) => new Date(t).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })} fontSize={11} stroke="#8e8e93" tickLine={false} axisLine={false} />
                       <YAxis orientation="right" tickFormatter={(v) => `${Math.round(v / 1000)}k`} fontSize={11} stroke="#8e8e93" tickLine={false} axisLine={false} domain={['auto', 'auto']} width={40} />
-                      <Tooltip labelFormatter={(t) => new Date(t as number).toLocaleDateString('en-GB')} formatter={(v: number) => eur(v)} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                      <Tooltip labelFormatter={(t) => new Date(t as number).toLocaleDateString('en-GB')} formatter={(v: number) => eur(v)} contentStyle={tooltipStyle(theme === 'dark')} labelStyle={{ color: 'inherit' }} />
                       <Area type="monotone" dataKey="total" stroke="#0a84ff" strokeWidth={2.5} fill="url(#nw)" connectNulls />
                       <Line type="linear" dataKey="pace" stroke="#0a84ff" strokeOpacity={0.6} strokeDasharray="5 4" dot={false} connectNulls />
                     </ComposedChart>

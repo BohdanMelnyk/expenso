@@ -55,10 +55,11 @@ const SnapshotPanel: React.FC<{ editing?: Snapshot; latest?: Snapshot; onClose: 
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editing ? 'Edit snapshot' : 'New snapshot'}</h2>
           <button onClick={onClose} className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
         </div>
+        {!base && <div className="text-sm text-gray-500 dark:text-gray-400">ENBD (AED) and Careem RSU shares are converted to euros when saved.</div>}
         {!editing && latest && <div className="text-sm text-gray-500 dark:text-gray-400">Filled in with {latest.date.slice(0, 10)}. Change only what moved.</div>}
         <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
           Date
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 dark:border-white/10 dark:bg-zinc-800 dark:text-gray-100" />
+          <input type="date" value={date} max={toISODate(new Date())} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 dark:border-white/10 dark:bg-zinc-800 dark:text-gray-100" />
         </label>
         {groups.map((g) => (
           <div key={g}>

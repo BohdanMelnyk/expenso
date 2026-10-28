@@ -10,7 +10,9 @@ import { biggest, categoryRows, insights, ofMonth, savedPerMonth, sixMonthAverag
 import { latestTwo } from '../lib/wealth';
 import { eur, eurShort, signedEur } from '../lib/format';
 import { addMonths, apiRange, monthKey, monthName, monthsBetween, monthStart, parseISODate, parseMonthKey, sameMonth, shortMonth } from '../lib/months';
-import { Card, CardTitle, CategoryIcon, ChangeBadge, PageHeader, Quiet, StatCard } from '../ui/Card';
+import { tooltipStyle } from '../ui/chartStyle';
+import { useTheme } from '../contexts/ThemeContext';
+import { Card, LoadError, CardTitle, CategoryIcon, ChangeBadge, PageHeader, Quiet, StatCard } from '../ui/Card';
 
 interface Data {
   expenses: Expense[];
@@ -28,6 +30,7 @@ const insightStyle: Record<Insight['kind'], string> = {
 const OverviewPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const now = new Date();
+  const { theme } = useTheme();
   const thisMonth = monthStart(now);
   const isYear = params.get('period') === 'year';
   const requested = params.get('month') ? parseMonthKey(params.get('month')!) : thisMonth;
@@ -41,7 +44,7 @@ const OverviewPage: React.FC = () => {
   // The twelve months before also feed the January projection.
   const from = isYear ? new Date(year - 1, 0, 1) : new Date(Math.min(addMonths(month, -12).getTime(), new Date(year, 0, 1).getTime()));
   const to = year < now.getFullYear() ? new Date(year, 11, 1) : thisMonth;
-  const { data, loading } = useLoad<Data>(async () => {
+  const { data, loading, error, reload } = useLoad<Data>(async () => {
     const range = apiRange(from, to);
     const [e, i, s] = await Promise.all([
       expenseAPI.getActualExpenses(range.start, range.end),
@@ -66,7 +69,9 @@ const OverviewPage: React.FC = () => {
   const running = !isYear && sameMonth(month, thisMonth);
   const upToDay = running ? now.getDate() : undefined;
   const rows: CategoryRow[] = isYear ? yearRows(expenses, year, now) : categoryRows(expenses, month, upToDay);
-  const usual = isYear ? rows.reduce((s, r) => s + r.average, 0) : Array.from(sixMonthAverages(expenses, month, upToDay).values()).reduce((s, x) => s + x, 0);
+  // Last year's pace over every category, also those with nothing spent this year.
+  const lastYearPace = (expenses.filter((e) => parseISODate(e.date).getFullYear() === year - 1).reduce((s, e) => s + e.amount, 0) / 12) * (year < now.getFullYear() ? 12 : now.getMonth() + 1);
+  const usual = isYear ? lastYearPace : Array.from(sixMonthAverages(expenses, month, upToDay).values()).reduce((s, x) => s + x, 0);
   const vsUsual = spent - usual;
   const cards = isYear ? [] : insights(expenses, month);
   const savedBars = savedPerMonth(incomes, expenses, yearMonths);
@@ -89,6 +94,7 @@ const OverviewPage: React.FC = () => {
           ))}
         </div>
       </PageHeader>
+      {error && <LoadError onRetry={reload} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
@@ -167,7 +173,7 @@ const OverviewPage: React.FC = () => {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={yearMonths.map((m, i) => ({ name: shortMonth(m), value: savedBars[i], current: sameMonth(m, month) }))}>
               <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} stroke="#8e8e93" />
-              <Tooltip cursor={{ fill: 'rgba(142,142,147,.12)' }} formatter={(v: number) => signedEur(v)} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+              <Tooltip cursor={{ fill: 'rgba(142,142,147,.12)' }} formatter={(v: number) => signedEur(v)} contentStyle={tooltipStyle(theme === 'dark')} labelStyle={{ color: 'inherit' }} />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                 {yearMonths.map((m, i) => (
                   <Cell key={i} fill={savedBars[i] >= 0 ? (sameMonth(m, month) && !isYear ? '#34c759' : '#a7dfb8') : '#f5a19a'} />

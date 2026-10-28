@@ -42,6 +42,14 @@ export const CategoryIcon: React.FC<{ category?: Category; size?: number }> = ({
   </span>
 );
 
+/** Shown when a page couldn't load its data. */
+export const LoadError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div className="mb-3 flex items-center gap-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+    Couldn't load the data. Is the server running?
+    <button onClick={onRetry} className="ml-auto font-semibold underline">Try again</button>
+  </div>
+);
+
 export const Quiet: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{children}</div>
 );

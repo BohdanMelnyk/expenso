@@ -27,7 +27,11 @@ export function useLoad<T>(load: () => Promise<T>, key: string) {
       .finally(() => id === run.current && setLoading(false));
   }, []);
 
-  useEffect(reload, [key, reload]);
+  useEffect(() => {
+    // A new range: don't show the old range's numbers under the new title.
+    setData(null);
+    reload();
+  }, [key, reload]);
   useReloadOnChange(reload);
   return { data, error, loading, reload };
 }

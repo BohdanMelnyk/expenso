@@ -20,15 +20,14 @@ export function totalsByCategory(expenses: Expense[]): Map<string, number> {
   return totals;
 }
 
-export function totalsByVendor(expenses: Expense[]): { name: string; amount: number; count: number }[] {
-  const totals = new Map<string, { amount: number; count: number }>();
+export function totalsByVendor(expenses: Expense[]): { id: number; name: string; amount: number; count: number }[] {
+  const totals = new Map<number, { name: string; amount: number; count: number }>();
   for (const e of expenses) {
-    const name = e.vendor?.name;
-    if (!name) continue;
-    const t = totals.get(name) ?? { amount: 0, count: 0 };
-    totals.set(name, { amount: t.amount + e.amount, count: t.count + 1 });
+    if (!e.vendor) continue;
+    const t = totals.get(e.vendor.id) ?? { name: e.vendor.name, amount: 0, count: 0 };
+    totals.set(e.vendor.id, { ...t, amount: t.amount + e.amount, count: t.count + 1 });
   }
-  return Array.from(totals, ([name, t]) => ({ name, ...t })).sort((a, b) => b.amount - a.amount);
+  return Array.from(totals, ([id, t]) => ({ id, ...t })).sort((a, b) => b.amount - a.amount);
 }
 
 export function monthTotals(expenses: Expense[], months: Date[]): number[] {

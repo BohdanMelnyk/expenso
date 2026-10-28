@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { expenseAPI, incomeAPI, type Expense, type Income } from '../api/client';
 import { useAddPanel } from '../contexts/AddPanelContext';
 import { useCatalog } from '../hooks/useCatalog';
-import { applyParse, canSave, checkParseInput, Draft, editDraft, emptyDraft, parseAmount, PAYMENT_METHODS, saveTitle, toRequest } from '../lib/draft';
+import { applyParse, canSave, clearParsed, checkParseInput, Draft, editDraft, emptyDraft, parseAmount, PAYMENT_METHODS, saveTitle, toRequest } from '../lib/draft';
 import { eur } from '../lib/format';
 import { toISODate } from '../lib/months';
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
@@ -88,6 +88,7 @@ const AddPanel: React.FC = () => {
     const check = checkParseInput(text);
     if (check !== 'ok') {
       setPendingText(null);
+      if (check === 'short') setDraft((d) => (d.text === text ? clearParsed(d) : d));
       if (check === 'long') setParseMessage("That's too long to read. Keep it under 500 characters.");
       return;
     }
@@ -314,6 +315,9 @@ const AddPanel: React.FC = () => {
             if (add) {
               setSaving(true);
               createExpense();
+            } else {
+              show('Not saved: it’s already in Expenso', 'info');
+              close();
             }
           }}
         />
