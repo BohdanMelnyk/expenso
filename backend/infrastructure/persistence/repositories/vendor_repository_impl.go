@@ -9,6 +9,11 @@ import (
 	"expenso-backend/usecases/interfaces/repositories"
 )
 
+const vendorSelect = `
+	SELECT v.id, v.name, v.type, v.category_id, c.name, v.created_at, v.updated_at
+	FROM vendors v
+	JOIN categories c ON c.id = v.category_id`
+
 type VendorRepositoryImpl struct {
 	db *sql.DB
 }
@@ -19,8 +24,8 @@ func NewVendorRepository(db *sql.DB) repositories.VendorRepository {
 
 func (r *VendorRepositoryImpl) Save(vendor *entities.Vendor) error {
 	query := `
-		INSERT INTO vendors (name, type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO vendors (name, type, category_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
 
@@ -29,6 +34,7 @@ func (r *VendorRepositoryImpl) Save(vendor *entities.Vendor) error {
 		query,
 		vendor.Name(),
 		string(vendor.Type()),
+		int(vendor.CategoryID()),
 		vendor.CreatedAt(),
 		vendor.UpdatedAt(),
 	).Scan(&id)
@@ -42,11 +48,11 @@ func (r *VendorRepositoryImpl) Save(vendor *entities.Vendor) error {
 }
 
 func (r *VendorRepositoryImpl) FindByID(id entities.VendorID) (*entities.Vendor, error) {
-	query := `SELECT id, name, type, created_at, updated_at FROM vendors WHERE id = $1`
+	query := vendorSelect + ` WHERE v.id = $1`
 
 	var dbo models.VendorDBO
 	row := r.db.QueryRow(query, int(id))
-	err := row.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CreatedAt, &dbo.UpdatedAt)
+	err := row.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CategoryID, &dbo.CategoryName, &dbo.CreatedAt, &dbo.UpdatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -59,7 +65,7 @@ func (r *VendorRepositoryImpl) FindByID(id entities.VendorID) (*entities.Vendor,
 }
 
 func (r *VendorRepositoryImpl) FindAll() ([]*entities.Vendor, error) {
-	query := `SELECT id, name, type, created_at, updated_at FROM vendors ORDER BY name ASC`
+	query := vendorSelect + ` ORDER BY v.name ASC`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -70,7 +76,7 @@ func (r *VendorRepositoryImpl) FindAll() ([]*entities.Vendor, error) {
 	var vendors []*entities.Vendor
 	for rows.Next() {
 		var dbo models.VendorDBO
-		err := rows.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CreatedAt, &dbo.UpdatedAt)
+		err := rows.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CategoryID, &dbo.CategoryName, &dbo.CreatedAt, &dbo.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan vendor: %w", err)
 		}
@@ -82,7 +88,7 @@ func (r *VendorRepositoryImpl) FindAll() ([]*entities.Vendor, error) {
 }
 
 func (r *VendorRepositoryImpl) FindByType(vendorType entities.VendorType) ([]*entities.Vendor, error) {
-	query := `SELECT id, name, type, created_at, updated_at FROM vendors WHERE type = $1 ORDER BY name ASC`
+	query := vendorSelect + ` WHERE v.type = $1 ORDER BY v.name ASC`
 
 	rows, err := r.db.Query(query, string(vendorType))
 	if err != nil {
@@ -93,7 +99,7 @@ func (r *VendorRepositoryImpl) FindByType(vendorType entities.VendorType) ([]*en
 	var vendors []*entities.Vendor
 	for rows.Next() {
 		var dbo models.VendorDBO
-		err := rows.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CreatedAt, &dbo.UpdatedAt)
+		err := rows.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CategoryID, &dbo.CategoryName, &dbo.CreatedAt, &dbo.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan vendor: %w", err)
 		}
@@ -107,7 +113,7 @@ func (r *VendorRepositoryImpl) FindByType(vendorType entities.VendorType) ([]*en
 func (r *VendorRepositoryImpl) Update(vendor *entities.Vendor) error {
 	query := `
 		UPDATE vendors 
-		SET name = $2, type = $3, updated_at = $4
+		SET name = $2, type = $3, category_id = $4, updated_at = $5
 		WHERE id = $1
 	`
 
@@ -116,6 +122,7 @@ func (r *VendorRepositoryImpl) Update(vendor *entities.Vendor) error {
 		int(vendor.ID()),
 		vendor.Name(),
 		string(vendor.Type()),
+		int(vendor.CategoryID()),
 		vendor.UpdatedAt(),
 	)
 
@@ -156,11 +163,11 @@ func (r *VendorRepositoryImpl) Delete(id entities.VendorID) error {
 }
 
 func (r *VendorRepositoryImpl) FindByName(name string) (*entities.Vendor, error) {
-	query := `SELECT id, name, type, created_at, updated_at FROM vendors WHERE name = $1 LIMIT 1`
+	query := vendorSelect + ` WHERE v.name = $1 LIMIT 1`
 
 	var dbo models.VendorDBO
 	row := r.db.QueryRow(query, name)
-	err := row.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CreatedAt, &dbo.UpdatedAt)
+	err := row.Scan(&dbo.ID, &dbo.Name, &dbo.Type, &dbo.CategoryID, &dbo.CategoryName, &dbo.CreatedAt, &dbo.UpdatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {

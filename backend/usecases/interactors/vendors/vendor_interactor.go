@@ -6,35 +6,47 @@ import (
 )
 
 type CreateVendorCommand struct {
-	Name string
-	Type string
+	Name       string
+	Type       string
+	CategoryID entities.CategoryID
 }
 
 type UpdateVendorCommand struct {
-	ID   entities.VendorID
-	Name *string
-	Type *string
+	ID         entities.VendorID
+	Name       *string
+	Type       *string
+	CategoryID *entities.CategoryID
 }
 
 type VendorInteractor struct {
-	vendorRepo repositories.VendorRepository
+	vendorRepo   repositories.VendorRepository
+	categoryRepo repositories.CategoryRepository
 }
 
-func NewVendorInteractor(vendorRepo repositories.VendorRepository) *VendorInteractor {
+func NewVendorInteractor(vendorRepo repositories.VendorRepository, categoryRepo repositories.CategoryRepository) *VendorInteractor {
 	return &VendorInteractor{
-		vendorRepo: vendorRepo,
+		vendorRepo:   vendorRepo,
+		categoryRepo: categoryRepo,
 	}
 }
 
 func (i *VendorInteractor) CreateVendor(cmd CreateVendorCommand) (*entities.Vendor, error) {
-	// Validate vendor type
-	vendorType := entities.VendorType(cmd.Type)
+	// Type is secondary to the category; default to the catch-all type
+	vendorType := entities.VendorTypeElse
+	if cmd.Type != "" {
+		vendorType = entities.VendorType(cmd.Type)
+	}
 	if !vendorType.IsValid() {
 		return nil, entities.ErrInvalidVendorType
 	}
 
+	category, err := i.categoryRepo.FindByID(cmd.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create vendor entity (with business rule validation)
-	vendor, err := entities.NewVendor(cmd.Name, vendorType)
+	vendor, err := entities.NewVendor(cmd.Name, vendorType, category)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +98,17 @@ func (i *VendorInteractor) UpdateVendor(cmd UpdateVendorCommand) (*entities.Vend
 	if cmd.Type != nil {
 		vendorType := entities.VendorType(*cmd.Type)
 		if err := vendor.UpdateType(vendorType); err != nil {
+			return nil, err
+		}
+	}
+
+	// Update category if provided
+	if cmd.CategoryID != nil {
+		category, err := i.categoryRepo.FindByID(*cmd.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		if err := vendor.UpdateCategory(category); err != nil {
 			return nil, err
 		}
 	}

@@ -140,8 +140,9 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 
 	// Convert DTO to use case command
 	cmd := vendors.CreateVendorCommand{
-		Name: requestDTO.Name,
-		Type: requestDTO.Type,
+		Name:       requestDTO.Name,
+		Type:       requestDTO.Type,
+		CategoryID: entities.CategoryID(requestDTO.CategoryID),
 	}
 
 	// Execute use case
@@ -149,6 +150,8 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 	if err != nil {
 		if err == entities.ErrInvalidVendorType {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
+		} else if err == entities.ErrCategoryNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Category not found"})
 		} else if err == entities.ErrVendorAlreadyExists {
 			c.JSON(http.StatusConflict, gin.H{"error": "Vendor with this name and type already exists"})
 		} else {
@@ -196,6 +199,10 @@ func (h *VendorHandler) UpdateVendor(c *gin.Context) {
 		Name: requestDTO.Name,
 		Type: requestDTO.Type,
 	}
+	if requestDTO.CategoryID != nil {
+		categoryID := entities.CategoryID(*requestDTO.CategoryID)
+		cmd.CategoryID = &categoryID
+	}
 
 	// Execute use case
 	v, err := h.vendorInteractor.UpdateVendor(cmd)
@@ -204,6 +211,8 @@ func (h *VendorHandler) UpdateVendor(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Vendor not found"})
 		} else if err == entities.ErrInvalidVendorType {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor type"})
+		} else if err == entities.ErrCategoryNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Category not found"})
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
@@ -252,11 +261,12 @@ func (h *VendorHandler) DeleteVendor(c *gin.Context) {
 // Helper method to convert domain entity to DTO
 func (h *VendorHandler) vendorToDTO(v *entities.Vendor) dto.VendorResponseDTO {
 	return dto.VendorResponseDTO{
-		ID:        int(v.ID()),
-		Name:      v.Name(),
-		Type:      string(v.Type()),
-		Category:  entities.GetCategoryForVendorType(v.Type()),
-		CreatedAt: v.CreatedAt(),
-		UpdatedAt: v.UpdatedAt(),
+		ID:         int(v.ID()),
+		Name:       v.Name(),
+		Type:       string(v.Type()),
+		CategoryID: int(v.CategoryID()),
+		Category:   v.CategoryName(),
+		CreatedAt:  v.CreatedAt(),
+		UpdatedAt:  v.UpdatedAt(),
 	}
 }
