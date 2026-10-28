@@ -112,7 +112,7 @@ func main() {
 	expenseInteractor := expense.NewExpenseInteractor(expenseRepo, vendorRepo, tagRepo)
 
 	// Setup expense parser for LLM-powered parsing
-	expenseParser := expense.NewExpenseParser(anthropicClient, vendorRepo)
+	expenseParser := expense.NewExpenseParser(anthropicClient, vendorRepo, categoryRepo)
 	expenseInteractor.SetExpenseParser(expenseParser)
 
 	// Setup bank transaction mapper for LLM-powered bank import

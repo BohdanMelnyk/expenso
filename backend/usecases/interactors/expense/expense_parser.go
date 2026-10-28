@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"text/template"
 	"time"
 
+	"expenso-backend/domain/entities"
 	"expenso-backend/infrastructure/llm"
 	"expenso-backend/infrastructure/logger"
 	"expenso-backend/usecases/interfaces/repositories"
@@ -20,9 +20,8 @@ type ParsedExpenseData struct {
 	Amount            float64 `json:"amount"`
 	Currency          string  `json:"currency"`
 	Category          string  `json:"category"`
+	VendorID          *int    `json:"vendor_id"` // ID from the vendor list in the prompt, verified after parsing
 	VendorName        string  `json:"vendor_name"`
-	VendorType        string  `json:"vendor_type"` // e.g., "food_store", "dining", "shop"
-	VendorTypeID      *int    `json:"-"`           // ID of the vendor type category for UI dropdown (computed, not from LLM)
 	Date              string  `json:"date"`
 	PaymentMethod     string  `json:"payment_method"`
 	Description       string  `json:"description"`
@@ -43,17 +42,37 @@ type ParsedExpenseData struct {
 	BookingReference string  `json:"-"`
 }
 
+// catchAllVendorName is the per-category vendor used when a merchant is not a known vendor
+const catchAllVendorName = "Else"
+
+// promptVendor is a vendor as listed in the LLM prompt
+type promptVendor struct {
+	ID       int
+	Name     string
+	Category string
+}
+
+// vendorCatalog holds the current vendors and categories, used to build prompts and verify LLM output
+type vendorCatalog struct {
+	Vendors    []promptVendor
+	Categories []string
+	byID       map[int]*entities.Vendor
+	all        []*entities.Vendor
+}
+
 // ExpenseParser handles parsing natural language input into structured expense data
 type ExpenseParser struct {
-	llmClient  *llm.AnthropicClient
-	vendorRepo repositories.VendorRepository
+	llmClient    *llm.AnthropicClient
+	vendorRepo   repositories.VendorRepository
+	categoryRepo repositories.CategoryRepository
 }
 
 // NewExpenseParser creates a new expense parser
-func NewExpenseParser(llmClient *llm.AnthropicClient, vendorRepo repositories.VendorRepository) *ExpenseParser {
+func NewExpenseParser(llmClient *llm.AnthropicClient, vendorRepo repositories.VendorRepository, categoryRepo repositories.CategoryRepository) *ExpenseParser {
 	return &ExpenseParser{
-		llmClient:  llmClient,
-		vendorRepo: vendorRepo,
+		llmClient:    llmClient,
+		vendorRepo:   vendorRepo,
+		categoryRepo: categoryRepo,
 	}
 }
 
@@ -63,10 +82,19 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 		"input_length": len(userInput),
 	})
 
-	// 1. Build LLM prompt
-	prompt := p.buildPrompt(userInput)
+	// 1. Load current vendors and categories
+	catalog, err := p.loadCatalog()
+	if err != nil {
+		return nil, err
+	}
 
-	// 2. Call LLM API
+	// 2. Build LLM prompt
+	prompt, err := p.buildPrompt(userInput, catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Call LLM API
 	response, err := p.llmClient.SendMessage(prompt)
 	if err != nil {
 		logger.Error("LLM API call failed", logger.Fields{
@@ -75,9 +103,9 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 		return nil, fmt.Errorf("LLM API call failed: %w", err)
 	}
 
-	// 3. Parse JSON response
+	// 4. Parse JSON response
 	var parsed ParsedExpenseData
-	if err := json.Unmarshal([]byte(response), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(stripMarkdownCodeFence(response)), &parsed); err != nil {
 		logger.Error("Failed to parse LLM response", logger.Fields{
 			"error":    err.Error(),
 			"response": response,
@@ -85,7 +113,7 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
 
-	// 4. Validate and normalize parsed data
+	// 5. Validate and normalize parsed data
 	if err := p.validateParsedData(&parsed); err != nil {
 		logger.Error("Validation failed", logger.Fields{
 			"error": err.Error(),
@@ -93,27 +121,15 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 		return nil, err
 	}
 
-	// 5. Match vendor name to existing vendors
-	if parsed.VendorName != "" {
-		if err := p.matchVendor(&parsed); err != nil {
-			logger.Warn("Vendor matching warning", logger.Fields{
-				"error":       err.Error(),
-				"vendor_name": parsed.VendorName,
-			})
-		}
-	}
+	// 6. Resolve vendor and take the category from it
+	p.resolveVendor(&parsed, catalog)
 
-	// 6. Map payment method
+	// 7. Map payment method
 	parsed.PaymentMethod = p.mapPaymentMethod(parsed.PaymentMethod)
-
-	// 7. Map vendor type to category ID for UI dropdown
-	parsed.VendorTypeID = p.mapVendorTypeToID(parsed.VendorType)
 
 	logger.Info("Expense parsing completed successfully", logger.Fields{
 		"amount":            parsed.Amount,
 		"category":          parsed.Category,
-		"vendor_type":       parsed.VendorType,
-		"vendor_type_id":    parsed.VendorTypeID,
 		"confidence_score":  parsed.ConfidenceScore,
 		"matched_vendor_id": parsed.MatchedVendorID,
 	})
@@ -121,121 +137,76 @@ func (p *ExpenseParser) ParseExpense(userInput string) (*ParsedExpenseData, erro
 	return &parsed, nil
 }
 
-// buildPrompt creates the LLM prompt for expense parsing from external template
-func (p *ExpenseParser) buildPrompt(userInput string) string {
-	today := time.Now().Format("2006-01-02")
-	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-
-	// Load template file
-	templateContent, err := ioutil.ReadFile("infrastructure/llm/expense_parser_prompt.txt")
+// loadCatalog fetches the current vendors and categories for the prompt
+func (p *ExpenseParser) loadCatalog() (*vendorCatalog, error) {
+	vendors, err := p.vendorRepo.FindAll()
 	if err != nil {
-		logger.Error("Failed to load prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		// Fallback to inline template if file not found
-		return p.fallbackPrompt(userInput)
+		return nil, fmt.Errorf("failed to fetch vendors: %w", err)
+	}
+	categories, err := p.categoryRepo.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch categories: %w", err)
 	}
 
-	// Parse template
-	tmpl, err := template.New("expense_parser").Parse(string(templateContent))
-	if err != nil {
-		logger.Error("Failed to parse prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		return p.fallbackPrompt(userInput)
+	catalog := &vendorCatalog{byID: make(map[int]*entities.Vendor, len(vendors)), all: vendors}
+	for _, v := range vendors {
+		catalog.Vendors = append(catalog.Vendors, promptVendor{ID: int(v.ID()), Name: v.Name(), Category: v.CategoryName()})
+		catalog.byID[int(v.ID())] = v
 	}
+	for _, c := range categories {
+		catalog.Categories = append(catalog.Categories, c.Name())
+	}
+	return catalog, nil
+}
 
-	// Execute template
+// buildPrompt creates the LLM prompt for expense parsing from the embedded template
+func (p *ExpenseParser) buildPrompt(userInput string, catalog *vendorCatalog) (string, error) {
 	type PromptData struct {
 		UserInput     string
 		TodayDate     string
 		YesterdayDate string
+		Vendors       []promptVendor
+		Categories    []string
+	}
+
+	return renderPrompt("expense_parser", llm.ExpenseParserPrompt, PromptData{
+		UserInput:     userInput,
+		TodayDate:     time.Now().Format("2006-01-02"),
+		YesterdayDate: time.Now().AddDate(0, 0, -1).Format("2006-01-02"),
+		Vendors:       catalog.Vendors,
+		Categories:    catalog.Categories,
+	})
+}
+
+// renderPrompt executes a prompt template with the given data
+func renderPrompt(name, text string, data any) (string, error) {
+	tmpl, err := template.New(name).Parse(text)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse %s prompt template: %w", name, err)
 	}
 
 	var result bytes.Buffer
-	err = tmpl.Execute(&result, PromptData{
-		UserInput:     userInput,
-		TodayDate:     today,
-		YesterdayDate: yesterday,
-	})
-	if err != nil {
-		logger.Error("Failed to execute prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		return p.fallbackPrompt(userInput)
+	if err := tmpl.Execute(&result, data); err != nil {
+		return "", fmt.Errorf("failed to execute %s prompt template: %w", name, err)
+	}
+	return result.String(), nil
+}
+
+// stripMarkdownCodeFence removes markdown code fence from response if present
+func stripMarkdownCodeFence(response string) string {
+	response = strings.TrimSpace(response)
+
+	// Check for ```json ... ``` pattern
+	if strings.HasPrefix(response, "```json") {
+		response = strings.TrimPrefix(response, "```json")
+		response = strings.TrimSuffix(response, "```")
+	} else if strings.HasPrefix(response, "```") {
+		// Generic code fence
+		response = strings.TrimPrefix(response, "```")
+		response = strings.TrimSuffix(response, "```")
 	}
 
-	return result.String()
-}
-
-// fallbackPrompt provides a fallback prompt in case template file cannot be loaded
-func (p *ExpenseParser) fallbackPrompt(userInput string) string {
-	today := time.Now().Format("2006-01-02")
-	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-
-	return fmt.Sprintf(`You are an expense parser. Extract structured expense information from the user's natural language input.
-
-User input: "%s"
-
-Today's date: %s
-
-Extract the following fields and return ONLY valid JSON (no markdown, no code blocks, no explanations). Return a single JSON object:
-
-{
-  "amount": <number, REQUIRED, positive number>,
-  "currency": <"EUR" or "USD", default "EUR">,
-  "category": <one of: "Food Store", "Dining", "Dining with Friends", "Shopping", "Transportation", "Car", "Living", "Household", "Bills & Utilities", "Health & Fitness", "Travel", "Entertainment", "Education", "Gifts & Donations", "Other">,
-  "vendor_name": <string, name of the store/merchant, can be empty>,
-  "vendor_type": <string, type of vendor for category mapping>,
-  "date": <YYYY-MM-DD format, REQUIRED>,
-  "payment_method": <one of: "credit_card", "debit_card", "cash", "paypal", "n26", "revolut", "wise", "monobank">,
-  "description": <brief description of the expense, max 100 chars>,
-  "confidence_score": <0.0 to 1.0, your confidence in the extraction>
-}
-
-Category mapping guidelines:
-- Groceries, supermarket, market, shopping for food → "Food Store"
-- Restaurant, cafe, coffee, eating out, lunch, dinner → "Dining"
-- Dining with friends, party, social dining → "Dining with Friends"
-- Stores, clothes, electronics, shopping, mall → "Shopping"
-- Taxi, train, bus, Uber, tram, metro, transport → "Transportation"
-- Gas, fuel, car maintenance, repair → "Car"
-- Rent, utilities, internet, phone → "Living"
-- Household items, cleaning, supplies → "Household"
-- Subscriptions, phone bills, insurance → "Bills & Utilities"
-- Gym, doctor, pharmacy, healthcare → "Health & Fitness"
-- Vacation, travel, hotel, flight → "Travel"
-- Movies, games, hobbies → "Entertainment"
-
-Payment method mapping rules:
-- "credit card", "kreditkarte", "visa", "mastercard" → "credit_card"
-- "debit card", "ec karte", "girokarte" → "debit_card"
-- "bar", "bargeld", "cash" → "cash"
-- "paypal" → "paypal"
-- "n26" → "n26"
-- "revolut" → "revolut"
-- "wise", "transferwise" → "wise"
-- "monobank" → "monobank"
-- Default if unclear: "credit_card"
-
-Date parsing rules:
-- "today" → %s
-- "yesterday" → %s
-- "last week" → 7 days ago
-- Parse specific dates like "January 15" or "15.01" (assume current year if not specified)
-- If no date specified, use today
-
-IMPORTANT:
-1. Return ONLY the JSON object, no other text
-2. All currency values should be positive numbers
-3. Description should be brief (max 100 characters)
-4. If amount is missing or cannot be determined, return confidence_score of 0 and amount of 0
-5. Do not include markdown code blocks or explanations
-6. Include vendor_type if you can identify it to help with category mapping`,
-		userInput,
-		today,
-		today,
-		yesterday)
+	return strings.TrimSpace(response)
 }
 
 // validateParsedData validates and normalizes parsed expense data
@@ -262,51 +233,78 @@ func (p *ExpenseParser) validateParsedData(data *ParsedExpenseData) error {
 	return nil
 }
 
-// matchVendor attempts to match vendor name to existing vendors in database
-func (p *ExpenseParser) matchVendor(data *ParsedExpenseData) error {
-	// Fetch all vendors
-	vendors, err := p.vendorRepo.FindAll()
-	if err != nil {
-		return fmt.Errorf("failed to fetch vendors: %w", err)
+// resolveVendor verifies the LLM's vendor choice and makes the category follow the vendor.
+// Order: the returned vendor_id, then a unique exact name match, then the category's catch-all vendor.
+func (p *ExpenseParser) resolveVendor(data *ParsedExpenseData, catalog *vendorCatalog) {
+	if data.VendorID != nil {
+		if vendor, ok := catalog.byID[*data.VendorID]; ok {
+			assignVendor(data, vendor)
+			return
+		}
+		logger.Warn("LLM returned unknown vendor_id", logger.Fields{
+			"vendor_id": *data.VendorID,
+		})
 	}
 
-	normalizedInput := strings.ToLower(strings.TrimSpace(data.VendorName))
+	if vendor := uniqueVendorByName(catalog.all, data.VendorName); vendor != nil {
+		assignVendor(data, vendor)
+		return
+	}
 
-	// Strategy 1: Exact match (case-insensitive)
-	for _, vendor := range vendors {
-		if strings.ToLower(vendor.Name()) == normalizedInput {
-			vendorID := int(vendor.ID())
-			data.MatchedVendorID = &vendorID
-			data.MatchedVendorName = vendor.Name()
-			logger.Info("Vendor exact match found", logger.Fields{
-				"vendor_name": vendor.Name(),
-				"vendor_id":   vendorID,
-			})
-			return nil
+	if !containsString(catalog.Categories, data.Category) {
+		logger.Warn("LLM returned unknown category, using Other", logger.Fields{
+			"category": data.Category,
+		})
+		data.Category = "Other"
+	}
+
+	for _, vendor := range catalog.all {
+		if vendor.Name() == catchAllVendorName && vendor.CategoryName() == data.Category {
+			assignVendor(data, vendor)
+			return
 		}
 	}
 
-	// Strategy 2: Partial match (vendor name contains input or vice versa)
-	for _, vendor := range vendors {
-		vendorNameLower := strings.ToLower(vendor.Name())
-		if strings.Contains(vendorNameLower, normalizedInput) || strings.Contains(normalizedInput, vendorNameLower) {
-			vendorID := int(vendor.ID())
-			data.MatchedVendorID = &vendorID
-			data.MatchedVendorName = vendor.Name()
-			logger.Info("Vendor partial match found", logger.Fields{
-				"input":     data.VendorName,
-				"matched":   vendor.Name(),
-				"vendor_id": vendorID,
-			})
-			return nil
-		}
-	}
-
-	// No match found - this is not an error, just means no vendor matched
 	logger.Info("No vendor match found", logger.Fields{
 		"vendor_name": data.VendorName,
+		"category":    data.Category,
 	})
-	return nil
+}
+
+func assignVendor(data *ParsedExpenseData, vendor *entities.Vendor) {
+	vendorID := int(vendor.ID())
+	data.MatchedVendorID = &vendorID
+	data.MatchedVendorName = vendor.Name()
+	data.Category = vendor.CategoryName()
+}
+
+// uniqueVendorByName returns the vendor whose name equals name (case-insensitive) if exactly one does.
+// Catch-all vendors are skipped because every category has one.
+func uniqueVendorByName(vendors []*entities.Vendor, name string) *entities.Vendor {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	if normalized == "" || normalized == strings.ToLower(catchAllVendorName) {
+		return nil
+	}
+
+	var match *entities.Vendor
+	for _, vendor := range vendors {
+		if strings.ToLower(vendor.Name()) == normalized {
+			if match != nil {
+				return nil
+			}
+			match = vendor
+		}
+	}
+	return match
+}
+
+func containsString(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 // mapPaymentMethod validates and normalizes LLM output payment method to backend enums
@@ -345,37 +343,4 @@ func (p *ExpenseParser) mapPaymentMethod(llmMethod string) string {
 
 	// Default to credit card if not found
 	return "b_haspa_credit"
-}
-
-// mapVendorTypeToID maps vendor type string to category ID for UI dropdown selection
-func (p *ExpenseParser) mapVendorTypeToID(vendorType string) *int {
-	// Mapping from vendor type to category ID
-	vendorTypeToID := map[string]int{
-		"food_store":          1,  // Food Store
-		"transport":           2,  // Transportation
-		"shop":                3,  // Shopping
-		"clothing":            3,  // Shopping
-		"entertainment":       4,  // Entertainment
-		"subscriptions":       5,  // Bills & Utilities
-		"care":                6,  // Health & Fitness
-		"tourism":             7,  // Travel
-		"education":           8,  // Education
-		"else":                10, // Other
-		"salary":              11, // Salary
-		"investment":          13, // Investment
-		"car":                 15, // Car
-		"living":              16, // Living
-		"dining":              17, // Dining
-		"eating_out":          17, // Dining
-		"household":           18, // Household
-		"dining_with_friends": 21, // Dining with Friends
-	}
-
-	normalized := strings.ToLower(strings.TrimSpace(vendorType))
-	if id, exists := vendorTypeToID[normalized]; exists {
-		return &id
-	}
-
-	// Return nil if vendor type not found (no category mapping)
-	return nil
 }
