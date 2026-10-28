@@ -30,6 +30,7 @@ export function useLoad<T>(load: () => Promise<T>, key: string) {
   useEffect(() => {
     // A new range: don't show the old range's numbers under the new title.
     setData(null);
+    setError(false);
     reload();
   }, [key, reload]);
   useReloadOnChange(reload);

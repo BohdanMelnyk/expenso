@@ -12,6 +12,13 @@ describe('small fixes', () => {
     expect(cleared).toMatchObject({ amount: 0, vendorId: undefined, category: undefined, note: 'mine', text: 're' });
   });
 
+  it('also resets a parsed date and payment method to the defaults', () => {
+    const parsed = { ...emptyDraft('2026-10-28', 'b_haspa_credit'), text: 're', date: '2026-10-27', paymentMethod: 'cash' };
+    expect(clearParsed(parsed, '2026-10-28', 'b_haspa_credit')).toMatchObject({ date: '2026-10-28', paymentMethod: 'b_haspa_credit' });
+    const kept = editDraft(parsed, { paymentMethod: 'cash' }, []);
+    expect(clearParsed(kept, '2026-10-28', 'b_haspa_credit').paymentMethod).toBe('cash');
+  });
+
   it('keeps vendor ids with vendor totals', () => {
     const rewe = vendor(7, 'Rewe', 1, 'Food Store');
     expect(totalsByVendor([exp(5, '2026-10-01', 'Food Store', rewe)])[0]).toMatchObject({ id: 7, name: 'Rewe', amount: 5, count: 1 });

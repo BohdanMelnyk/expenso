@@ -2,17 +2,20 @@ package snapshot_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"expenso-backend/domain/entities"
 	interactor "expenso-backend/usecases/interactors/snapshot"
+	"expenso-backend/usecases/interfaces/repositories"
 )
 
 type mockSnapshotRepo struct {
-	saved   []*entities.Snapshot
-	findAll []*entities.Snapshot
-	updated []*entities.Snapshot
+	saved     []*entities.Snapshot
+	findAll   []*entities.Snapshot
+	updated   []*entities.Snapshot
+	updateErr error
 }
 
 func (m *mockSnapshotRepo) FindByID(id entities.SnapshotID) (*entities.Snapshot, error) {
@@ -25,6 +28,9 @@ func (m *mockSnapshotRepo) FindByID(id entities.SnapshotID) (*entities.Snapshot,
 }
 
 func (m *mockSnapshotRepo) Update(s *entities.Snapshot) error {
+	if m.updateErr != nil {
+		return m.updateErr
+	}
 	m.updated = append(m.updated, s)
 	return nil
 }
@@ -143,6 +149,16 @@ func TestUpdateSnapshot(t *testing.T) {
 func TestUpdateSnapshot_NotFound(t *testing.T) {
 	svc := interactor.NewSnapshotInteractor(&mockSnapshotRepo{}, 0.25)
 	_, err := svc.UpdateSnapshot(42, interactor.CreateSnapshotCommand{Date: time.Now()})
+	if !errors.Is(err, interactor.ErrSnapshotNotFound) {
+		t.Fatalf("expected ErrSnapshotNotFound, got %v", err)
+	}
+}
+
+func TestUpdateSnapshot_GoneDuringUpdate(t *testing.T) {
+	existing, _ := entities.NewSnapshot(time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC), 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.25)
+	existing.SetID(1)
+	repo := &mockSnapshotRepo{findAll: []*entities.Snapshot{existing}, updateErr: fmt.Errorf("update: %w", repositories.ErrSnapshotNotFound)}
+	_, err := interactor.NewSnapshotInteractor(repo, 0.25).UpdateSnapshot(1, interactor.CreateSnapshotCommand{Date: time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC)})
 	if !errors.Is(err, interactor.ErrSnapshotNotFound) {
 		t.Fatalf("expected ErrSnapshotNotFound, got %v", err)
 	}

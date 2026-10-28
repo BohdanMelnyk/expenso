@@ -88,7 +88,7 @@ func (r *SnapshotRepositoryImpl) Update(s *entities.Snapshot) error {
 		return fmt.Errorf("failed to update snapshot: %w", err)
 	}
 	if n, err := result.RowsAffected(); err == nil && n == 0 {
-		return fmt.Errorf("snapshot %d no longer exists", s.ID())
+		return fmt.Errorf("update snapshot %d: %w", s.ID(), irepositories.ErrSnapshotNotFound)
 	}
 	return nil
 }

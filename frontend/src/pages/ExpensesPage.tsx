@@ -299,7 +299,7 @@ const ExpensesPage: React.FC = () => {
             </tbody>
           </table>
         )}
-        {(kind === 'expense' ? expenses : incomes).length === 0 && !loading && <Quiet>{kind === 'income' ? 'No income this month.' : 'No expenses match.'}</Quiet>}
+        {(kind === 'expense' ? expenses : incomes).length === 0 && !loading && !error && <Quiet>{kind === 'income' ? 'No income this month.' : 'No expenses match.'}</Quiet>}
         <div className="flex justify-between border-t border-gray-100 px-3 pt-2 text-sm text-gray-500 dark:border-white/5 dark:text-gray-400">
           <span>{(kind === 'expense' ? expenses : incomes).length} {kind === 'income' ? 'entries' : 'expenses'}{kind === 'expense' ? ' · tick rows to change or delete several' : ''}</span>
           <span className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{eur(total)}</span>

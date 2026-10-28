@@ -71,7 +71,7 @@ export function applyParse(d: Draft, parsed: ParsedExpenseResponse, forText: str
 }
 
 /** Drop what a parse filled in (for text too short to parse); the user's own edits stay. */
-export function clearParsed(d: Draft): Draft {
+export function clearParsed(d: Draft, today?: string, defaultPayment?: string): Draft {
   const has = (f: DraftField) => d.edited.includes(f);
   return {
     ...d,
@@ -79,6 +79,8 @@ export function clearParsed(d: Draft): Draft {
     vendorId: has('vendorId') ? d.vendorId : undefined,
     category: has('category') ? d.category : undefined,
     note: has('note') ? d.note : '',
+    date: has('date') || !today ? d.date : today,
+    paymentMethod: has('paymentMethod') || !defaultPayment ? d.paymentMethod : defaultPayment,
   };
 }
 
