@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"errors"
 	"time"
 
 	"expenso-backend/domain/entities"
@@ -23,6 +24,8 @@ type CreateSnapshotCommand struct {
 	CareemRSUShares float64
 	ENBDAED         float64
 }
+
+var ErrSnapshotNotFound = errors.New("snapshot not found")
 
 type SnapshotInteractor struct {
 	snapshotRepo repositories.SnapshotRepository
@@ -47,6 +50,34 @@ func (i *SnapshotInteractor) CreateSnapshot(cmd CreateSnapshotCommand) (*entitie
 		return nil, err
 	}
 	if err := i.snapshotRepo.Save(s); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// UpdateSnapshot replaces every value of an existing snapshot.
+func (i *SnapshotInteractor) UpdateSnapshot(id int, cmd CreateSnapshotCommand) (*entities.Snapshot, error) {
+	existing, err := i.snapshotRepo.FindByID(entities.SnapshotID(id))
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, ErrSnapshotNotFound
+	}
+	s, err := entities.NewSnapshot(
+		cmd.Date,
+		cmd.Haspa, cmd.N26B, cmd.N26M, cmd.Cash,
+		cmd.UberStocks, cmd.ScalableCapital,
+		cmd.MonoB, cmd.MonoM,
+		cmd.PaypalB, cmd.PaypalM, cmd.BackupCash,
+		cmd.CareemRSUShares,
+		cmd.ENBDAED, i.aedToEUR,
+	)
+	if err != nil {
+		return nil, err
+	}
+	s.SetID(existing.ID())
+	if err := i.snapshotRepo.Update(s); err != nil {
 		return nil, err
 	}
 	return s, nil

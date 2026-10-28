@@ -1,6 +1,7 @@
 package snapshot_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -11,6 +12,21 @@ import (
 type mockSnapshotRepo struct {
 	saved   []*entities.Snapshot
 	findAll []*entities.Snapshot
+	updated []*entities.Snapshot
+}
+
+func (m *mockSnapshotRepo) FindByID(id entities.SnapshotID) (*entities.Snapshot, error) {
+	for _, s := range m.findAll {
+		if s.ID() == id {
+			return s, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockSnapshotRepo) Update(s *entities.Snapshot) error {
+	m.updated = append(m.updated, s)
+	return nil
 }
 
 func (m *mockSnapshotRepo) Save(s *entities.Snapshot) error {
@@ -93,5 +109,41 @@ func TestCreateSnapshot_ConvertsENBDToEUR(t *testing.T) {
 	expectedTotal := 1000.0 + 1000.0
 	if s.Total() != expectedTotal {
 		t.Errorf("expected total %v, got %v", expectedTotal, s.Total())
+	}
+}
+
+func TestUpdateSnapshot(t *testing.T) {
+	existing, err := entities.NewSnapshot(time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC), 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 400, 0.25)
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing.SetID(1)
+	repo := &mockSnapshotRepo{findAll: []*entities.Snapshot{existing}}
+	svc := interactor.NewSnapshotInteractor(repo, 0.25)
+
+	got, err := svc.UpdateSnapshot(1, interactor.CreateSnapshotCommand{
+		Date:    time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC),
+		Haspa:   200,
+		ENBDAED: 400,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repo.updated) != 1 || got.ID() != 1 {
+		t.Fatalf("expected snapshot 1 updated, got %d updates, id %d", len(repo.updated), got.ID())
+	}
+	if got.Haspa() != 200 {
+		t.Errorf("haspa = %v, want 200", got.Haspa())
+	}
+	if got.ENBDEUR() != 100 {
+		t.Errorf("enbd eur = %v, want 100 (400 AED * 0.25)", got.ENBDEUR())
+	}
+}
+
+func TestUpdateSnapshot_NotFound(t *testing.T) {
+	svc := interactor.NewSnapshotInteractor(&mockSnapshotRepo{}, 0.25)
+	_, err := svc.UpdateSnapshot(42, interactor.CreateSnapshotCommand{Date: time.Now()})
+	if !errors.Is(err, interactor.ErrSnapshotNotFound) {
+		t.Fatalf("expected ErrSnapshotNotFound, got %v", err)
 	}
 }
