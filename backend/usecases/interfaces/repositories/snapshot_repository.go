@@ -1,6 +1,13 @@
 package repositories
 
-import "expenso-backend/domain/entities"
+import (
+	"errors"
+
+	"expenso-backend/domain/entities"
+)
+
+// ErrSnapshotNotFound: no snapshot with that id (for example deleted meanwhile).
+var ErrSnapshotNotFound = errors.New("snapshot not found")
 
 type SnapshotRepository interface {
 	Save(snapshot *entities.Snapshot) error

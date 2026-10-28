@@ -114,7 +114,7 @@ const OverviewPage: React.FC = () => {
       <div className="mt-3 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
         <Card>
           <CardTitle right={rows.some((r) => r.average > 0) ? (isYear ? '┃ = last year’s pace' : running ? '┃ = usual by this day' : '┃ = your 6-month average') : undefined}>Where it went</CardTitle>
-          {rows.length === 0 && !loading && <Quiet>Nothing spent {isYear ? 'this year' : 'this month'} yet.</Quiet>}
+          {rows.length === 0 && !loading && !error && <Quiet>Nothing spent {isYear ? 'this year' : 'this month'} yet.</Quiet>}
           <div className="divide-y divide-gray-100 dark:divide-white/5">
             {shownRows.map((r) => {
               const category = categoryByName(r.name);
@@ -141,7 +141,7 @@ const OverviewPage: React.FC = () => {
           {!isYear && (
             <>
               <CardTitle>Worth talking about</CardTitle>
-              {cards.length === 0 && !loading && <Quiet>Nothing unusual {sameMonth(month, thisMonth) ? 'so far' : 'this month'}.</Quiet>}
+              {cards.length === 0 && !loading && !error && <Quiet>Nothing unusual {sameMonth(month, thisMonth) ? 'so far' : 'this month'}.</Quiet>}
               <div className="flex flex-col gap-2">
                 {cards.map((c, i) => (
                   <div key={i} className={`rounded-lg p-3 ${insightStyle[c.kind]}`}>

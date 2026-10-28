@@ -88,7 +88,7 @@ const AddPanel: React.FC = () => {
     const check = checkParseInput(text);
     if (check !== 'ok') {
       setPendingText(null);
-      if (check === 'short') setDraft((d) => (d.text === text ? clearParsed(d) : d));
+      if (check === 'short') setDraft((d) => (d.text === text ? clearParsed(d, today(), 'b_haspa_credit') : d));
       if (check === 'long') setParseMessage("That's too long to read. Keep it under 500 characters.");
       return;
     }

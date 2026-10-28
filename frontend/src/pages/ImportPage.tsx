@@ -35,6 +35,8 @@ const ImportPage: React.FC = () => {
   const [deciding, setDeciding] = useState(false);
   /** Set by Cancel; running loops stop at the next row. */
   const cancelled = useRef(false);
+  /** Rows saved by the running Add, for the Stop message. */
+  const addedSoFar = useRef(0);
   const [dragging, setDragging] = useState(false);
   /** Latest transaction date in the statement, for "covered up to". */
   const [coveredUntil, setCoveredUntil] = useState('');
@@ -80,6 +82,7 @@ const ImportPage: React.FC = () => {
   const add = async () => {
     setError(null);
     cancelled.current = false;
+    addedSoFar.current = 0;
     setAdding({ done: 0, total: ticked.length });
     const found = new Map<number, Expense[]>();
     for (const row of ticked) {
@@ -102,6 +105,7 @@ const ImportPage: React.FC = () => {
         await post(row);
         posted.add(row.index);
         added++;
+        addedSoFar.current = added;
       } catch {
         // Not added; the row stays ticked for another try.
       }
@@ -167,7 +171,10 @@ const ImportPage: React.FC = () => {
               variant="ghost"
               onClick={() => {
                 cancelled.current = true;
-                if (adding) notifyChanged();
+                if (adding && addedSoFar.current > 0) {
+                  notifyChanged();
+                  show(`Stopped · added ${addedSoFar.current}`, 'info');
+                }
                 navigate('/expenses');
               }}
             >

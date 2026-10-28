@@ -46,6 +46,7 @@ const WealthPage: React.FC = () => {
   const snapshots = data?.snapshots ?? [];
   const { latest, previous } = latestTwo(snapshots);
   const grown = grownThisYear(snapshots, now);
+  const noneThisYear = !!latest && latest.date < `${now.getFullYear()}-01-01`;
   const saved = savedThisYear(data?.incomes ?? [], data?.expenses ?? [], now);
   const lastTwelve = monthsBetween(addMonths(thisMonth, -12), addMonths(thisMonth, -1));
   const monthly = savedPerMonth(data?.incomes ?? [], data?.expenses ?? [], lastTwelve);
@@ -90,7 +91,7 @@ const WealthPage: React.FC = () => {
               value={latest ? eurShort(latest.total) : '—'}
               sub={latest && previous ? <span className={latest.total >= previous.total ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{latest.total >= previous.total ? '▲' : '▼'} {eurShort(Math.abs(latest.total - previous.total))} since {day(previous.date)}</span> : undefined}
             />
-            <StatCard label="Grown this year" value={grown === null ? '—' : signedEur(grown)} tone={grown === null ? undefined : grown >= 0 ? 'good' : 'bad'} sub={grown === null ? 'needs two snapshots' : latest && latest.date < `${now.getFullYear()}-01-01` ? 'no snapshot this year yet' : `since ${now.getFullYear()} began`} />
+            <StatCard label="Grown this year" value={grown === null || noneThisYear ? '—' : signedEur(grown)} tone={grown === null || noneThisYear ? undefined : grown >= 0 ? 'good' : 'bad'} sub={grown === null ? 'needs two snapshots' : latest && latest.date < `${now.getFullYear()}-01-01` ? 'no snapshot this year yet' : `since ${now.getFullYear()} began`} />
             <StatCard
               label="Saved from income"
               value={signedEur(saved)}

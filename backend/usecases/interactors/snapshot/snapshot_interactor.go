@@ -1,7 +1,6 @@
 package snapshot
 
 import (
-	"errors"
 	"time"
 
 	"expenso-backend/domain/entities"
@@ -25,7 +24,7 @@ type CreateSnapshotCommand struct {
 	ENBDAED         float64
 }
 
-var ErrSnapshotNotFound = errors.New("snapshot not found")
+var ErrSnapshotNotFound = repositories.ErrSnapshotNotFound
 
 type SnapshotInteractor struct {
 	snapshotRepo repositories.SnapshotRepository

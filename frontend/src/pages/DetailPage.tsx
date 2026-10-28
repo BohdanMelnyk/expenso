@@ -23,7 +23,7 @@ const DetailPage: React.FC = () => {
   const { openEditExpense } = useAddPanel();
 
   const vendor = id ? vendors.find((v) => v.id === Number(id)) : undefined;
-  const title = vendor?.name ?? (name ? decodeURIComponent(name) : '');
+  const title = vendor?.name ?? (name ?? '');
   const category = categoryByName(vendor?.category ?? title);
   const matches = (e: Expense) => (id ? e.vendor_id === Number(id) || e.vendor?.id === Number(id) : e.category.toLowerCase() === title.toLowerCase());
 
@@ -83,7 +83,7 @@ const DetailPage: React.FC = () => {
                 <span className="ml-auto font-semibold tabular-nums">{eur(v.amount)}</span>
               </Link>
             ))}
-            {inMonthExpenses.length === 0 && !loading && <Quiet>Nothing this month.</Quiet>}
+            {inMonthExpenses.length === 0 && !loading && !error && <Quiet>Nothing this month.</Quiet>}
           </Card>
         )}
       </div>
@@ -109,7 +109,7 @@ const DetailPage: React.FC = () => {
             ))}
           </tbody>
         </table>
-        {inMonthExpenses.length === 0 && !loading && <Quiet>No expenses in {monthName(month)}.</Quiet>}
+        {inMonthExpenses.length === 0 && !loading && !error && <Quiet>No expenses in {monthName(month)}.</Quiet>}
       </Card>
     </div>
   );
