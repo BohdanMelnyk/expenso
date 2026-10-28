@@ -1,12 +1,8 @@
 package expense
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"strings"
-	"text/template"
 	"time"
 
 	"expenso-backend/domain/entities"
@@ -44,8 +40,15 @@ func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTrans
 		"booking_date":  transaction.BookingDate().Format("2006-01-02"),
 	})
 
-	// 1. Build LLM prompt
-	prompt := m.buildPrompt(transaction)
+	// 1. Load current vendors and categories, then build LLM prompt
+	catalog, err := m.expenseParser.loadCatalog()
+	if err != nil {
+		return nil, err
+	}
+	prompt, err := m.buildPrompt(transaction, catalog)
+	if err != nil {
+		return nil, err
+	}
 
 	// 2. Call LLM API
 	response, err := m.llmClient.SendMessage(prompt)
@@ -59,7 +62,7 @@ func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTrans
 
 	// 3. Parse JSON response
 	// Strip markdown code fence if present (e.g., ```json ... ```)
-	cleanedResponse := m.stripMarkdownCodeFence(response)
+	cleanedResponse := stripMarkdownCodeFence(response)
 
 	var parsed ParsedExpenseData
 	if err := json.Unmarshal([]byte(cleanedResponse), &parsed); err != nil {
@@ -93,62 +96,31 @@ func (m *BankTransactionMapper) MapToExpenseData(transaction *entities.BankTrans
 		return nil, err
 	}
 
-	// 5. Match vendor name to existing vendors
-	if parsed.VendorName != "" {
-		if err := m.expenseParser.matchVendor(&parsed); err != nil {
-			logger.Warn("Vendor matching warning", logger.Fields{
-				"error":       err.Error(),
-				"vendor_name": parsed.VendorName,
-			})
-		}
-	}
+	// 5. Resolve vendor and take the category from it
+	m.expenseParser.resolveVendor(&parsed, catalog)
 
-	// 6. Map vendor type to category ID for UI dropdown
-	parsed.VendorTypeID = m.expenseParser.mapVendorTypeToID(parsed.VendorType)
-
-	// 7. Payment method is always bank credit card for bank imports
+	// 6. Payment method is always bank credit card for bank imports
 	parsed.PaymentMethod = "b_haspa_credit"
 
 	logger.Info("Bank transaction mapping completed successfully", logger.Fields{
 		"amount":           parsed.Amount,
 		"category":         parsed.Category,
 		"vendor_name":      parsed.VendorName,
+		"matched_vendor":   parsed.MatchedVendorName,
 		"confidence_score": parsed.ConfidenceScore,
 	})
 
 	return &parsed, nil
 }
 
-// buildPrompt creates the LLM prompt for bank transaction mapping
-func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransaction) string {
-	today := time.Now().Format("2006-01-02")
-
-	// Load template file
-	templateContent, err := ioutil.ReadFile("infrastructure/llm/bank_transaction_prompt.txt")
-	if err != nil {
-		logger.Error("Failed to load bank transaction prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		// Fallback to inline template if file not found
-		return m.fallbackPrompt(transaction, today)
-	}
-
-	// Parse template
-	tmpl, err := template.New("bank_transaction").Parse(string(templateContent))
-	if err != nil {
-		logger.Error("Failed to parse bank transaction prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		return m.fallbackPrompt(transaction, today)
-	}
-
+// buildPrompt creates the LLM prompt for bank transaction mapping from the embedded template
+func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransaction, catalog *vendorCatalog) (string, error) {
 	// Determine transaction type
 	transactionType := "expense"
 	if transaction.IsIncome() {
 		transactionType = "income"
 	}
 
-	// Execute template
 	type PromptData struct {
 		TransactionDesc      string
 		TransactionDescExtra string
@@ -161,10 +133,11 @@ func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransactio
 		ExchangeRate         float64
 		BookingAmount        float64
 		TodayDate            string
+		Vendors              []promptVendor
+		Categories           []string
 	}
 
-	var result bytes.Buffer
-	err = tmpl.Execute(&result, PromptData{
+	return renderPrompt("bank_transaction", llm.BankTransactionPrompt, PromptData{
 		TransactionDesc:      transaction.TransactionDesc(),
 		TransactionDescExtra: transaction.TransactionDescExtra(),
 		TransactionDate:      transaction.DocumentDate().Format("2006-01-02"),
@@ -175,126 +148,10 @@ func (m *BankTransactionMapper) buildPrompt(transaction *entities.BankTransactio
 		OriginalCurrency:     transaction.OriginalCurrency(),
 		ExchangeRate:         transaction.ExchangeRate(),
 		BookingAmount:        transaction.BookingAmount(),
-		TodayDate:            today,
+		TodayDate:            time.Now().Format("2006-01-02"),
+		Vendors:              catalog.Vendors,
+		Categories:           catalog.Categories,
 	})
-	if err != nil {
-		logger.Error("Failed to execute bank transaction prompt template", logger.Fields{
-			"error": err.Error(),
-		})
-		return m.fallbackPrompt(transaction, today)
-	}
-
-	return result.String()
-}
-
-// fallbackPrompt provides a fallback prompt in case template file cannot be loaded
-func (m *BankTransactionMapper) fallbackPrompt(transaction *entities.BankTransaction, today string) string {
-	transactionType := "expense"
-	if transaction.IsIncome() {
-		transactionType = "income"
-	}
-
-	exchangeRateStr := ""
-	if transaction.OriginalAmount() != transaction.BookingAmount() {
-		exchangeRateStr = fmt.Sprintf("\n- Original Amount: %.2f %s (Exchange Rate: %.4f)",
-			transaction.OriginalAmount(),
-			transaction.OriginalCurrency(),
-			transaction.ExchangeRate())
-	}
-
-	return fmt.Sprintf(`You are a bank transaction expense categorizer. Extract structured expense information from a bank transaction.
-
-Bank Transaction Details:
-- Merchant: %s
-- Location: %s
-- Transaction Date: %s
-- Amount: %.2f %s
-- Type: %s (expense or income)%s
-
-Today's date: %s
-
-IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no explanations). Return a single JSON object:
-
-{
-  "amount": <number, REQUIRED, positive number, equals %.2f>,
-  "currency": <"%s" or other currency>,
-  "category": <one of: "Food Store", "Dining", "Dining with Friends", "Shopping", "Transportation", "Car", "Living", "Household", "Bills & Utilities", "Health & Fitness", "Travel", "Entertainment", "Education", "Gifts & Donations", "Other">,
-  "vendor_name": <string, name of the store/merchant extracted from transaction>,
-  "vendor_type": <string, type of vendor for category mapping>,
-  "date": <"%s" in YYYY-MM-DD format>,
-  "payment_method": <for bank import, this is: "b_haspa_credit">,
-  "description": <brief description of the transaction, max 100 chars>,
-  "confidence_score": <0.0 to 1.0, your confidence in the categorization>
-}
-
-Category Mapping Guidelines:
-- Groceries, supermarket, REWE, EDEKA, LIDL, ALDI, market, shopping for food → "Food Store"
-- Restaurant, cafe, coffee, eating out, lunch, dinner, McDonalds, Subway → "Dining"
-- Dining with friends, party, social dining → "Dining with Friends"
-- Stores, clothes, electronics, shopping, mall, H&M, Zara, DM, Rossmann → "Shopping"
-- Taxi, train, bus, Uber, tram, metro, transport, Deutsche Bahn, DB → "Transportation"
-- Gas, fuel, car maintenance, repair, Shell, Aral, Esso → "Car"
-- Rent, utilities, internet, phone, electricity, water → "Living"
-- Household items, cleaning, supplies, household goods → "Household"
-- Subscriptions, phone bills, insurance, streaming services → "Bills & Utilities"
-- Gym, doctor, pharmacy, healthcare, Apotheke → "Health & Fitness"
-- Vacation, travel, hotel, flight, booking, airbnb → "Travel"
-- Movies, games, hobbies, entertainment, cinema, Steam, Netflix → "Entertainment"
-- Books, courses, training, university, school → "Education"
-
-German Merchant Name Examples:
-- REWE, EDEKA, LIDL, ALDI → Food Store
-- Restaurants with city suffix (e.g., "RESTAURANT HAMBURG") → Dining
-- DM, Rossmann, Müller → Shopping
-- Shell, Aral, Esso, JET → Car fuel/gas
-- Deutsche Telekom, Vodafone → Bills & Utilities
-- Netflix, Spotify, Amazon Prime Video → Bills & Utilities
-
-Vendor Type Mapping:
-- Map vendor_name and location to one of: food_store, dining, dining_with_friends, shop, clothing, transport, car, living, household, subscriptions, care, entertainment, education, travel, else
-
-Important Rules:
-1. Return ONLY the JSON object, no other text
-2. amount field MUST equal %.2f
-3. date field MUST be "%s" in YYYY-MM-DD format
-4. payment_method MUST be "b_haspa_credit" for bank imports
-5. description should be brief (max 100 characters)
-6. confidence_score ranges from 0.0 (very uncertain) to 1.0 (very certain)
-7. If you cannot determine a category with reasonable confidence, use "Other" and set confidence_score accordingly
-8. Do NOT include markdown code blocks or explanations
-9. Extract merchant name clearly from transaction description
-10. Consider location when available to refine categorization`,
-		transaction.TransactionDesc(),
-		transaction.TransactionDescExtra(),
-		transaction.DocumentDate().Format("2006-01-02"),
-		transaction.AbsoluteAmount(),
-		transaction.BookingCurrency(),
-		transactionType,
-		exchangeRateStr,
-		today,
-		transaction.AbsoluteAmount(),
-		transaction.BookingCurrency(),
-		transaction.DocumentDate().Format("2006-01-02"),
-		transaction.AbsoluteAmount(),
-		transaction.DocumentDate().Format("2006-01-02"),
-	)
-}
-
-// stripMarkdownCodeFence removes markdown code fence from response if present
-func (m *BankTransactionMapper) stripMarkdownCodeFence(response string) string {
-	response = strings.TrimSpace(response)
-
-	// Check for ```json ... ``` pattern
-	if strings.HasPrefix(response, "```json") {
-		response = strings.TrimPrefix(response, "```json")
-		response = strings.TrimSuffix(response, "```")
-	} else if strings.HasPrefix(response, "```") {
-		// Generic code fence
-		response = strings.TrimPrefix(response, "```")
-		response = strings.TrimSuffix(response, "```")
-	}
-
-	return strings.TrimSpace(response)
 }
 
 // validateBankParsedData validates and normalizes parsed expense data from bank transaction

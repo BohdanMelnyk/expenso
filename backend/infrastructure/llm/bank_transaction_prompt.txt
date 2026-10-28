@@ -15,51 +15,62 @@ IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no expl
 {
   "amount": <number, REQUIRED, positive number, equals {{.AbsoluteAmount}}>,
   "currency": <"{{.Currency}}" or other currency>,
-  "category": <one of: "Food Store", "Dining", "Dining with Friends", "Shopping", "Transportation", "Car", "Living", "Household", "Bills & Utilities", "Health & Fitness", "Travel", "Entertainment", "Education", "Gifts & Donations", "Other">,
-  "vendor_name": <string, name of the store/merchant extracted from transaction>,
-  "vendor_type": <string, type of vendor for category mapping>,
+  "vendor_id": <id from VENDORS, or null>,
+  "vendor_name": <clean merchant name extracted from the transaction>,
+  "category": <exactly one of VALID CATEGORIES>,
   "date": <{{.TransactionDate}} in YYYY-MM-DD format>,
-  "payment_method": <for bank import, this is: "b_haspa_credit">,
+  "payment_method": "b_haspa_credit",
   "description": <brief description of the transaction, max 100 chars>,
   "confidence_score": <0.0 to 1.0, your confidence in the categorization>
 }
 
-Category Mapping Guidelines:
-- Groceries, supermarket, REWE, EDEKA, LIDL, ALDI, market, shopping for food → "Food Store"
-- Restaurant, cafe, coffee, eating out, lunch, dinner, McDonalds, Subway → "Dining"
-- Dining with friends, party, social dining → "Dining with Friends"
-- Stores, clothes, electronics, shopping, mall, H&M, Zara, DM, Rossmann → "Shopping"
-- Taxi, train, bus, Uber, tram, metro, transport, Deutsche Bahn, DB → "Transportation"
-- Gas, fuel, car maintenance, repair, Shell, Aral, Esso → "Car"
-- Rent, utilities, internet, phone, electricity, water → "Living"
-- Household items, cleaning, supplies, household goods → "Household"
-- Subscriptions, phone bills, insurance, streaming services → "Bills & Utilities"
-- Gym, doctor, pharmacy, healthcare, healthcare, Apotheke → "Health & Fitness"
-- Vacation, travel, hotel, flight, booking, airbnb → "Travel"
-- Movies, games, hobbies, entertainment, cinema, Steam, Netflix → "Entertainment"
-- Books, courses, training, university, school → "Education"
+HOW TO PICK vendor_id AND category:
+1. If the expense is from one of the VENDORS below, return that vendor's id as vendor_id and that vendor's category as category. The vendor's category always wins over the general rules. A vendor means that specific merchant (or the generic thing its name describes, like "Flight" or "Parking"); a different company in the same business is not that vendor (Vodafone is not Telekom, Rossmann is not DM).
+2. If no vendor fits, return vendor_id null, put the merchant name in vendor_name, and choose the category with the general rules. The server then assigns that category's "Else" vendor.
+3. Never pick an "Else" vendor yourself, and never invent a vendor_id that is not in the list.
+4. "Restaurant" exists twice: the Dining one is for normal eating out; use the Dining with Friends one only when the input says it was with friends, a party or a social dinner.
 
-German Merchant Name Examples:
-- REWE, EDEKA, LIDL, ALDI → Food Store
-- Mix Markt, MixMarkt, "Mix Markt 09" (and other Mix Markt branches) → Category: "Food Store", vendor_name: "MixMarkt", vendor_type: "food_store"
-- HamburgHochbahn, Hamburger Hochbahn, LogPay, HVV (Hamburg public transit) → Category: "Transportation", vendor_name: "HVV", vendor_type: "transport"
-- Bäderland, Baederland (Hamburg public swimming pools) → Category: "Health & Fitness", vendor_name: "Bäderland", vendor_type: "care"
-- Restaurants with city suffix (e.g., "RESTAURANT HAMBURG") → Dining
-- DM, Rossmann, Müller → Shopping
-- Shell, Aral, Esso, JET → Car fuel/gas
-- Deutsche Telekom, Vodafone → Bills & Utilities
-- Netflix, Spotify, Amazon Prime Video → Bills & Utilities
-- ARD, ZDF, DRadio, Rundfunk (German public broadcasting fee / Rundfunkbeitrag) → Category: "Living", vendor_name: "Rundfunkbeitrag", vendor_type: "living"
-- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Category: "Car", vendor_name: "Parking Spot", vendor_type: "car"
-- Abasto (any transaction containing "abasto") → Category: "Living", vendor_name: "Electricity", vendor_type: "living"
-- Willy Telekom (any transaction containing "willy telekom") → Category: "Living", vendor_name: "Internet", vendor_type: "living"
+Known merchant names (map these to the vendor named on the right):
+- Mix Markt, MixMarkt, "Mix Markt 09" (any Mix Markt branch) → MixMarkt
+- HamburgHochbahn, Hamburger Hochbahn, LogPay, HVV, "Freie und Hansestadt Hamburg" transit tickets → HVV
+- Deutsche Bahn, DB Fernverkehr, DB Vertrieb → DB
+- Bäderland, Baederland (Hamburg public swimming pools) → Bäderland
+- Vabali → Vabali
+- ARD, ZDF, DRadio, Beitragsservice, Rundfunk → Rundfunkbeitrag
+- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Parking Spot
+- Abasto → Electricity
+- Willy.tel, Willy Telekom → Internet
+- Deutsche Telekom, Telekom → Telekom
+- Apotheke, pharmacy → Apotheke
+- Budnikowsky, Budni → Budni
+- dm-drogerie markt, DM → DM
 
-Location Context:
-- German cities: Hamburg (HAMBURG), Berlin (BERLIN), Munich (MÜNCHEN), Frankfurt (FRANKFURT), etc.
-- Location information can help refine categorization (e.g., restaurant in Hamburg likely "Dining")
+General category rules (only when no vendor fits):
+- Groceries, supermarket, bakery, market, drinks store → "Food Store"
+- Restaurant, cafe, coffee, snack, takeaway, eating out → "Dining"
+- Eating or drinking out with friends, bar, party → "Dining with Friends"
+- Clothes, shoes, electronics, general retail, mall → "Shopping"
+- Drugstores (Rossmann, Müller), cleaning and household supplies, furniture → "Household"
+- Taxi, train, bus, Uber, tram, metro, scooter → "Transportation"
+- Fuel, car wash, parking, car repair, car insurance → "Car"
+- Rent, electricity, internet, phone and mobile contracts (Vodafone, O2, 1&1) → "Living"
+- Streaming and app subscriptions (Spotify, Prime Video, Disney+), bank fees, other recurring subscriptions → "Bills & Utilities"
+- Gym, sports club, doctor, pharmacy, haircut, spa → "Health & Fitness"
+- Hotel, flight, holiday rental, car rental, booking sites → "Travel"
+- Cinema, concerts, museums, games, events → "Entertainment"
+- Books, courses, training, school → "Education"
+- Presents, gifts, charity, donations → "Gifts & Donations"
+- Anything else → "Other"
 
-Vendor Type Mapping:
-- Map vendor_name and location to one of: food_store, dining, dining_with_friends, shop, clothing, transport, car, living, household, subscriptions, care, entertainment, education, travel, else
+Bank merchant strings are often uppercase, truncated and followed by a city (e.g. "REWE MARKT GMBH//HAMBURG/DE"). Match on the merchant part, not the city: a city name that happens to contain a vendor name (e.g. "GELSENKIRCHEN" contains "else") is not that vendor.
+
+VENDORS (id | name | category):
+{{range .Vendors}}{{.ID}} | {{.Name}} | {{.Category}}
+{{end}}
+VALID CATEGORIES (category must be exactly one of these):
+{{range .Categories}}- {{.}}
+{{end}}
+Salary is only for income transactions.
 
 Important Rules:
 1. Return ONLY the JSON object, no other text
@@ -67,20 +78,13 @@ Important Rules:
 3. date field MUST be {{.TransactionDate}} in YYYY-MM-DD format
 4. payment_method MUST be "b_haspa_credit" for bank imports
 5. description should be brief (max 100 characters)
-6. confidence_score ranges from 0.0 (very uncertain) to 1.0 (very certain)
-7. If you cannot determine a category with reasonable confidence, use "Other" and set confidence_score accordingly
-8. Do NOT include markdown code blocks or explanations
-9. Extract merchant name clearly from transaction description
-10. Consider location when available to refine categorization
+6. confidence_score ranges from 0.0 (very uncertain) to 1.0 (very certain); use below 0.5 when you are guessing
+7. Do NOT include markdown code blocks or explanations
 
-Examples:
-- Merchant: "REWE", Location: "HAMBURG" → Category: "Food Store", vendor_type: "food_store", confidence_score: 0.95
-- Merchant: "RESTAURANT", Location: "BERLIN" → Category: "Dining", vendor_type: "dining", confidence_score: 0.85
-- Merchant: "Shell", Location: "FRANKFURT" → Category: "Car", vendor_type: "car", confidence_score: 0.90
-- Merchant: "ARD ZDF DRadio Beitragsservice", Location: "" → Category: "Living", vendor_name: "Rundfunkbeitrag", vendor_type: "living", confidence_score: 0.98
-- Merchant: "Behrendt Immobilien Verwaltung GmbH Co KG", Location: "" → Category: "Car", vendor_name: "Parking Spot", vendor_type: "car", confidence_score: 0.98
-- Merchant: "Mix Markt 09", Location: "" → Category: "Food Store", vendor_name: "MixMarkt", vendor_type: "food_store", confidence_score: 0.97
-- Merchant: "HamburgHochbahn LogPay", Location: "" → Category: "Transportation", vendor_name: "HVV", vendor_type: "transport", confidence_score: 0.97
-- Merchant: "Abasto GmbH", Location: "" → Category: "Living", vendor_name: "Electricity", vendor_type: "living", confidence_score: 0.99
-- Merchant: "Willy Telekom", Location: "" → Category: "Living", vendor_name: "Internet", vendor_type: "living", confidence_score: 0.99
-- Merchant: "UNKNOWN", Location: "" → Category: "Other", vendor_type: "else", confidence_score: 0.3
+Examples (ids come from VENDORS):
+- Merchant: "REWE MARKT GMBH", Location: "HAMBURG" → vendor_id of Rewe, category "Food Store", confidence 0.95
+- Merchant: "HamburgHochbahn LogPay" → vendor_id of HVV, category "Transportation", confidence 0.97
+- Merchant: "Abasto GmbH" → vendor_id of Electricity, category "Living", confidence 0.99
+- Merchant: "Rossmann", Location: "HAMBURG" → vendor_id null, category "Household", confidence 0.85
+- Merchant: "Spotify AB" → vendor_id null, category "Bills & Utilities", confidence 0.9
+- Merchant: "UNKNOWN" → vendor_id null, category "Other", confidence 0.3

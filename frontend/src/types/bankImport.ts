@@ -4,8 +4,6 @@ export interface ParsedExpense {
   currency: string;
   category: string;
   vendor_name?: string;
-  vendor_type?: string;
-  vendor_type_id?: number;
   date: string;
   payment_method: string;
   description: string;
