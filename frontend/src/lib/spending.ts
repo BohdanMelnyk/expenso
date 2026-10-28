@@ -104,7 +104,9 @@ export function insights(expenses: Expense[], month: Date, subscriptionsCategory
     const history = inWindow.filter((h) => h.category === e.category).map((h) => h.amount);
     if (history.length < 3) continue;
     const m = median(history);
-    if (m > 0 && e.amount >= 3 * m) {
+    // A vendor that charged about this much before (rent, insurance) is a regular payment, not a surprise.
+    const recurring = !!e.vendor && inWindow.some((h) => h.vendor?.id === e.vendor?.id && h.amount >= e.amount * 0.5);
+    if (m > 0 && e.amount >= 3 * m && !recurring) {
       const name = e.vendor?.name ?? e.category;
       cards.push({ kind: 'large', category: e.category, weight: e.amount - m, title: `${eurShort(e.amount)} at ${name}`, detail: `${e.category} expenses are usually around ${eurShort(m)}.` });
     }
@@ -150,3 +152,19 @@ export function biggest(expenses: Expense[], n = 5): Expense[] {
 
 /** Expenses of one calendar month. */
 export const ofMonth = (expenses: Expense[], month: Date) => expenses.filter((e) => sameMonth(parseISODate(e.date), month));
+
+/**
+ * Categories for a whole year: so far this year against last year's monthly average
+ * times the months elapsed (12 for a finished year).
+ */
+export function yearRows(expenses: Expense[], year: number, now: Date): CategoryRow[] {
+  const yearOf = (e: Expense) => parseISODate(e.date).getFullYear();
+  const elapsed = year < now.getFullYear() ? 12 : now.getMonth() + 1;
+  const current = totalsByCategory(expenses.filter((e) => yearOf(e) === year));
+  const previous = totalsByCategory(expenses.filter((e) => yearOf(e) === year - 1));
+  const total = sum(Array.from(current.values()));
+  return Array.from(current, ([name, amount]) => {
+    const average = ((previous.get(name) ?? 0) / 12) * elapsed;
+    return { name, amount, average, change: average > 0 ? (amount - average) / average : null, share: total > 0 ? amount / total : 0 };
+  }).sort((a, b) => b.amount - a.amount);
+}

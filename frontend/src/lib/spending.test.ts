@@ -1,4 +1,4 @@
-import { biggest, categoryRows, insights, monthTotals, savedPerMonth, sixMonthAverages, yearProjection } from './spending';
+import { biggest, yearRows, categoryRows, insights, monthTotals, savedPerMonth, sixMonthAverages, yearProjection } from './spending';
 import { exp, inc } from './fixtures';
 import { eur } from './format';
 
@@ -60,6 +60,16 @@ describe('insights', () => {
     expect(cards.some((c) => c.kind === 'under')).toBe(false);
   });
 
+  it('does not flag a recurring payment like rent as unusual', () => {
+    const rent = { id: 3, name: 'Flat Rent' } as any;
+    const living = [
+      ...[4, 5, 6, 7, 8, 9].map((m) => exp(1177, `2026-0${m}-01`, 'Living', rent)),
+      ...[4, 5, 6, 7, 8, 9].flatMap((m) => [exp(30, `2026-0${m}-10`, 'Living'), exp(35, `2026-0${m}-12`, 'Living')]),
+      exp(1177, '2026-10-01', 'Living', rent),
+    ];
+    expect(insights(living, oct, 'Subscriptions & Fees', new Date(2026, 10, 2)).some((c) => c.kind === 'large')).toBe(false);
+  });
+
   it('flags one unusually large expense', () => {
     const big = [
       exp(20, '2026-09-01', 'Shopping'),
@@ -91,5 +101,19 @@ describe('saving', () => {
 
   it('lists the biggest expenses', () => {
     expect(biggest([exp(5, '2026-10-01'), exp(50, '2026-10-02'), exp(20, '2026-10-03')], 2).map((e) => e.amount)).toEqual([50, 20]);
+  });
+});
+
+describe('yearRows', () => {
+  it('compares this year so far with last year at the same pace', () => {
+    // Last year: Travel 1200 over 12 months = 100/month. This year by October (10 months): 1500 vs 1000.
+    const rows = yearRows([exp(1200, '2025-06-01', 'Travel'), exp(1500, '2026-03-01', 'Travel')], 2026, new Date(2026, 9, 28));
+    expect(rows[0]).toMatchObject({ name: 'Travel', amount: 1500, average: 1000 });
+    expect(rows[0].change).toBeCloseTo(0.5, 6);
+  });
+
+  it('uses all twelve months for a finished year', () => {
+    const rows = yearRows([exp(1200, '2024-06-01', 'Travel'), exp(600, '2025-03-01', 'Travel')], 2025, new Date(2026, 9, 28));
+    expect(rows[0]).toMatchObject({ amount: 600, average: 1200 });
   });
 });
