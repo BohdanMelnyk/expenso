@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AddPanelProvider } from './contexts/AddPanelContext';
 import LoginPage from './components/LoginPage';
 import Sidebar from './ui/Sidebar';
+import AddPanel from './ui/AddPanel';
+import { Toaster } from './ui/Toaster';
 import OverviewPage from './pages/OverviewPage';
 import ExpensesPage from './pages/ExpensesPage';
 import ImportPage from './pages/ImportPage';
@@ -48,6 +50,7 @@ function AppGate() {
 
   return (
     <Router>
+      <Toaster>
       <AddPanelProvider>
         <div className="flex min-h-screen bg-[#f5f5f7] text-gray-900 dark:bg-black dark:text-gray-100">
           <Sidebar />
@@ -66,7 +69,9 @@ function AppGate() {
             </Routes>
           </main>
         </div>
+        <AddPanel />
       </AddPanelProvider>
+      </Toaster>
     </Router>
   );
 }
