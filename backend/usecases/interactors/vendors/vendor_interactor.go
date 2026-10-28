@@ -1,6 +1,8 @@
 package vendors
 
 import (
+	"strings"
+
 	"expenso-backend/domain/entities"
 	"expenso-backend/usecases/interfaces/repositories"
 )
@@ -51,10 +53,15 @@ func (i *VendorInteractor) CreateVendor(cmd CreateVendorCommand) (*entities.Vend
 		return nil, err
 	}
 
-	// Check if vendor with same name and type already exists
-	existingVendor, err := i.vendorRepo.FindByName(vendor.Name())
-	if err == nil && existingVendor != nil && existingVendor.Type() == vendor.Type() {
-		return nil, entities.ErrVendorAlreadyExists
+	// Vendor names are unique within a category
+	existingVendors, err := i.vendorRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, existing := range existingVendors {
+		if strings.EqualFold(existing.Name(), vendor.Name()) && existing.CategoryID() == vendor.CategoryID() {
+			return nil, entities.ErrVendorAlreadyExists
+		}
 	}
 
 	// Save vendor
