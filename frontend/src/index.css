@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import './mobile-styles.css';
 
 body {
   margin: 0;
