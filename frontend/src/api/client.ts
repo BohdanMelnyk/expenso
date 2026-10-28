@@ -65,6 +65,7 @@ export interface Vendor {
   id: number;
   name: string;
   type: 'care' | 'clothing' | 'eating_out' | 'else' | 'food_store' | 'household' | 'living' | 'salary' | 'subscriptions' | 'transport' | 'tourism' | 'car' | 'shop' | 'dining' | 'dining_with_friends';
+  category_id: number;
   category: string;
   created_at: string;
   updated_at: string;
@@ -255,7 +256,7 @@ export const expenseAPI = {
 
 export const vendorAPI = {
   getVendors: () => apiClient.get<Vendor[]>('/vendors'),
-  createVendor: (vendor: { name: string; type: string }) => apiClient.post<Vendor>('/vendors', vendor),
+  createVendor: (vendor: { name: string; category_id: number; type?: string }) => apiClient.post<Vendor>('/vendors', vendor),
   getVendor: (id: number) => apiClient.get<Vendor>(`/vendors/${id}`),
   getVendorsByType: (type: string) => apiClient.get<Vendor[]>(`/vendors/type/${type}`),
 };

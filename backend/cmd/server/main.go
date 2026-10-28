@@ -120,7 +120,7 @@ func main() {
 	expenseInteractor.SetBankTransactionMapper(bankTransactionMapper)
 
 	incomeInteractor := income.NewIncomeInteractor(incomeRepo, vendorRepo, tagRepo)
-	vendorInteractor := vendors.NewVendorInteractor(vendorRepo)
+	vendorInteractor := vendors.NewVendorInteractor(vendorRepo, categoryRepo)
 	categoryInteractor := category.NewCategoryInteractor(categoryRepo)
 	tagInteractor := tag.NewTagInteractor(tagRepo)
 	snapshotInteractor := snapshot.NewSnapshotInteractor(snapshotRepo, cfg.ExchangeRates.AEDToEUR)
