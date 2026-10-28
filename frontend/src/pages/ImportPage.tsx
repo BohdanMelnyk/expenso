@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileUp, Loader } from 'lucide-react';
 import { bankImportAPI, expenseAPI, type Expense } from '../api/client';
@@ -33,6 +33,8 @@ const ImportPage: React.FC = () => {
   const [decision, setDecision] = useState<Record<number, 'skip' | 'add'>>({});
   const [result, setResult] = useState({ added: 0, skipped: 0, failed: 0 });
   const [deciding, setDeciding] = useState(false);
+  /** Set by Cancel; running loops stop at the next row. */
+  const cancelled = useRef(false);
   const [dragging, setDragging] = useState(false);
   /** Latest transaction date in the statement, for "covered up to". */
   const [coveredUntil, setCoveredUntil] = useState('');
@@ -77,9 +79,11 @@ const ImportPage: React.FC = () => {
 
   const add = async () => {
     setError(null);
+    cancelled.current = false;
     setAdding({ done: 0, total: ticked.length });
     const found = new Map<number, Expense[]>();
     for (const row of ticked) {
+      if (cancelled.current) return;
       try {
         found.set(row.index, (await expenseAPI.checkDuplicates(row.draft.amount, row.draft.date, 2)).data ?? []);
       } catch {
@@ -93,6 +97,7 @@ const ImportPage: React.FC = () => {
     let added = 0;
     const posted = new Set<number>();
     for (const row of split.clear) {
+      if (cancelled.current) return;
       try {
         await post(row);
         posted.add(row.index);
@@ -158,7 +163,16 @@ const ImportPage: React.FC = () => {
         {rows.length > 0 && (
           <div className="ml-auto flex items-center gap-2">
             {incomplete > 0 && <span className="text-xs text-amber-600 dark:text-amber-400">{incomplete} ticked without vendor or category</span>}
-            <Button variant="ghost" onClick={() => navigate('/expenses')}>Cancel</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                cancelled.current = true;
+                if (adding) notifyChanged();
+                navigate('/expenses');
+              }}
+            >
+              {adding ? 'Stop' : 'Cancel'}
+            </Button>
             <Button disabled={ticked.length === 0 || incomplete > 0 || !!adding} onClick={add}>
               {adding ? `Adding ${adding.done}/${adding.total}…` : `Add ${ticked.length} expense${ticked.length === 1 ? '' : 's'}`}
             </Button>
@@ -198,7 +212,7 @@ const ImportPage: React.FC = () => {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.index} className={`border-t border-gray-100 dark:border-white/5 ${r.ticked ? '' : 'opacity-50'}`}>
-                  <td className="px-2 py-1.5"><input type="checkbox" checked={r.ticked} onChange={(e) => tick(r.index, e.target.checked)} /></td>
+                  <td className="px-2 py-1.5"><input type="checkbox" checked={r.ticked} disabled={r.incoming} title={r.incoming ? 'Incoming money isn’t an expense' : undefined} onChange={(e) => tick(r.index, e.target.checked)} /></td>
                   <td className="whitespace-nowrap px-2 py-1.5 tabular-nums">{day(r.draft.date)}</td>
                   <td className="max-w-[16rem] truncate px-2 py-1.5 text-gray-500 dark:text-gray-400" title={r.tx.merchant}>{r.tx.merchant}{r.tx.location ? ` · ${r.tx.location}` : ''}</td>
                   {r.incoming ? (

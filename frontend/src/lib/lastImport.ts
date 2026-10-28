@@ -24,7 +24,9 @@ export function readLastImport(now: Date = new Date()): (LastImport & { ago: str
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const value = JSON.parse(raw) as LastImport;
-    const days = Math.floor((now.getTime() - new Date(value.at).getTime()) / 86_400_000);
+    const at = new Date(value.at);
+    // Calendar days, so last night counts as "yesterday".
+    const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime()) / 86_400_000);
     const ago = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
     return { ...value, ago };
   } catch {

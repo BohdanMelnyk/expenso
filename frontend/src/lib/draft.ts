@@ -70,6 +70,18 @@ export function applyParse(d: Draft, parsed: ParsedExpenseResponse, forText: str
   return next;
 }
 
+/** Drop what a parse filled in (for text too short to parse); the user's own edits stay. */
+export function clearParsed(d: Draft): Draft {
+  const has = (f: DraftField) => d.edited.includes(f);
+  return {
+    ...d,
+    amount: has('amount') ? d.amount : 0,
+    vendorId: has('vendorId') ? d.vendorId : undefined,
+    category: has('category') ? d.category : undefined,
+    note: has('note') ? d.note : '',
+  };
+}
+
 export const canSave = (d: Draft) => d.amount > 0 && !!d.category && d.vendorId !== undefined;
 
 export function saveTitle(d: Draft, vendors: Vendor[]): string {

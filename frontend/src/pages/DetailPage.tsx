@@ -8,13 +8,16 @@ import { useAddPanel } from '../contexts/AddPanelContext';
 import { monthTotals, ofMonth, totalsByVendor } from '../lib/spending';
 import { eur, eurShort } from '../lib/format';
 import { addMonths, apiRange, monthKey, monthName, monthsBetween, monthStart, parseISODate, parseMonthKey, sameMonth, shortMonth } from '../lib/months';
-import { Card, CardTitle, CategoryIcon, ChangeBadge, PageHeader, Quiet, StatCard } from '../ui/Card';
+import { tooltipStyle } from '../ui/chartStyle';
+import { useTheme } from '../contexts/ThemeContext';
+import { Card, LoadError, CardTitle, CategoryIcon, ChangeBadge, PageHeader, Quiet, StatCard } from '../ui/Card';
 
 /** One category or one vendor: this month against usual, the last 12 months, and its expenses. */
 const DetailPage: React.FC = () => {
   const { name, id } = useParams();
   const [params] = useSearchParams();
   const now = new Date();
+  const { theme } = useTheme();
   const month = params.get('month') ? parseMonthKey(params.get('month')!) : monthStart(now);
   const { categoryByName, vendors } = useCatalog();
   const { openEditExpense } = useAddPanel();
@@ -27,7 +30,7 @@ const DetailPage: React.FC = () => {
   const months = monthsBetween(addMonths(month, -11), month);
   const yearStart = new Date(month.getFullYear(), 0, 1);
   const from = yearStart < months[0] ? yearStart : months[0];
-  const { data, loading } = useLoad<Expense[]>(async () => {
+  const { data, loading, error, reload } = useLoad<Expense[]>(async () => {
     const range = apiRange(from, month);
     return (await expenseAPI.getActualExpenses(range.start, range.end)).data ?? [];
   }, `${monthKey(from)}:${monthKey(month)}`);
@@ -46,6 +49,7 @@ const DetailPage: React.FC = () => {
     <div className="mx-auto max-w-[1920px]">
       <Link to={`/?month=${monthKey(month)}`} className="text-sm text-blue-600 dark:text-blue-400">‹ Overview · {monthName(month)}</Link>
       <PageHeader title={<span className="flex items-center gap-3"><CategoryIcon category={category} size={36} />{title}</span>} />
+      {error && <LoadError onRetry={reload} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={monthName(month)} value={eurShort(current ?? 0)} sub={<ChangeBadge change={average > 0 ? (current - average) / average : null} />} />
@@ -61,7 +65,7 @@ const DetailPage: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={months.map((m, i) => ({ name: shortMonth(m), value: totals[i] }))}>
                 <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} stroke="#8e8e93" />
-                <Tooltip cursor={{ fill: 'rgba(142,142,147,.12)' }} formatter={(v: number) => eur(v)} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                <Tooltip cursor={{ fill: 'rgba(142,142,147,.12)' }} formatter={(v: number) => eur(v)} contentStyle={tooltipStyle(theme === 'dark')} labelStyle={{ color: 'inherit' }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {months.map((m, i) => <Cell key={i} fill={sameMonth(m, month) ? color : '#c7c7cc'} />)}
                 </Bar>
@@ -73,11 +77,11 @@ const DetailPage: React.FC = () => {
           <Card>
             <CardTitle>Vendors in {monthName(month)}</CardTitle>
             {totalsByVendor(inMonthExpenses).map((v) => (
-              <div key={v.name} className="flex items-center gap-2 border-b border-gray-100 py-1.5 text-sm last:border-0 dark:border-white/5">
+              <Link key={v.id} to={`/vendor/${v.id}?month=${monthKey(month)}`} className="flex items-center gap-2 border-b border-gray-100 py-1.5 text-sm last:border-0 hover:bg-gray-50 dark:border-white/5 dark:hover:bg-white/5">
                 <span>{v.name}</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{v.count}×</span>
                 <span className="ml-auto font-semibold tabular-nums">{eur(v.amount)}</span>
-              </div>
+              </Link>
             ))}
             {inMonthExpenses.length === 0 && !loading && <Quiet>Nothing this month.</Quiet>}
           </Card>

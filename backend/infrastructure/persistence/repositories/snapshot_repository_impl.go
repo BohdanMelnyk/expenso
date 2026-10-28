@@ -75,7 +75,7 @@ func (r *SnapshotRepositoryImpl) Update(s *entities.Snapshot) error {
 			mono_b = $10, mono_m = $11, paypal_b = $12, paypal_m = $13, backup_cash = $14, careem_rsu_shares = $15, enbd_aed = $16
 		WHERE id = $1
 	`
-	_, err := r.db.Exec(query, int(s.ID()),
+	result, err := r.db.Exec(query, int(s.ID()),
 		s.Date(), s.Total(),
 		s.Haspa(), s.N26B(), s.N26M(), s.Cash(),
 		s.UberStocks(), s.ScalableCapital(),
@@ -86,6 +86,9 @@ func (r *SnapshotRepositoryImpl) Update(s *entities.Snapshot) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update snapshot: %w", err)
+	}
+	if n, err := result.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("snapshot %d no longer exists", s.ID())
 	}
 	return nil
 }

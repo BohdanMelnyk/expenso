@@ -31,11 +31,15 @@ type Snapshot struct {
 	createdAt       time.Time
 }
 
+// snapshotNow is the clock for the future-date check; tests replace it.
+var snapshotNow = time.Now
+
 func NewSnapshot(
 	date time.Time,
 	haspa, n26B, n26M, cash, uberStocks, scalableCapital, monoB, monoM, paypalB, paypalM, backupCash, careemRSUShares, enbdAED, aedToEUR float64,
 ) (*Snapshot, error) {
-	if date.After(time.Now()) {
+	// Compare calendar days: the date arrives as midnight UTC, "today" is the local day.
+	if date.UTC().Format("2006-01-02") > snapshotNow().Format("2006-01-02") {
 		return nil, errors.New("snapshot date cannot be in the future")
 	}
 	careemRSU := careemRSUShares * careemRSUPriceUSD * careemRSUUSDToEUR
