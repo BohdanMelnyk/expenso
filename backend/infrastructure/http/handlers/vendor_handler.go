@@ -153,7 +153,7 @@ func (h *VendorHandler) CreateVendor(c *gin.Context) {
 		} else if err == entities.ErrCategoryNotFound {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Category not found"})
 		} else if err == entities.ErrVendorAlreadyExists {
-			c.JSON(http.StatusConflict, gin.H{"error": "Vendor with this name and type already exists"})
+			c.JSON(http.StatusConflict, gin.H{"error": "Vendor with this name already exists in this category"})
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}

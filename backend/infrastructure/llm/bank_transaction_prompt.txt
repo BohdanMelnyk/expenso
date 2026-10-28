@@ -25,10 +25,10 @@ IMPORTANT: You MUST return ONLY valid JSON (no markdown, no code blocks, no expl
 }
 
 HOW TO PICK vendor_id AND category:
-1. If the expense is from one of the VENDORS below, return that vendor's id as vendor_id and that vendor's category as category. The vendor's category always wins over the general rules. A vendor means that specific merchant (or the generic thing its name describes, like "Flight" or "Parking"); a different company in the same business is not that vendor (Vodafone is not Telekom, Rossmann is not DM).
+1. If the expense is from one of the VENDORS below, return that vendor's id as vendor_id and that vendor's category as category. The vendor's category always wins over the general rules. A vendor means that specific merchant (or the generic thing its name describes, like "Flight" or "Parking"); a different company in the same business is not that vendor (Vodafone is not Telekom, Rossmann is not DM). Only pick a vendor when its category also fits what was bought; if the merchant matches but the category does not (an iPhone bought from Apple is Electronics, while the Apple vendor is for subscriptions), return vendor_id null and the right category.
 2. If no vendor fits, return vendor_id null, put the merchant name in vendor_name, and choose the category with the general rules. The server then assigns that category's "Else" vendor.
 3. Never pick an "Else" vendor yourself, and never invent a vendor_id that is not in the list.
-4. "Restaurant" exists twice: the Dining one is for normal eating out; use the Dining with Friends one only when the input says it was with friends, a party or a social dinner.
+4. "Restaurant" is normal eating out (Dining); use "Restaurant with Friends" (Dining with Friends) only when the input says it was with friends, a party or a social dinner.
 
 Known merchant names (map these to the vendor named on the right):
 - Mix Markt, MixMarkt, "Mix Markt 09" (any Mix Markt branch) → MixMarkt
@@ -36,8 +36,14 @@ Known merchant names (map these to the vendor named on the right):
 - Deutsche Bahn, DB Fernverkehr, DB Vertrieb → DB
 - Bäderland, Baederland (Hamburg public swimming pools) → Bäderland
 - Vabali → Vabali
+- Apple.com/bill, App Store, iCloud, Apple subscriptions → Apple. Buying an Apple device (iPhone, iPad, MacBook, AirPods) is NOT the Apple vendor: it is "Electronics"
+- Fuel stations (Shell, Aral, Esso, JET, Total, Star), fuel, petrol → Benzin
+- UNICEF, Red Cross, Spende, charity, donation → Donation
+- Finanzamt, Finanzkasse → Finanzamt
+- ADAC → ADAC
+- HUK-COBURG, HUK24 → Car Insurance
 - ARD, ZDF, DRadio, Beitragsservice, Rundfunk → Rundfunkbeitrag
-- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Parking Spot
+- Behrendt Immobilien Verwaltung GmbH Co KG (parking spot rental) → Parking Spot Rent
 - Abasto → Electricity
 - Willy.tel, Willy Telekom → Internet
 - Deutsche Telekom, Telekom → Telekom
@@ -49,17 +55,22 @@ General category rules (only when no vendor fits):
 - Groceries, supermarket, bakery, market, drinks store → "Food Store"
 - Restaurant, cafe, coffee, snack, takeaway, eating out → "Dining"
 - Eating or drinking out with friends, bar, party → "Dining with Friends"
-- Clothes, shoes, electronics, general retail, mall → "Shopping"
-- Drugstores (Rossmann, Müller), cleaning and household supplies, furniture → "Household"
-- Taxi, train, bus, Uber, tram, metro, scooter → "Transportation"
-- Fuel, car wash, parking, car repair, car insurance → "Car"
+- Clothes, shoes, general retail, mall → "Shopping"
+- Phones, computers, TVs, cameras, gadgets and accessories (MediaMarkt, Saturn, Apple Store purchases) → "Electronics"
+- Drugstores (Rossmann, Müller), cleaning and household supplies, furniture, home appliances (dryer, air fryer) → "Household"
+- Getting around: local transit, taxi, Uber, Bolt, train or bus tickets, car sharing → "Transportation"
+- Fuel, car wash, parking, car repair, inspection (TÜV) → "Car"
 - Rent, electricity, internet, phone and mobile contracts (Vodafone, O2, 1&1) → "Living"
-- Streaming and app subscriptions (Spotify, Prime Video, Disney+), bank fees, other recurring subscriptions → "Bills & Utilities"
-- Gym, sports club, doctor, pharmacy, haircut, spa → "Health & Fitness"
-- Hotel, flight, holiday rental, car rental, booking sites → "Travel"
+- Streaming and app subscriptions (Spotify, Prime Video, Disney+), bank fees, other recurring subscriptions → "Subscriptions & Fees"
+- Doctor, dentist, lab tests, pharmacy, gym, sports club, climbing, swimming → "Health & Fitness"
+- Haircut, nails, epilation, laser, cosmetics, perfume (Douglas, Sephora), massage, spa → "Beauty & Care"
+- Any insurance (car, home, health supplement, ADAC, HUK, Envivas) → "Insurance"
+- Tax payments (Finanzamt), passports, citizenship, official fees → "Taxes & Admin"
+- Money given to support family members → "Family Support"
+- Trips: hotels, flights, holiday rentals, car rental, whole-trip costs → "Travel"
 - Cinema, concerts, museums, games, events → "Entertainment"
-- Books, courses, training, school → "Education"
-- Presents, gifts, charity, donations → "Gifts & Donations"
+- Books, courses, training, school, driving school → "Education"
+- Presents for someone (even if bought at a shop), charity, donations → "Gifts & Donations"
 - Anything else → "Other"
 
 Bank merchant strings are often uppercase, truncated and followed by a city (e.g. "REWE MARKT GMBH//HAMBURG/DE"). Match on the merchant part, not the city: a city name that happens to contain a vendor name (e.g. "GELSENKIRCHEN" contains "else") is not that vendor.
@@ -86,5 +97,5 @@ Examples (ids come from VENDORS):
 - Merchant: "HamburgHochbahn LogPay" → vendor_id of HVV, category "Transportation", confidence 0.97
 - Merchant: "Abasto GmbH" → vendor_id of Electricity, category "Living", confidence 0.99
 - Merchant: "Rossmann", Location: "HAMBURG" → vendor_id null, category "Household", confidence 0.85
-- Merchant: "Spotify AB" → vendor_id null, category "Bills & Utilities", confidence 0.9
+- Merchant: "Spotify AB" → vendor_id null, category "Subscriptions & Fees", confidence 0.9
 - Merchant: "UNKNOWN" → vendor_id null, category "Other", confidence 0.3
