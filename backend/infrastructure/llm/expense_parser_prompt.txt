@@ -24,6 +24,7 @@ HOW TO PICK vendor_id AND category:
 2. If no vendor fits, return vendor_id null, put the merchant name in vendor_name, and choose the category with the general rules. The server then assigns that category's "Else" vendor.
 3. Never pick an "Else" vendor yourself, and never invent a vendor_id that is not in the list.
 4. "Restaurant" is normal eating out (Dining); use "Restaurant with Friends" (Dining with Friends) only when the input says it was with friends, a party or a social dinner.
+5. Coffee, café visits, coffee to go, patisseries, cakes, ice cream and sweets → "Coffee" (Dining), also when it was with friends. Buying bread at a bakery (Junge, Backhaus, Bäckerei) is groceries, and coffee beans for home are groceries, not Coffee.
 
 Known merchant names (map these to the vendor named on the right):
 - Mix Markt, MixMarkt, "Mix Markt 09" (any Mix Markt branch) → MixMarkt
@@ -35,6 +36,7 @@ Known merchant names (map these to the vendor named on the right):
 - Fuel stations (Shell, Aral, Esso, JET, Total, Star), fuel, petrol → Benzin
 - UNICEF, Red Cross, Spende, charity, donation → Donation
 - Finanzamt, Finanzkasse → Finanzamt
+- Tchibo → Coffee
 - ADAC → ADAC
 - HUK-COBURG, HUK24 → Car Insurance
 - ARD, ZDF, DRadio, Beitragsservice, Rundfunk → Rundfunkbeitrag
@@ -48,7 +50,7 @@ Known merchant names (map these to the vendor named on the right):
 
 General category rules (only when no vendor fits):
 - Groceries, supermarket, bakery, market, drinks store → "Food Store"
-- Restaurant, cafe, coffee, snack, takeaway, eating out → "Dining"
+- Restaurant, snack, takeaway, eating out, and cafés/coffee/sweets (vendor Coffee) → "Dining"
 - Eating or drinking out with friends, bar, party → "Dining with Friends"
 - Clothes, shoes, general retail, mall → "Shopping"
 - Phones, computers, TVs, cameras, gadgets and accessories (MediaMarkt, Saturn, Apple Store purchases) → "Electronics"

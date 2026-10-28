@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"expenso-backend/infrastructure/http/dto"
@@ -88,4 +90,60 @@ func (h *SnapshotHandler) CreateSnapshot(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, dto.ToSnapshotResponseDTO(s))
+}
+
+// UpdateSnapshot godoc
+// @Summary Update a snapshot
+// @Description Replaces every value of an existing snapshot
+// @Tags snapshots
+// @Accept json
+// @Produce json
+// @Param id path int true "Snapshot ID"
+// @Param snapshot body dto.CreateSnapshotRequestDTO true "Snapshot data"
+// @Success 200 {object} dto.SnapshotResponseDTO
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /snapshots/{id} [put]
+func (h *SnapshotHandler) UpdateSnapshot(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid snapshot id"})
+		return
+	}
+	var req dto.CreateSnapshotRequestDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	date, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, use YYYY-MM-DD"})
+		return
+	}
+
+	s, err := h.snapshotInteractor.UpdateSnapshot(id, snapshot.CreateSnapshotCommand{
+		Date:            date,
+		Haspa:           req.Haspa,
+		N26B:            req.N26B,
+		N26M:            req.N26M,
+		Cash:            req.Cash,
+		UberStocks:      req.UberStocks,
+		ScalableCapital: req.ScalableCapital,
+		MonoB:           req.MonoB,
+		MonoM:           req.MonoM,
+		PaypalB:         req.PaypalB,
+		PaypalM:         req.PaypalM,
+		BackupCash:      req.BackupCash,
+		CareemRSUShares: req.CareemRSUShares,
+		ENBDAED:         req.ENBDAED,
+	})
+	if errors.Is(err, snapshot.ErrSnapshotNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Snapshot not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.ToSnapshotResponseDTO(s))
 }

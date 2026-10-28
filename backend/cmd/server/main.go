@@ -262,6 +262,7 @@ func main() {
 	// Snapshot routes
 	api.GET("/snapshots", snapshotHandler.GetSnapshots)
 	api.POST("/snapshots", snapshotHandler.CreateSnapshot)
+	api.PUT("/snapshots/:id", snapshotHandler.UpdateSnapshot)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

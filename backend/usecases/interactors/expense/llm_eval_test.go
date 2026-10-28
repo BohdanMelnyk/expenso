@@ -81,6 +81,9 @@ func TestLLMEval(t *testing.T) {
 			{"sent 300 to grandma for support", "Else", "Family Support"},
 			{"driving lesson 140", "Driving School", "Education"},
 			{"haircut 35", "Haircut", "Beauty & Care"},
+			{"cappuccino at a cafe 4.20", "Coffee", "Dining"},
+			{"ice cream 3.50", "Coffee", "Dining"},
+			{"coffee and cake with friends 15", "Coffee", "Dining"},
 		} {
 			parsed, err := parser.ParseExpense(c.input)
 			checkEval(t, c, parsed, err)
@@ -108,6 +111,8 @@ func TestLLMEval(t *testing.T) {
 			{"DB VERTRIEB GMBH", "DB", "Transportation"},
 			{"APOTHEKE AM MARKT", "Apotheke", "Health & Fitness"},
 			{"KIOSK AM BAHNHOF//GELSENKIRCHEN/DE", "Kiosk", "Dining"},
+			{"TCHIBO 3694//HAMBURG/DE", "Coffee", "Dining"},
+			{"DIE PATISSERIE//HAMBURG/DE", "Coffee", "Dining"},
 			{"BAEDERLAND HAMBURG", "Bäderland", "Health & Fitness"},
 			{"MEDIAMARKT HAMBURG", "Else", "Electronics"},
 			{"DOUGLAS 286//HAMBURG/DE", "Else", "Beauty & Care"},
