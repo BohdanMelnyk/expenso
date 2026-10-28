@@ -93,3 +93,4 @@ docs/
 
 # Git worktrees used for isolated feature work
 .worktrees/
+.superpowers/
